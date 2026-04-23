@@ -8,6 +8,7 @@ from typer.testing import CliRunner
 from openpathai.cli import download_cmd
 from openpathai.cli.main import app
 from openpathai.data.downloaders import DownloadResult
+from tests.conftest import strip_ansi
 
 runner = CliRunner()
 
@@ -22,10 +23,11 @@ def test_download_unknown_dataset_exits_2() -> None:
 def test_download_large_gated_requires_confirmation() -> None:
     result = runner.invoke(app, ["download", "histai_breast"])
     assert result.exit_code == 2
-    assert "Dataset: HISTAI-Breast" in result.stdout
-    assert "GATED" in result.stdout
-    assert "Size:" in result.stdout
-    assert "--yes" in result.stdout
+    out = strip_ansi(result.stdout)
+    assert "Dataset: HISTAI-Breast" in out
+    assert "GATED" in out
+    assert "Size:" in out
+    assert "--yes" in out
 
 
 @pytest.mark.unit
@@ -33,7 +35,8 @@ def test_download_small_gated_also_warns_on_gated_flag() -> None:
     # histai_metadata is small but still gated — should still require --yes.
     result = runner.invoke(app, ["download", "histai_metadata"])
     assert result.exit_code == 2
-    assert "GATED" in result.stdout
+    out = strip_ansi(result.stdout)
+    assert "GATED" in out
 
 
 @pytest.mark.unit

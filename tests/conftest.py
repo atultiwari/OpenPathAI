@@ -7,11 +7,27 @@ rationale.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import numpy as np
 import pytest
 from PIL import Image
+
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+
+
+def strip_ansi(text: str) -> str:
+    """Remove ANSI escape sequences so substring checks survive
+    Typer/Rich's colourised help output on CI (``FORCE_COLOR=1``).
+    """
+    return _ANSI_RE.sub("", text)
+
+
+@pytest.fixture()
+def clean_stdout():
+    """Return a helper that strips ANSI from a ``CliRunner.Result.stdout``."""
+    return strip_ansi
 
 
 @pytest.fixture(scope="session")
