@@ -20,9 +20,9 @@ def test_kfold_no_patient_overlap_many_seeds() -> None:
         assert len(folds) == 5
         val_union: set[str] = set()
         for fold in folds:
-            assert set(fold.train).isdisjoint(
-                fold.val
-            ), f"seed={seed} fold={fold.index} train∩val not empty"
+            assert set(fold.train).isdisjoint(fold.val), (
+                f"seed={seed} fold={fold.index} train∩val not empty"
+            )
             val_union |= set(fold.val)
         # Every patient is in exactly one validation fold.
         assert val_union == set(patients)

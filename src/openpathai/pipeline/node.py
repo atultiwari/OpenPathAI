@@ -155,7 +155,7 @@ def _extract_io_types(
         hints = get_type_hints(fn)
     except NameError as exc:
         raise TypeError(
-            f"@node function {fn.__qualname__!r} has unresolved type hints: " f"{exc}"
+            f"@node function {fn.__qualname__!r} has unresolved type hints: {exc}"
         ) from exc
 
     input_name = params[0].name

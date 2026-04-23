@@ -143,12 +143,14 @@ def download_huggingface(  # pragma: no cover - exercised where hub is installed
     # datasets usually use a ``slides/`` or ``tiles/`` prefix.
     if allow_patterns is None and subset is not None and subset > 0:
         allow_patterns = [f"slides/*_{i:04d}*" for i in range(subset)]
+    # ``local_dir_use_symlinks`` was deprecated in huggingface_hub 0.23
+    # and removed in 1.0. The current backend (1.11+) always writes
+    # regular files when ``local_dir=`` is set, which is what we want.
     snapshot_download(
         repo_id=download.huggingface_repo,
         repo_type="dataset",
         revision=None,
         local_dir=str(target),
-        local_dir_use_symlinks=False,
         allow_patterns=list(allow_patterns) if allow_patterns else None,
     )
     files = sum(1 for _ in target.rglob("*") if _.is_file())

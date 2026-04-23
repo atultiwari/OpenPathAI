@@ -40,7 +40,7 @@ def _require_gradio() -> Any:  # pragma: no cover - trivially wraps the import
         import gradio as gr
     except ImportError as exc:
         raise ImportError(
-            "The Gradio GUI requires the `[gui]` extra. Install via " "`uv sync --extra gui`."
+            "The Gradio GUI requires the `[gui]` extra. Install via `uv sync --extra gui`."
         ) from exc
     return gr
 
@@ -90,7 +90,7 @@ def launch_app(
     host: str | None = None,
     port: int | None = None,
     share: bool | None = None,
-    **launch_kwargs: object,
+    **launch_kwargs: Any,
 ) -> None:  # pragma: no cover - network launch
     """Build + launch the GUI.
 
@@ -99,6 +99,11 @@ def launch_app(
     """
     effective_state = state if state is not None else AppState()
     app = build_app(effective_state)
+    # ``show_api=False`` skips the Gradio JS-client schema introspection
+    # step, which tripped on older gradio-client versions when pydantic
+    # inputs surfaced boolean JSON-schema values. The tabs do not rely
+    # on the JS-client autogen, so disabling it is a no-op for users.
+    launch_kwargs.setdefault("show_api", False)
     app.launch(
         server_name=host or effective_state.host,
         server_port=port if port is not None else effective_state.port,

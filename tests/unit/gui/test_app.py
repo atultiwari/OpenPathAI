@@ -9,7 +9,19 @@ import pytest
 
 from openpathai.gui.app import TAB_ORDER
 
-gradio_missing = importlib.util.find_spec("gradio") is None
+
+def _gradio_is_usable() -> bool:
+    """Return ``True`` iff gradio is importable *and* not a stale
+    namespace-package stub left behind by ``uv sync`` swapping extras.
+    """
+    spec = importlib.util.find_spec("gradio")
+    if spec is None or spec.origin is None:
+        return False
+    # A partial install leaves ``gradio.blocks`` unavailable.
+    return importlib.util.find_spec("gradio.blocks") is not None
+
+
+gradio_missing = not _gradio_is_usable()
 
 
 def test_tab_order_matches_docs() -> None:
@@ -26,16 +38,18 @@ def test_importing_openpathai_gui_does_not_load_gradio() -> None:
     # Fresh import: if the package accidentally eagerly loaded gradio
     # at module level, it would show up in sys.modules even when
     # gradio wasn't installed (no-op if gradio is absent).
-    sys.modules.pop("gradio", None)
-    for mod in list(sys.modules):
-        if mod.startswith("openpathai.gui"):
-            sys.modules.pop(mod, None)
+    for mod in [m for m in sys.modules if m == "gradio" or m.startswith("gradio.")]:
+        sys.modules.pop(mod, None)
+    for mod in [m for m in sys.modules if m.startswith("openpathai.gui")]:
+        sys.modules.pop(mod, None)
 
     # Re-import the package entry point.
     import openpathai.gui  # noqa: F401
 
-    assert "gradio" not in sys.modules, (
-        "openpathai.gui must not eagerly import gradio — keep imports " "inside function bodies."
+    loaded_gradio = [m for m in sys.modules if m == "gradio" or m.startswith("gradio.")]
+    assert not loaded_gradio, (
+        "openpathai.gui must not eagerly import gradio — keep imports "
+        f"inside function bodies. Loaded: {loaded_gradio!r}"
     )
 
 

@@ -124,8 +124,5 @@ def integrated_gradients(  # pragma: no cover - torch only
         result = normalise_01(np.abs(per_pixel).astype(np.float32))
 
     if output_size is not None:
-        result = resize_heatmap(
-            result if signed else result,
-            size=output_size,
-        )
+        result = resize_heatmap(result, size=output_size)
     return result

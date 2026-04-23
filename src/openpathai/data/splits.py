@@ -91,7 +91,7 @@ def patient_level_kfold(
     unique = _unique_sorted(patients)
     if len(unique) < n_splits:
         raise ValueError(
-            f"Need at least {n_splits} unique patients for {n_splits}-fold; " f"got {len(unique)}"
+            f"Need at least {n_splits} unique patients for {n_splits}-fold; got {len(unique)}"
         )
 
     # Stratified assignment: bucket by modal class per patient so that
@@ -161,8 +161,8 @@ def patient_level_split(
 
     shuffled = sorted(unique, key=lambda pid: _stable_hash(pid, seed))
     n = len(shuffled)
-    n_train = int(round(train * n))
-    n_val = int(round(val * n))
+    n_train = round(train * n)
+    n_val = round(val * n)
     # Clamp so the remainder goes to test and every bucket has ≥1 when
     # fractions are non-zero.
     n_train = max(1, min(n_train, n - 2))

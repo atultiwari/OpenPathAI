@@ -112,10 +112,10 @@ class GridTiler(BaseModel):
         stride_h = max(1, tile_h - ov_h)
 
         scale = self._scale_factor(info)
-        src_tile_w = max(1, int(round(tile_w * scale)))
-        src_tile_h = max(1, int(round(tile_h * scale)))
-        src_stride_w = max(1, int(round(stride_w * scale)))
-        src_stride_h = max(1, int(round(stride_h * scale)))
+        src_tile_w = max(1, round(tile_w * scale))
+        src_tile_h = max(1, round(tile_h * scale))
+        src_stride_w = max(1, round(stride_w * scale))
+        src_stride_h = max(1, round(stride_h * scale))
 
         coords: list[TileCoordinate] = []
         row = 0
@@ -184,10 +184,10 @@ class GridTiler(BaseModel):
             scale_x = info.mpp / mask_mpp * (mask_w / info.width)
             scale_y = info.mpp / mask_mpp * (mask_h / info.height)
 
-        mx0 = max(0, int(math.floor(x * scale_x)))
-        my0 = max(0, int(math.floor(y * scale_y)))
-        mx1 = min(mask_w, int(math.ceil((x + w) * scale_x)))
-        my1 = min(mask_h, int(math.ceil((y + h) * scale_y)))
+        mx0 = max(0, math.floor(x * scale_x))
+        my0 = max(0, math.floor(y * scale_y))
+        mx1 = min(mask_w, math.ceil((x + w) * scale_x))
+        my1 = min(mask_h, math.ceil((y + h) * scale_y))
         if mx1 <= mx0 or my1 <= my0:
             return False
 

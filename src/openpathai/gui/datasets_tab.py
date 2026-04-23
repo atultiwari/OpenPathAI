@@ -30,7 +30,7 @@ def _yaml_for(name: str) -> str:  # pragma: no cover - gradio
     return yaml.safe_dump(default_registry().get(name).model_dump(), sort_keys=False)
 
 
-def build(state: Any) -> None:  # pragma: no cover - gradio-gated renderer
+def build(state: Any) -> Any:  # pragma: no cover - gradio-gated renderer
     """Render the Datasets tab. ``state`` is the shared :class:`AppState`."""
     import gradio as gr
 

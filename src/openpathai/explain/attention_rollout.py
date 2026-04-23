@@ -87,7 +87,7 @@ def rollout_from_matrices(
     cls_row = rollout[0, 1:] if has_cls_token else np.mean(rollout, axis=0)
 
     num_patches = cls_row.shape[0]
-    side = int(round(np.sqrt(num_patches)))
+    side = round(np.sqrt(num_patches))
     if side * side != num_patches:
         raise ValueError(f"attention_rollout expects a square patch grid; got {num_patches} tokens")
     return cls_row.reshape(side, side)

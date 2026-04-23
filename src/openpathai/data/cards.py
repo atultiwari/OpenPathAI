@@ -170,7 +170,7 @@ class DatasetCard(BaseModel):
     def _num_classes_matches_classes(self) -> DatasetCard:
         if self.num_classes != len(self.classes):
             raise ValueError(
-                f"num_classes ({self.num_classes}) != len(classes) " f"({len(self.classes)})"
+                f"num_classes ({self.num_classes}) != len(classes) ({len(self.classes)})"
             )
         return self
 

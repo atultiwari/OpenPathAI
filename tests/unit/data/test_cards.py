@@ -84,7 +84,7 @@ def test_download_manual_requires_instructions() -> None:
 
 @pytest.mark.unit
 def test_splits_must_sum_to_one() -> None:
-    with pytest.raises(ValidationError, match="sum to 1.0"):
+    with pytest.raises(ValidationError, match=r"sum to 1\.0"):
         DatasetSplits.model_validate({"train": 0.6, "val": 0.1, "test": 0.1})
 
 

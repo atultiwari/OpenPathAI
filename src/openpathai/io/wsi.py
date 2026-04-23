@@ -19,7 +19,7 @@ from __future__ import annotations
 import importlib
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
@@ -35,7 +35,7 @@ __all__ = [
 ]
 
 
-class SlideBackend(str, Enum):
+class SlideBackend(StrEnum):
     """Enumeration of available WSI backends."""
 
     OPENSLIDE = "openslide"

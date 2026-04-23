@@ -84,15 +84,32 @@ say "Cache inspection"
 run "uv run openpathai cache show --cache-root '$CACHE_ROOT'"
 
 # --------------------------------------------------------------------------- #
+# Heavy-extra sync (combined so switching modes doesn't leave packages
+# half-uninstalled — uv removes extras that aren't listed in the current
+# ``uv sync`` invocation, which previously caused a broken gradio stub).
+# --------------------------------------------------------------------------- #
+
+EXTRA_FLAGS="--extra dev"
+if [[ "$MODE" == "train" || "$MODE" == "all" ]]; then
+  EXTRA_FLAGS="$EXTRA_FLAGS --extra train"
+fi
+if [[ "$MODE" == "gui" || "$MODE" == "all" ]]; then
+  EXTRA_FLAGS="$EXTRA_FLAGS --extra gui"
+fi
+
+if [[ "$MODE" == "train" || "$MODE" == "gui" || "$MODE" == "all" ]]; then
+  if [[ "${OPA_SKIP_SYNC:-0}" != "1" ]]; then
+    say "Sync heavy extras ($EXTRA_FLAGS)"
+    note "First sync downloads several hundred MB; subsequent syncs are instant."
+    run "uv sync $EXTRA_FLAGS"
+  fi
+fi
+
+# --------------------------------------------------------------------------- #
 # Step 2 — Phase 3 training (optional; needs [train])
 # --------------------------------------------------------------------------- #
 
 if [[ "$MODE" == "train" || "$MODE" == "all" ]]; then
-  if [[ "${OPA_SKIP_SYNC:-0}" != "1" ]]; then
-    say "Sync train extra (torch + timm + lightning + torchmetrics)"
-    note "Downloads ~200 MB the first time."
-    run "uv sync --extra dev --extra train"
-  fi
   say "Phase 3 synthetic training smoke path"
   run "uv run openpathai train --model resnet18 --num-classes 4 \\
          --epochs 1 --batch-size 8 --seed 0 \\
@@ -105,11 +122,6 @@ fi
 # --------------------------------------------------------------------------- #
 
 if [[ "$MODE" == "gui" || "$MODE" == "all" ]]; then
-  if [[ "${OPA_SKIP_SYNC:-0}" != "1" ]]; then
-    say "Sync gui extra (pulls gradio + everything it transitively needs)"
-    note "First sync downloads ~300 MB; subsequent syncs are instant."
-    run "uv sync --extra dev --extra gui"
-  fi
   say "Launching Gradio at http://127.0.0.1:7860 — Ctrl-C to stop"
   note "Tabs: Analyse / Train / Datasets / Models / Settings."
   run "uv run openpathai gui --host 127.0.0.1 --port 7860 --cache-root '$CACHE_ROOT'"

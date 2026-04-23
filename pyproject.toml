@@ -122,7 +122,13 @@ explain = [
 # ``openpathai.gui`` package is lazy-resolved inside a function body.
 gui = [
     "openpathai[explain]",
-    "gradio>=5,<6",
+    # gradio>=5.20 / gradio_client>=1.7 fixes the
+    # ``TypeError: argument of type 'bool' is not iterable`` crash in
+    # ``gradio_client.utils.get_type`` when pydantic emits a schema with
+    # ``additionalProperties: True``. 5.13 ships an older client and
+    # blows up at API-info build time on Python 3.13 + modern pydantic.
+    "gradio>=5.20,<6",
+    "gradio-client>=1.7,<2",
 ]
 local = [
     "openpathai[data,kaggle,wsi,train,explain,gui]",
@@ -138,8 +144,9 @@ notebook = [
 ]
 dev = [
     "openpathai[data]",
-    # Lint + format
-    "ruff>=0.8,<0.9",
+    # Lint + format — gradio>=5.20 pulls ruff>=0.9.3 as a transitive dep,
+    # so keep our floor ahead of it so ``[dev]`` + ``[gui]`` can coexist.
+    "ruff>=0.9.3,<1.0",
     # Type check
     "pyright>=1.1.389,<2.0",
     # Test
@@ -234,6 +241,11 @@ reportMissingTypeStubs = false
 reportUnknownMemberType = false
 reportUnknownVariableType = false
 reportUnknownArgumentType = false
+# torch does not export common factories (``torch.tensor``,
+# ``torch.from_numpy``, ``torch.arange``, ``torch.zeros_like``) in its
+# ``__all__``. Pyright flags every callsite as a private-import
+# violation; this is noise — the functions are the public API.
+reportPrivateImportUsage = false
 
 # ─── pytest ────────────────────────────────────────────────────────────────
 [tool.pytest.ini_options]

@@ -165,7 +165,7 @@ class MacenkoNormalizer(BaseModel):
             raise _MacenkoDegenerateError("Too few non-background pixels for Macenko fit")
 
         cov = np.cov(od_bright, rowvar=False)
-        eig_vals, eig_vecs = np.linalg.eigh(cov)
+        _eig_vals, eig_vecs = np.linalg.eigh(cov)
         plane = eig_vecs[:, [-1, -2]]  # top-2 eigenvectors, shape (3, 2)
 
         with np.errstate(over="ignore", invalid="ignore", divide="ignore"):

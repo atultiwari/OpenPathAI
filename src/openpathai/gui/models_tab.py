@@ -20,7 +20,7 @@ def _rows_as_list(  # pragma: no cover - gradio
     return [[row[key] for key in keys] for row in rows]
 
 
-def build(state: Any) -> None:  # pragma: no cover - gradio-gated renderer
+def build(state: Any) -> Any:  # pragma: no cover - gradio-gated renderer
     import gradio as gr
 
     del state

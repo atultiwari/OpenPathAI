@@ -134,9 +134,7 @@ class Executor:
         step_ids = {s.id for s in pipeline.steps}
         for step in pipeline.steps:
             if not self._registry.has(step.op):
-                raise KeyError(
-                    f"Step {step.id!r}: unknown op {step.op!r} " f"(not in node registry)"
-                )
+                raise KeyError(f"Step {step.id!r}: unknown op {step.op!r} (not in node registry)")
             for input_name, value in step.inputs.items():
                 if _is_ref(value):
                     ref_step, _ = _parse_ref(value)
