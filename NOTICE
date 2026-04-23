@@ -1,0 +1,43 @@
+OpenPathAI
+Copyright (c) 2026 Atul Tiwari and OpenPathAI contributors
+
+This project is licensed under the MIT License. See LICENSE for details.
+
+This NOTICE file lists third-party runtime dependencies and AI model artifacts
+with licenses that differ from the MIT License. OpenPathAI itself remains
+MIT-licensed; third-party components retain their original licenses and are
+referenced (not vendored) at runtime unless noted otherwise.
+
+─────────────────────────────────────────────────────────────────────────────
+PLACEHOLDER — populated across Phases 2, 13, 14
+─────────────────────────────────────────────────────────────────────────────
+
+Entries will be added as the corresponding features land. Expected entries
+include (non-exhaustive):
+
+- Ultralytics YOLOv8 / v11 / v26    — AGPL-3.0 (commercial license available)
+- HoVer-Net (TIA Centre)            — GPL-3.0
+- Segment Anything (Meta)           — Apache-2.0
+- SAM2 (Meta)                       — Apache-2.0
+- MedSAM / MedSAM2                  — Apache-2.0
+- nnU-Net v2 (DKFZ)                 — Apache-2.0
+- RT-DETR / RT-DETRv2               — Apache-2.0
+- UNI / UNI2-h (MahmoodLab)         — research use, gated
+- CONCH (MahmoodLab)                — research use, gated
+- Virchow / Virchow2 (Paige)        — research use, gated
+- Prov-GigaPath (Microsoft)         — research use, gated
+- CTransPath                        — research use
+- DINOv2 (Meta)                     — Apache-2.0
+- MedGemma (Google)                 — research use, gated
+- MONAI                             — Apache-2.0
+- PyTorch                           — BSD-3-Clause
+- timm                              — Apache-2.0
+- tiatoolbox                        — BSD-3-Clause
+- OpenSlide                         — LGPL-2.1
+- Gradio                            — Apache-2.0
+
+Each entry is finalized when the dependency lands in pyproject.toml.
+
+For clarity: OpenPathAI does not redistribute any of the above. Users install
+them at runtime from their original sources (PyPI, Hugging Face, GitHub).
+Redistribution terms remain the responsibility of those sources.
