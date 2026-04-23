@@ -41,9 +41,11 @@ classifiers = [
     "Typing :: Typed",
 ]
 
-# Core runtime dependencies — intentionally minimal in Phase 0.
-# Real pathology / ML / GUI deps land in later phases via optional extras.
+# Core runtime dependencies — intentionally minimal.
+# Pathology / ML / GUI deps land in later phases via optional extras.
+# Phase 1 adds ``pydantic`` for the typed pipeline primitive layer.
 dependencies = [
+    "pydantic>=2.8,<3",
     "typer>=0.15,<1.0",
 ]
 
@@ -159,6 +161,8 @@ exclude = [
     "build",
     "site",
 ]
+venvPath = "."
+venv = ".venv"
 pythonVersion = "3.11"
 typeCheckingMode = "basic"
 useLibraryCodeForTypes = true

@@ -81,5 +81,45 @@ Acceptance criteria in
 [`docs/planning/phases/phase-00-foundation.md`](docs/planning/phases/phase-00-foundation.md)
 all ticked.
 
-### Phase 1 (not yet started)
+### Phase 1 — Primitives (complete, 2026-04-23)
+
+Tagged `phase-01-complete`. Acceptance criteria in
+[`docs/planning/phases/phase-01-primitives.md`](docs/planning/phases/phase-01-primitives.md)
+§4 all ticked.
+
+- **New package `openpathai.pipeline/`** with the three architectural
+  primitives every later phase rides on:
+  - `schema.Artifact` — pydantic base class with deterministic
+    `content_hash()`; `ScalarArtifact` / `IntArtifact` / `FloatArtifact` /
+    `StringArtifact` for toy pipelines.
+  - `node.@openpathai.node` decorator + `NodeDefinition` +
+    `NodeRegistry`. Requires a single pydantic `BaseModel` input and an
+    `Artifact` return type; captures a SHA-256 code hash so edits
+    invalidate downstream caches. Registry supports snapshot/restore
+    for test isolation.
+  - `cache.ContentAddressableCache` — filesystem-backed cache keyed by
+    `sha256(node_id + code_hash + canonical_json(input_config) + canonical_json(sorted(upstream_hashes)))`.
+    Atomic write-then-rename; `clear(older_than_days=...)` for GC.
+  - `executor.Executor` — walks a DAG (Kahn's topological sort),
+    resolves `@step` / `@step.field` references, respects the cache,
+    emits a `RunManifest`. `Pipeline` + `PipelineStep` pydantic models
+    pydantic-validate shape.
+  - `manifest.RunManifest` + `NodeRunRecord` + `CacheStats` +
+    `Environment`. JSON round-trip safe; graph-hash helper; Phase-17-
+    ready for sigstore signing.
+- **Public API re-exported** from `openpathai` top-level namespace:
+  `from openpathai import node, Artifact, Executor, Pipeline, PipelineStep, ContentAddressableCache, RunManifest, ...`.
+- **Dependency added:** `pydantic>=2.8,<3` as a direct dependency.
+- **Tests:** 37 new tests across unit + integration. Total: **43 tests
+  green**. Coverage on `openpathai.pipeline` is **92.0 %**.
+- **Developer guide** updated with a "Pipeline primitives" section and
+  a runnable end-to-end example.
+- **Side-correction:** every `medgemma:1.5` reference in the local-LLM
+  setup guide aligned to the actual Ollama tag the user confirmed
+  working on Apple Silicon M4 — `medgemma1.5:4b`.
+- **Bet 3 scaffolding** now in place: every pipeline run produces a
+  hashable, diff-able manifest; every rerun with unchanged inputs is a
+  no-op.
+
+### Phase 2 (not yet started)
 - Awaiting user authorisation to begin.

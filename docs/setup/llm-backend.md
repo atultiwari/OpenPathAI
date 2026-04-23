@@ -72,10 +72,14 @@ Get-Service Ollama
 ### B.3 Pull MedGemma 1.5
 
 ```bash
-ollama pull medgemma:1.5
+ollama pull medgemma1.5:4b
 ```
 
-If that slug is not yet in the Ollama model library, two fallbacks:
+Confirmed working on macOS Apple Silicon (M4) — model tag
+``medgemma1.5:4b``, ~3.3 GB.
+
+If that slug is not yet in the Ollama model library on your machine, two
+fallbacks:
 
 1. **Pull the HF variant through Ollama's GGUF import**:
    ```bash
@@ -86,7 +90,7 @@ If that slug is not yet in the Ollama model library, two fallbacks:
    FROM ./medgemma-1.5-Q4_K_M.gguf
    TEMPLATE """{{ .Prompt }}"""
    EOF
-   ollama create medgemma:1.5 -f Modelfile
+   ollama create medgemma1.5:4b -f Modelfile
    ```
 2. **Use a closely-compatible model** while waiting: `ollama pull gemma2:9b-instruct`
    works as a temporary stand-in. Update the config when MedGemma 1.5 lands.
@@ -94,14 +98,14 @@ If that slug is not yet in the Ollama model library, two fallbacks:
 Verify:
 ```bash
 ollama list              # MedGemma should appear
-ollama run medgemma:1.5 "Summarise H&E staining in one sentence."
+ollama run medgemma1.5:4b "Summarise H&E staining in one sentence."
 ```
 
 ### B.4 Configure OpenPathAI (Phase 15+)
 
 ```bash
 openpathai settings set llm.backend   ollama
-openpathai settings set llm.model     medgemma:1.5
+openpathai settings set llm.model     medgemma1.5:4b
 openpathai settings set llm.endpoint  http://localhost:11434
 ```
 
@@ -111,7 +115,7 @@ Until Phase 15 ships, the same values live in
 ```yaml
 llm:
   backend: ollama
-  model: medgemma:1.5
+  model: medgemma1.5:4b
   endpoint: http://localhost:11434
   request_timeout_s: 120
 ```
@@ -236,8 +240,8 @@ If you later opt into a cloud backend, put its API key in a `.env` file
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `Connection refused` on port 11434 | `ollama serve` not running | Start it: `ollama serve &` (macOS/Linux) or start the Ollama app (Windows). |
-| Model `medgemma:1.5` not found | Slug not in Ollama library yet | Use the GGUF import path (§B.3) or fall back to `gemma2:9b-instruct` temporarily. |
-| Extremely slow generation on Mac | Quant too large | Pull a smaller quant: `ollama pull medgemma:1.5-q4_K_M`. |
+| Model `medgemma1.5:4b` not found | Slug not in Ollama library yet | Use the GGUF import path (§B.3) or fall back to `gemma2:9b-instruct` temporarily. |
+| Extremely slow generation on Mac | Quant too large | Pull a smaller quant: `ollama pull medgemma1.5:4b-q4_K_M`. |
 | "CUDA out of memory" on Windows GPU | Quant too large or context too long | Pull `q4_K_M`; lower context via settings (`llm.max_context_tokens: 4096`). |
 | LM Studio server refuses requests | Forgot to click **Start Server** | Developer tab → Local Server → **Start**. |
 | Responses contain refusal language ("I cannot help…") | Wrong base model (e.g., Gemma-base instead of instruct) | Ensure you pulled the *instruct* variant. |
@@ -247,7 +251,7 @@ If you later opt into a cloud backend, put its API key in a `.env` file
 ## H. Summary for the impatient
 
 1. `brew install ollama && ollama serve &`
-2. `ollama pull medgemma:1.5`
+2. `ollama pull medgemma1.5:4b`
 3. Once Phase 15 lands:
-   `openpathai settings set llm.backend ollama && openpathai settings set llm.model medgemma:1.5`
+   `openpathai settings set llm.backend ollama && openpathai settings set llm.model medgemma1.5:4b`
 4. Done. No secret to share with Claude — the backend is local.

@@ -89,6 +89,86 @@ Highlights (full list in [CLAUDE.md §2](https://github.com/atultiwari/OpenPathA
 - `refactor: …` — non-behaviour changes
 - `ci: …` — CI configuration
 
+## Pipeline primitives (Phase 1)
+
+From Phase 1 onward, every OpenPathAI capability is exposed as a typed
+pipeline node. The public API lives under
+[`openpathai.pipeline`](https://github.com/atultiwari/openpathai/tree/main/src/openpathai/pipeline):
+
+- **`Artifact`** — pydantic base class for every typed pipeline output.
+  Implements a deterministic ``content_hash()`` used by downstream cache
+  keys.
+- **`@node`** — decorator that registers a function as a pipeline node.
+  Requires one pydantic ``BaseModel`` input and an ``Artifact`` return
+  type. Captures a SHA-256 code hash so edits invalidate cached outputs.
+- **`REGISTRY`** — global ``NodeRegistry`` singleton (pass a custom
+  `NodeRegistry` to ``node(..., registry=...)`` for test isolation).
+- **`ContentAddressableCache`** — filesystem cache keyed by
+  ``sha256(node_id + code_hash + canonical_json(input_config) + canonical_json(sorted(upstream_hashes)))``.
+- **`Executor`**, **`Pipeline`**, **`PipelineStep`** — walks a DAG,
+  respects the cache, produces a **`RunManifest`** + dict of artifacts
+  by step id.
+- **`RunManifest`** — hashable audit record (pipeline graph hash, per-step
+  cache hits/misses, environment, timestamps, metrics). Round-trips
+  through JSON.
+
+Minimal end-to-end example:
+
+```python
+from pydantic import BaseModel
+from openpathai import (
+    Artifact, ContentAddressableCache, Executor, NodeRegistry,
+    Pipeline, PipelineStep, node,
+)
+
+
+class ValueInput(BaseModel):
+    value: int
+
+
+class IntOut(Artifact):
+    value: int
+
+
+registry = NodeRegistry()
+
+
+@node(id="demo.double", registry=registry)
+def double(cfg: ValueInput) -> IntOut:
+    return IntOut(value=cfg.value * 2)
+
+
+cache = ContentAddressableCache(root="/tmp/demo-cache")
+executor = Executor(cache, registry=registry)
+
+pipeline = Pipeline(
+    id="demo",
+    steps=[PipelineStep(id="a", op="demo.double", inputs={"value": 5})],
+)
+
+result = executor.run(pipeline)
+print(result.artifacts["a"].value)       # -> 10
+print(result.cache_stats)                 # hits=0 misses=1
+
+# Rerun: same args, all cache hits.
+result2 = executor.run(pipeline)
+print(result2.cache_stats)                # hits=1 misses=0
+```
+
+Design rules to keep in mind when adding a new node:
+
+- **Module-scope types.** The pydantic input model and Artifact output
+  model should live at module scope so ``typing.get_type_hints`` can
+  resolve them during decoration.
+- **Only one parameter.** Nodes take exactly one pydantic input model —
+  not positional args, not ``**kwargs``.
+- **Pure-ish by default.** Node functions should be deterministic given
+  their inputs. Anything that touches wall-clock time, network, or
+  random state must surface those inputs explicitly so cache invalidation
+  is predictable.
+- **Artifacts are frozen.** Don't mutate them; produce a new artifact
+  instead.
+
 ## License
 
 By contributing, you agree your contribution is licensed under the

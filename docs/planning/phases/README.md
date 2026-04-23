@@ -20,10 +20,10 @@
 
 | | |
 |---|---|
-| Active phase | (none — **Phase 0 closed 2026-04-23**; Phase 1 pending user authorisation) |
-| Latest Git tag | `phase-00-complete` |
+| Active phase | (none — **Phase 1 closed 2026-04-23**; Phase 2 pending user authorisation) |
+| Latest Git tag | `phase-01-complete` |
 | Latest released version | (none yet — v0.1.0 ships after Phases 0–6 complete) |
-| Blocked on user | (a) authorisation to start Phase 1; (b) Hugging Face gated access + local LLM install (non-blocking for Phase 1; required before Phase 15) |
+| Blocked on user | (a) authorisation to start Phase 2; (b) Hugging Face gated access requests running in parallel (non-blocking for Phase 2; required before Phase 15); (c) Ollama + MedGemma 1.5 **already installed** ✅. |
 
 ---
 
@@ -32,8 +32,8 @@
 | # | Name | Version | Status | Spec file | Est. |
 |---|---|---|---|---|---|
 | 0 | Foundation (scaffolding + CI) | v0.1 | ✅ complete (2026-04-23, tag `phase-00-complete`) | [phase-00-foundation.md](phase-00-foundation.md) | 3 d target / same-day actual |
-| 1 | Primitives: cache + node decorator + typed graph | v0.1 | ⏳ pending (awaiting user go-ahead) | — | 1 w |
-| 2 | Data layer: tile datasets + WSI I/O + cohorts | v0.1 | ⏳ pending | — | 1.5 w |
+| 1 | Primitives: cache + node decorator + typed graph | v0.1 | ✅ complete (2026-04-23, tag `phase-01-complete`) | [phase-01-primitives.md](phase-01-primitives.md) | 1 w target / same-day actual |
+| 2 | Data layer: tile datasets + WSI I/O + cohorts | v0.1 | ⏳ pending (awaiting user go-ahead) | — | 1.5 w |
 | 3 | Model zoo + training engine (Tier A) | v0.1 | ⏳ pending | — | 1 w |
 | 4 | Explainability (Grad-CAM + attention rollout + IG) | v0.1 | ⏳ pending | — | 1 w |
 | 5 | CLI + notebook driver | v0.1 | ⏳ pending | — | 3–5 d |
@@ -84,7 +84,7 @@ When a phase is deferred:
 |---|---|---|---|
 | **Bet 1 — Active learning loop** | Phase 12 (CLI) | Phase 16 (GUI) | ⏳ |
 | **Bet 2 — NL + zero-shot (CONCH / MedSAM2 / MedGemma 1.5)** | Phase 14 (MedSAM2 lands) | Phase 15 (MedGemma + CONCH wired) | ⏳ |
-| **Bet 3 — Reproducibility as architecture** | Phase 1 (cache + node decorator) | Phase 17 (sigstore + auto-Methods) | ⏳ |
+| **Bet 3 — Reproducibility as architecture** | Phase 1 (cache + node decorator) ✅ | Phase 17 (sigstore + auto-Methods) | 🔄 scaffolding landed |
 
 ---
 
