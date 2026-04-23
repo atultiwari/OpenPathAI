@@ -1,0 +1,91 @@
+site_name: OpenPathAI
+site_description: >
+  Open-source, reproducible, compute-tier-aware workflow environment for
+  computational pathology.
+site_url: https://atultiwari.github.io/OpenPathAI/
+site_author: Dr. Atul Tiwari
+copyright: >
+  Copyright &copy; 2026 Dr. Atul Tiwari, Vedant Research Labs, and OpenPathAI
+  contributors. Licensed under the MIT License.
+
+repo_url: https://github.com/atultiwari/OpenPathAI
+repo_name: atultiwari/OpenPathAI
+edit_uri: edit/main/docs/
+
+docs_dir: docs
+
+# The planning tree (archive/, phases/) contains superseded drafts and
+# per-phase worklogs with relative links that resolve inside the repo but
+# not inside the published site. Keep it in the repo for contributors;
+# publish only user-facing docs.
+exclude_docs: |
+  planning/
+
+theme:
+  name: material
+  language: en
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep purple
+      accent: purple
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep purple
+      accent: purple
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.action.edit
+    - content.action.view
+  icon:
+    repo: fontawesome/brands/github
+
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - Setup:
+      - Hugging Face: setup/huggingface.md
+      - Local LLM backend: setup/llm-backend.md
+  - Developer guide: developer-guide.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+
+plugins:
+  - search
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/atultiwari/OpenPathAI

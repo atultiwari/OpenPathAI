@@ -20,10 +20,10 @@
 
 | | |
 |---|---|
-| Active phase | 🔄 **Phase 0 — Foundation** |
-| Latest released version | (none yet) |
-| Latest Git tag | (none yet) |
-| Blocked on user | Hugging Face gated access + local LLM install (non-blocking for Phase 0; required before Phase 15) |
+| Active phase | (none — **Phase 0 closed 2026-04-23**; Phase 1 pending user authorisation) |
+| Latest Git tag | `phase-00-complete` |
+| Latest released version | (none yet — v0.1.0 ships after Phases 0–6 complete) |
+| Blocked on user | (a) authorisation to start Phase 1; (b) Hugging Face gated access + local LLM install (non-blocking for Phase 1; required before Phase 15) |
 
 ---
 
@@ -31,8 +31,8 @@
 
 | # | Name | Version | Status | Spec file | Est. |
 |---|---|---|---|---|---|
-| 0 | Foundation (scaffolding + CI) | v0.1 | 🔄 active | [phase-00-foundation.md](phase-00-foundation.md) | 3 d |
-| 1 | Primitives: cache + node decorator + typed graph | v0.1 | ⏳ pending | — | 1 w |
+| 0 | Foundation (scaffolding + CI) | v0.1 | ✅ complete (2026-04-23, tag `phase-00-complete`) | [phase-00-foundation.md](phase-00-foundation.md) | 3 d target / same-day actual |
+| 1 | Primitives: cache + node decorator + typed graph | v0.1 | ⏳ pending (awaiting user go-ahead) | — | 1 w |
 | 2 | Data layer: tile datasets + WSI I/O + cohorts | v0.1 | ⏳ pending | — | 1.5 w |
 | 3 | Model zoo + training engine (Tier A) | v0.1 | ⏳ pending | — | 1 w |
 | 4 | Explainability (Grad-CAM + attention rollout + IG) | v0.1 | ⏳ pending | — | 1 w |

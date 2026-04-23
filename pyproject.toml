@@ -1,0 +1,201 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+# ─── Project metadata ──────────────────────────────────────────────────────
+[project]
+name = "openpathai"
+version = "0.0.1.dev0"
+description = "Open-source, reproducible, compute-tier-aware workflow environment for computational pathology."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+authors = [
+    { name = "Dr. Atul Tiwari", email = "atultiwari.in@gmail.com" },
+]
+maintainers = [
+    { name = "Dr. Atul Tiwari", email = "atultiwari.in@gmail.com" },
+]
+keywords = [
+    "pathology",
+    "histopathology",
+    "digital-pathology",
+    "whole-slide-image",
+    "medical-imaging",
+    "deep-learning",
+    "computer-vision",
+]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Healthcare Industry",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Image Processing",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "Typing :: Typed",
+]
+
+# Core runtime dependencies — intentionally minimal in Phase 0.
+# Real pathology / ML / GUI deps land in later phases via optional extras.
+dependencies = [
+    "typer>=0.15,<1.0",
+]
+
+[project.urls]
+Homepage      = "https://github.com/atultiwari/OpenPathAI"
+Documentation = "https://atultiwari.github.io/OpenPathAI/"
+Repository    = "https://github.com/atultiwari/OpenPathAI"
+Issues        = "https://github.com/atultiwari/OpenPathAI/issues"
+Changelog     = "https://github.com/atultiwari/OpenPathAI/blob/main/CHANGELOG.md"
+
+# ─── CLI entry point ───────────────────────────────────────────────────────
+[project.scripts]
+openpathai = "openpathai.cli.main:app"
+
+# ─── Tier-optional extras ──────────────────────────────────────────────────
+# Placeholders in Phase 0 — each tier grows real dependencies in later phases
+# per docs/planning/master-plan.md §7.6 and §23.
+[project.optional-dependencies]
+local = []
+colab = [
+    "openpathai[local]",
+]
+runpod = [
+    "openpathai[colab]",
+]
+gui = [
+    "openpathai[local]",
+]
+notebook = [
+    "openpathai[local]",
+]
+dev = [
+    "openpathai[gui,notebook]",
+    # Lint + format
+    "ruff>=0.8,<0.9",
+    # Type check
+    "pyright>=1.1.389,<2.0",
+    # Test
+    "pytest>=8.3,<9",
+    "pytest-cov>=5.0,<7",
+    # Docs
+    "mkdocs-material>=9.5,<10",
+    "mkdocstrings[python]>=0.27,<1",
+    # Git hooks
+    "pre-commit>=4.0,<5",
+]
+
+# ─── Hatch build configuration ─────────────────────────────────────────────
+[tool.hatch.build.targets.wheel]
+packages = ["src/openpathai"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/tests",
+    "/docs",
+    "/README.md",
+    "/LICENSE",
+    "/CHANGELOG.md",
+    "/CONTRIBUTING.md",
+    "/CODE_OF_CONDUCT.md",
+    "/NOTICE",
+    "/pyproject.toml",
+]
+
+# ─── Ruff (lint + format) ──────────────────────────────────────────────────
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+extend-exclude = [
+    ".venv",
+    "build",
+    "dist",
+    "site",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+    "C4",   # flake8-comprehensions
+    "RUF",  # ruff-specific
+]
+ignore = [
+    "E501",  # line-length handled by formatter
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+    "N802",  # function names in tests may not follow pep8
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+# ─── Pyright (type check) ──────────────────────────────────────────────────
+[tool.pyright]
+include = ["src"]
+exclude = [
+    ".venv",
+    "**/__pycache__",
+    "**/node_modules",
+    "dist",
+    "build",
+    "site",
+]
+pythonVersion = "3.11"
+typeCheckingMode = "basic"
+useLibraryCodeForTypes = true
+reportMissingImports = "error"
+reportMissingTypeStubs = false
+reportUnknownMemberType = false
+reportUnknownVariableType = false
+reportUnknownArgumentType = false
+
+# ─── pytest ────────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = "-ra -q --strict-markers --strict-config"
+pythonpath = ["src"]
+markers = [
+    "unit: fast unit tests",
+    "integration: integration tests (may touch disk or network)",
+    "smoke: quick end-to-end smoke tests",
+    "slow: slow tests (GPU / large downloads)",
+]
+
+[tool.coverage.run]
+source = ["src/openpathai"]
+branch = true
+omit = [
+    "*/tests/*",
+    "*/__main__.py",
+]
+
+[tool.coverage.report]
+precision = 1
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]

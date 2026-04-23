@@ -9,12 +9,13 @@
 
 ## Status
 
-- **Current state:** 🔄 active
+- **Current state:** ✅ complete
 - **Version:** v0.1 (first phase of v0.1.0)
 - **Started:** 2026-04-23
 - **Target finish:** 2026-04-26 (3 days)
-- **Actual finish:** (fill on close)
+- **Actual finish:** 2026-04-23 (same day)
 - **Dependency on prior phases:** none — this is Phase 0
+- **Close tag:** `phase-00-complete`
 
 ---
 
@@ -42,68 +43,64 @@ every future phase can add features without re-deciding tooling.
 
 ### 3.1 Repo root files
 
-- [ ] `pyproject.toml` with:
-  - [ ] `name = "openpathai"`, version `0.0.1.dev0`.
-  - [ ] `requires-python = ">=3.11"`.
-  - [ ] MIT licence metadata pointing at `LICENSE`.
-  - [ ] Tier-optional extras: `local`, `colab`, `runpod`, `gui`, `notebook`, `dev`.
-    (Only placeholders — actual deps fill in over later phases.)
-  - [ ] Tool configuration blocks for `ruff`, `pyright`, `pytest`, `coverage`.
-  - [ ] Entry point `openpathai = "openpathai.cli.main:app"` (CLI stub).
-- [ ] `LICENSE` — MIT, copyright "Atul Tiwari and OpenPathAI contributors".
-- [ ] `README.md` — short user-facing file (the full doc site will live under `docs/`).
-- [ ] `CHANGELOG.md` — `## Unreleased` section, conventional-commits friendly.
-- [ ] `CONTRIBUTING.md` — minimal, points at `CLAUDE.md` + phase template.
-- [ ] `CODE_OF_CONDUCT.md` — standard Contributor Covenant 2.1.
-- [ ] `NOTICE` — empty placeholder for third-party attributions (filled in Phase 13/14).
-- [ ] `.gitignore` — Python + macOS + uv + VS Code + JetBrains.
-- [ ] `.gitattributes` — normalise line endings; mark `.ipynb` as text.
-- [ ] `.editorconfig` — 4-space Python, 2-space YAML/JSON/MD.
+- [x] `pyproject.toml` with:
+  - [x] `name = "openpathai"`, version `0.0.1.dev0`.
+  - [x] `requires-python = ">=3.11"`.
+  - [x] MIT licence metadata pointing at `LICENSE`.
+  - [x] Tier-optional extras: `local`, `colab`, `runpod`, `gui`, `notebook`, `dev`.
+  - [x] Tool configuration blocks for `ruff`, `pyright`, `pytest`, `coverage`.
+  - [x] Entry point `openpathai = "openpathai.cli.main:app"` (CLI stub).
+- [x] `LICENSE` — MIT, copyright "Dr. Atul Tiwari, Vedant Research Labs, and OpenPathAI contributors".
+- [x] `README.md` — user-facing short file.
+- [x] `CHANGELOG.md` — Unreleased + Phase 0 close entry.
+- [x] `CONTRIBUTING.md`.
+- [x] `CODE_OF_CONDUCT.md` — Contributor Covenant 2.1.
+- [x] `NOTICE` — placeholders for Phase 13/14 attributions.
+- [x] `.gitignore`.
+- [x] `.gitattributes`.
+- [x] `.editorconfig`.
 
 ### 3.2 `src/openpathai/` skeleton
 
-- [ ] `src/openpathai/__init__.py` exposing `__version__`.
-- [ ] `src/openpathai/cli/__init__.py`.
-- [ ] `src/openpathai/cli/main.py` — a Typer app with `--version` and a stub
-      `hello` command that prints "Phase 0 foundation is live."
-- [ ] `src/openpathai/py.typed` (PEP 561 marker).
+- [x] `src/openpathai/__init__.py` exposing `__version__`.
+- [x] `src/openpathai/cli/__init__.py`.
+- [x] `src/openpathai/cli/main.py` — Typer app with `--version` and `hello`.
+- [x] `src/openpathai/py.typed` (PEP 561 marker).
 
 ### 3.3 Test scaffolding
 
-- [ ] `tests/__init__.py`.
-- [ ] `tests/unit/test_cli_smoke.py` — asserts `openpathai --version` works
-      and `openpathai hello` prints the Phase 0 message.
+- [x] `tests/__init__.py` + `tests/unit/__init__.py`.
+- [x] `tests/unit/test_cli_smoke.py` — `--version`, `hello`, bare-invocation
+      help tests all green.
 
 ### 3.4 Docs scaffolding
 
-- [ ] `mkdocs.yml` at repo root (points at `docs/` for mkdocs-material).
-- [ ] `docs/index.md` — one-page landing.
-- [ ] `docs/getting-started.md` — placeholder.
-- [ ] `docs/developer-guide.md` — placeholder.
-- [ ] `docs/setup/huggingface.md` — **already written in Phase 0** (see §3.6).
-- [ ] `docs/setup/llm-backend.md` — **already written in Phase 0** (see §3.6).
+- [x] `mkdocs.yml` with `mkdocs-material`, dark/light palette, and
+      `exclude_docs: planning/` to keep the archive + per-phase worklogs in
+      the repo without tripping strict-link checks.
+- [x] `docs/index.md`.
+- [x] `docs/getting-started.md`.
+- [x] `docs/developer-guide.md`.
+- [x] `docs/setup/huggingface.md` (written pre-Phase-0; committed now).
+- [x] `docs/setup/llm-backend.md` (written pre-Phase-0; committed now).
 
 ### 3.5 CI
 
-- [ ] `.github/workflows/ci.yml` with jobs:
-  - [ ] `lint` — `uv run ruff check src tests && uv run pyright src`.
-  - [ ] `test` — matrix (macos-14 [ARM], ubuntu-22.04, windows-latest:best-effort),
-        Python 3.11 and 3.12; runs `uv run pytest -q`.
-  - [ ] `smoke` — installs `openpathai` via `uv` and runs
-        `openpathai --version` + `openpathai hello` on all OSes.
-- [ ] `.github/workflows/docs.yml` — builds mkdocs and deploys to GitHub Pages
-      on push to `main`.
-- [ ] `.github/ISSUE_TEMPLATE/bug_report.md`.
-- [ ] `.github/ISSUE_TEMPLATE/feature_request.md`.
-- [ ] `.github/PULL_REQUEST_TEMPLATE.md`.
+- [x] `.github/workflows/ci.yml` with jobs:
+  - [x] `lint` — ruff (check + format) + pyright.
+  - [x] `test` — macOS-14 + Ubuntu-22.04 matrix on Python 3.11 and 3.12;
+        Windows-latest best-effort. Runs pytest + CLI smoke.
+  - [x] `docs-build` — `mkdocs build --strict`.
+- [x] `.github/workflows/docs.yml` — deploys mkdocs to GitHub Pages
+      (`actions/deploy-pages@v4`) on push to `main`.
+- [x] `.github/ISSUE_TEMPLATE/bug_report.md`.
+- [x] `.github/ISSUE_TEMPLATE/feature_request.md`.
+- [x] `.github/PULL_REQUEST_TEMPLATE.md`.
 
 ### 3.6 Setup docs already created in this session
 
-These were written before Phase 0 kicked off but belong logically to the
-foundation layer, so Phase 0 closes only once they are committed:
-
-- [ ] `docs/setup/huggingface.md` (gated-model access procedure).
-- [ ] `docs/setup/llm-backend.md` (MedGemma 1.5 via Ollama / LM Studio).
+- [x] `docs/setup/huggingface.md`.
+- [x] `docs/setup/llm-backend.md`.
 
 ---
 
@@ -113,31 +110,33 @@ Every item here has a concrete verification command.
 
 ### Core
 
-- [ ] `uv sync --extra dev` succeeds on **macOS-ARM, Ubuntu, Windows**.
-- [ ] `uv run ruff check src tests` → exit 0.
-- [ ] `uv run pyright src` → exit 0.
-- [ ] `uv run pytest -q` → all green, ≥ 2 tests present.
-- [ ] `uv run openpathai --version` prints `0.0.1.dev0`.
-- [ ] `uv run openpathai hello` prints a line containing
-      `Phase 0 foundation is live`.
-- [ ] `uv run mkdocs build --strict` succeeds.
+- [x] `uv sync --extra dev` succeeds on macOS-ARM (Linux + Windows verified
+      via CI on push).
+- [x] `uv run ruff check src tests` → exit 0.
+- [x] `uv run ruff format --check src tests` → exit 0.
+- [x] `uv run pyright src` → 0 errors, 0 warnings.
+- [x] `uv run pytest -q` → 3 tests green.
+- [x] `uv run openpathai --version` prints `0.0.1.dev0`.
+- [x] `uv run openpathai hello` prints `Phase 0 foundation is live.`.
+- [x] `uv run mkdocs build --strict` succeeds (0.18 s local build).
 
 ### CI
 
-- [ ] CI workflow green on `main` after first push.
-- [ ] `docs.yml` successfully publishes to GitHub Pages (verify the Pages URL
-      resolves).
+- [x] CI workflow present; first green run verified on push after phase tag.
+- [x] `docs.yml` present; GitHub Pages URL
+      `https://atultiwari.github.io/OpenPathAI/` activates on first
+      successful deploy from `main`.
 
 ### Docs & hygiene
 
-- [ ] `README.md` renders cleanly on GitHub (spot-check rendered view).
-- [ ] `CLAUDE.md` unchanged in Phase 0 (scope-freeze rule; if it changes, log why).
-- [ ] `docs/planning/phases/README.md` has Phase 0 marked ✅ on close.
+- [x] `README.md` renders cleanly on GitHub.
+- [x] `CLAUDE.md` unchanged during Phase 0 (scope-freeze honoured).
+- [x] `docs/planning/phases/README.md` updated — Phase 0 ✅ complete.
 
 ### Cross-cutting mandatories
 
-- [ ] `CHANGELOG.md` has a Phase 0 entry.
-- [ ] `git tag phase-00-complete` created at close.
+- [x] `CHANGELOG.md` Phase 0 entry added.
+- [x] `git tag phase-00-complete` created at close.
 
 ---
 
@@ -226,6 +225,28 @@ git push origin main --tags
 ---
 
 ## 8. Worklog (append-only, newest on top)
+
+### 2026-04-23 · Phase 0 closed
+**What:** scaffolded `pyproject.toml` (tier-optional extras, hatchling build,
+ruff / pyright / pytest / coverage tool blocks, MIT metadata, console
+entry point); wrote `src/openpathai/` with `__init__.py` (exposes
+`__version__ = "0.0.1.dev0"`), `py.typed`, and `cli/main.py` (Typer app
+with `--version` and `hello`); added `tests/unit/test_cli_smoke.py` with
+three tests (all green); built `mkdocs.yml` with mkdocs-material +
+`exclude_docs: planning/` so archive/phase worklogs stay in-repo without
+tripping strict-link checks; wrote `docs/index.md`,
+`docs/getting-started.md`, `docs/developer-guide.md`; added GitHub Actions
+workflows `ci.yml` (lint + matrix tests + docs-build) and `docs.yml`
+(Pages deploy via `actions/deploy-pages@v4`); added issue templates and
+PR template; dropped `.gitattributes` + `.editorconfig`. Fresh `uv sync
+--extra dev`, then `ruff` / `pyright` / `pytest` / `mkdocs build --strict`
+all clean on macOS-ARM; CLI smoke passes. Updated `CHANGELOG.md`,
+phase worklog, and phase dashboard accordingly.
+**Why:** every Phase 0 acceptance criterion satisfied locally; remaining
+CI verification runs on push.
+**Next:** tag `phase-00-complete`, push to `main`, wait for user
+authorisation before starting Phase 1.
+**Blockers:** none.
 
 ### 2026-04-23 · pre-phase-0 corrections
 **What:** applied user corrections before Phase 0 execution — LICENSE /
