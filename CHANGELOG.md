@@ -121,5 +121,51 @@ Tagged `phase-01-complete`. Acceptance criteria in
   hashable, diff-able manifest; every rerun with unchanged inputs is a
   no-op.
 
-### Phase 2 (not yet started)
+### Phase 2 — Data layer (complete, 2026-04-23)
+
+Tagged `phase-02-complete`. Acceptance criteria in
+[`docs/planning/phases/phase-02-data-layer.md`](docs/planning/phases/phase-02-data-layer.md)
+§4 all ticked.
+
+- **New packages**:
+  - `openpathai.data` — `DatasetCard` pydantic schema, `DatasetRegistry`
+    loading YAML cards from `data/datasets/` (and
+    `~/.openpathai/datasets/` for user overrides), `patient_level_kfold`
+    + `patient_level_split` with deterministic SHA-256-keyed shuffle,
+    `KaggleDownloader` with lazy import so the module is safe to use
+    without the `kaggle` package.
+  - `openpathai.io` — `SlideRef` + `Cohort` (pydantic, frozen,
+    content-hashable); `SlideReader` abstract protocol with two
+    backends: `OpenSlideReader` (lazy openslide-python) and
+    `PillowSlideReader` (pure-Python fallback for tests and single-layer
+    TIFFs). `open_slide(path, mpp=...)` picks the best available
+    backend.
+  - `openpathai.tiling` — `GridTiler` (MPP-aware, mask-filtered) and
+    `TileGrid` / `TileCoordinate` dataclasses.
+  - `openpathai.preprocessing` — `MacenkoNormalizer` (Macenko 2009
+    stain normalisation, pure numpy) + `otsu_tissue_mask` (Otsu-
+    thresholded tissue mask).
+- **Dataset YAML cards shipped:** `lc25000.yaml`, `pcam.yaml`,
+  `mhist.yaml` under `data/datasets/`.
+- **Core dependency additions:** `numpy`, `Pillow`, `PyYAML`. New
+  optional extras: `[data]` (scikit-image + tifffile), `[wsi]`
+  (openslide-python + tiatoolbox; pulls `[data]`), `[kaggle]`. The
+  `[local]` tier now aggregates `[data,kaggle,wsi]`.
+- **Tests:** 64 new unit + integration tests (107 total green).
+  Coverage on Phase 2 modules: **87.6 %** (above the 80 % bar).
+  The integration test wires slide → mask → tile → stain-normalise
+  through `@openpathai.node` and proves full cache-hit behaviour on
+  rerun (node functions invoked zero times on the second run).
+- **Test fixture:** synthetic TIFF "slide" generated on demand by
+  `tests/conftest.py` — no binary committed to the repo.
+- **Public API re-exported** from `openpathai` top-level namespace:
+  `DatasetCard`, `DatasetRegistry`, `Cohort`, `SlideRef`, `open_slide`,
+  `GridTiler`, `TileCoordinate`, `TileGrid`, `MacenkoNormalizer`,
+  `MacenkoStainMatrix`, `otsu_threshold`, `otsu_tissue_mask`,
+  `patient_level_kfold`, `patient_level_split`, `PatientFold`,
+  `default_registry`.
+- **Developer guide** updated with a "Data layer (Phase 2)" section and
+  a self-contained runnable example that needs no real slide.
+
+### Phase 3 (not yet started)
 - Awaiting user authorisation to begin.

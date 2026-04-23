@@ -1,0 +1,50 @@
+name: mhist
+display_name: "MHIST — Minimalist Histopathology"
+modality: tile
+num_classes: 2
+classes:
+  - hp
+  - ssa
+tile_size: [224, 224]
+total_images: 3152
+license: CC-BY-NC-SA-4.0
+tissue: [colon]
+stain: "H&E"
+magnification: "40X"
+mpp: 0.25
+
+download:
+  method: manual
+  url: "https://bmirds.github.io/MHIST/"
+  size_gb: 0.35
+  instructions_md: |
+    MHIST is not on Kaggle. Request access from the MHIST project page at
+    https://bmirds.github.io/MHIST/ and download the archive manually.
+    Unzip into `~/.openpathai/datasets/mhist/` so that the directory
+    contains `images/` and `annotations.csv`.
+
+citation:
+  text: "Wei J, Suriawinata A, Ren B, Liu X, Lisovsky M, Vaickus L, Brown C, Baker M, Nasir-Moin M, Tomita N, Torresani L, Wei J, Hassanpour S. A petri dish for histopathology image analysis. AIME 2021."
+  arxiv: "2101.12355"
+
+recommended_models:
+  - resnet18
+  - mobilenetv3_small
+recommended_splits:
+  type: slide_level
+  train: 0.70
+  val: 0.15
+  test: 0.15
+  stratify_by: [class]
+
+tier_compatibility:
+  T1: ok
+  T2: ok
+  T3: ok
+
+qc_gates:
+  - blur
+
+notes: |
+  Tiny by pathology standards (~3 k tiles), which makes it ideal for rapid
+  iteration during development and for sanity-checking end-to-end flow in CI.

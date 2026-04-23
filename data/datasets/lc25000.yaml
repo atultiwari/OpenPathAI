@@ -1,0 +1,57 @@
+name: lc25000
+display_name: "LC25000 — Lung & Colon Histopathology"
+modality: tile
+num_classes: 5
+classes:
+  - lung_aca
+  - lung_n
+  - lung_scc
+  - colon_aca
+  - colon_n
+tile_size: [768, 768]
+total_images: 25000
+license: CC-BY-4.0
+tissue: [lung, colon]
+stain: "H&E"
+magnification: "20X"
+mpp: null
+
+download:
+  method: kaggle
+  kaggle_slug: andrewmvd/lung-and-colon-cancer-histopathological-images
+  size_gb: 1.8
+  instructions_md: |
+    1. Create a Kaggle account and download `kaggle.json`.
+    2. Place it at `~/.kaggle/kaggle.json` (or set `KAGGLE_CONFIG_DIR`).
+    3. Click **Download** in the Dataset Browser or run
+       `openpathai datasets download lc25000` once the CLI ships (Phase 5).
+
+citation:
+  text: "Borkowski AA, Bui MM, Thomas LB, Wilson CP, DeLand LA, Mastorides SM. Lung and colon cancer histopathological image dataset (LC25000). arXiv:1912.12142 (2019)."
+  arxiv: "1912.12142"
+
+recommended_models:
+  - resnet18
+  - efficientnet_b0
+  - mobilenetv3_small
+  - vit_small
+recommended_splits:
+  type: patient_level
+  train: 0.70
+  val: 0.15
+  test: 0.15
+  stratify_by: [class]
+
+tier_compatibility:
+  T1: ok
+  T2: ok
+  T3: ok
+
+qc_gates:
+  - blur
+  - stain_quality
+
+notes: |
+  Clean, class-balanced dataset ideal as a smoke test and regression benchmark.
+  Patient IDs are not published — for strict patient-level CV, fall back to
+  slide-level grouping (each filename prefix acts as a slide ID).

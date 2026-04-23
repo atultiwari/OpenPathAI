@@ -169,6 +169,66 @@ Design rules to keep in mind when adding a new node:
 - **Artifacts are frozen.** Don't mutate them; produce a new artifact
   instead.
 
+## Data layer (Phase 2)
+
+Phase 2 lands the pathology data keel. Public API lives under
+``openpathai.data``, ``openpathai.io``, ``openpathai.tiling``, and
+``openpathai.preprocessing``:
+
+- **`DatasetCard`** — pydantic schema for YAML dataset cards
+  (`data/datasets/*.yaml`). Every dataset shipped or added by a user
+  passes through this schema.
+- **`DatasetRegistry`** — discovers and loads cards. The shipped
+  cards cover ``lc25000``, ``pcam``, ``mhist``. Users can drop YAML
+  files under ``~/.openpathai/datasets/`` to register additional
+  datasets without touching the repo.
+- **`patient_level_kfold` / `patient_level_split`** — deterministic,
+  patient-level splits (iron rule #4). SHA-256-derived shuffle ordering
+  means seeds are reproducible across machines.
+- **`Cohort` / `SlideRef`** — typed, hashable slide groups. A cohort's
+  content hash is order-invariant and feeds naturally into the Phase 1
+  cache.
+- **`open_slide(path, mpp=...)`** — WSI reader factory. Uses
+  ``openslide-python`` / ``tiatoolbox`` when available, falls back to a
+  pure-Pillow reader for single-layer TIFFs and synthetic fixtures.
+- **`GridTiler`** — MPP-aware grid planner. Produces a deterministic
+  ``TileGrid`` (with ``TileCoordinate`` tuples) that downstream nodes
+  read through ``SlideReader.read_region``.
+- **`MacenkoNormalizer`** — Macenko stain normalisation in pure numpy.
+- **`otsu_tissue_mask`** — Otsu-thresholded tissue mask from a tile or
+  thumbnail (numpy-only).
+
+Minimal end-to-end (no real slide required):
+
+```python
+import numpy as np
+from PIL import Image
+from openpathai import GridTiler, MacenkoNormalizer, open_slide, otsu_tissue_mask
+
+# 1. Build a tiny synthetic "slide" on disk.
+canvas = np.full((512, 512, 3), 240, dtype=np.uint8)
+yy, xx = np.mgrid[0:512, 0:512]
+canvas[(xx - 256) ** 2 + (yy - 256) ** 2 < 150 ** 2] = [150, 90, 180]
+Image.fromarray(canvas).save("/tmp/synthetic.tiff")
+
+# 2. Open, mask, tile, and stain-normalise one tile.
+with open_slide("/tmp/synthetic.tiff", mpp=0.5) as slide:
+    thumb = slide.read_region((0, 0), (slide.info.width, slide.info.height))
+    mask = otsu_tissue_mask(thumb)
+    grid = GridTiler(tile_size_px=(128, 128), min_tissue_fraction=0.1).plan(
+        slide.info, mask=mask
+    )
+    if grid.coordinates:
+        c = grid.coordinates[0]
+        tile = slide.read_region((c.x, c.y), (c.width, c.height))
+        normalised = MacenkoNormalizer().transform(tile)
+print("tiles:", grid.n_tiles)
+```
+
+Every operation is registered as an ``@openpathai.node`` in Phase 3's
+pipelines; the snippet above is the bare-metal form you'd use in a
+notebook or REPL.
+
 ## License
 
 By contributing, you agree your contribution is licensed under the

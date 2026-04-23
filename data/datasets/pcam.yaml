@@ -1,0 +1,51 @@
+name: pcam
+display_name: "PatchCamelyon (PCam)"
+modality: tile
+num_classes: 2
+classes:
+  - normal
+  - tumor
+tile_size: [96, 96]
+total_images: 327680
+license: CC0-1.0
+tissue: [breast, lymph_node]
+stain: "H&E"
+magnification: "10X"
+mpp: 0.972
+
+download:
+  method: kaggle
+  kaggle_slug: c/histopathologic-cancer-detection
+  size_gb: 6.3
+  instructions_md: |
+    PCam is distributed through the Kaggle "Histopathologic Cancer Detection"
+    competition page. Accept the competition rules in the Kaggle UI first,
+    then run the download from within OpenPathAI. Raw images are 96×96 HE
+    patches drawn from Camelyon16 sentinel lymph node slides.
+
+citation:
+  text: "Veeling BS, Linmans J, Winkens J, Cohen T, Welling M. Rotation equivariant CNNs for digital pathology. MICCAI 2018."
+  arxiv: "1806.03962"
+
+recommended_models:
+  - resnet18
+  - efficientnet_b0
+  - mobilenetv3_small
+recommended_splits:
+  type: slide_level
+  train: 0.70
+  val: 0.15
+  test: 0.15
+  stratify_by: [class]
+
+tier_compatibility:
+  T1: slow
+  T2: ok
+  T3: ok
+
+qc_gates:
+  - blur
+
+notes: |
+  Largest tile-level dataset in the v0.1 MVP. Laptop-friendly for one epoch
+  on a small CNN but slow for anything else — prefer Colab for full runs.

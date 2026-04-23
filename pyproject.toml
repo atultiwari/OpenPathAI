@@ -44,8 +44,13 @@ classifiers = [
 # Core runtime dependencies — intentionally minimal.
 # Pathology / ML / GUI deps land in later phases via optional extras.
 # Phase 1 adds ``pydantic`` for the typed pipeline primitive layer.
+# Phase 2 adds ``numpy``, ``Pillow``, ``PyYAML`` for the data layer
+# (registry, Cohort, stain normalisation, fixture slide generation).
 dependencies = [
+    "numpy>=1.26,<3",
+    "pillow>=10.3,<12",
     "pydantic>=2.8,<3",
+    "pyyaml>=6.0,<7",
     "typer>=0.15,<1.0",
 ]
 
@@ -64,7 +69,26 @@ openpathai = "openpathai.cli.main:app"
 # Placeholders in Phase 0 — each tier grows real dependencies in later phases
 # per docs/planning/master-plan.md §7.6 and §23.
 [project.optional-dependencies]
-local = []
+# Tile-level data work that requires scikit-image (only some preprocessing
+# helpers). Does not require openslide/tiatoolbox system libs.
+data = [
+    "scikit-image>=0.23,<0.26",
+    "tifffile>=2024.7.2",
+]
+# WSI I/O — heavy, requires system libraries (openslide). Kept optional so
+# Linux/Windows CI can run the pure-Python test path.
+wsi = [
+    "openpathai[data]",
+    "openslide-python>=1.3,<2",
+    "tiatoolbox>=1.5,<2",
+]
+# Kaggle dataset downloader — lazy-imported from openpathai.data.download.
+kaggle = [
+    "kaggle>=1.6,<2",
+]
+local = [
+    "openpathai[data,kaggle,wsi]",
+]
 colab = [
     "openpathai[local]",
 ]
@@ -78,7 +102,7 @@ notebook = [
     "openpathai[local]",
 ]
 dev = [
-    "openpathai[gui,notebook]",
+    "openpathai[data]",
     # Lint + format
     "ruff>=0.8,<0.9",
     # Type check

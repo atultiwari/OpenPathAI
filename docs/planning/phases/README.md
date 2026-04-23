@@ -20,10 +20,10 @@
 
 | | |
 |---|---|
-| Active phase | (none — **Phase 1 closed 2026-04-23**; Phase 2 pending user authorisation) |
-| Latest Git tag | `phase-01-complete` |
+| Active phase | (none — **Phase 2 closed 2026-04-23**; Phase 3 pending user authorisation) |
+| Latest Git tag | `phase-02-complete` |
 | Latest released version | (none yet — v0.1.0 ships after Phases 0–6 complete) |
-| Blocked on user | (a) authorisation to start Phase 2; (b) Hugging Face gated access requests running in parallel (non-blocking for Phase 2; required before Phase 15); (c) Ollama + MedGemma 1.5 **already installed** ✅. |
+| Blocked on user | (a) authorisation to start Phase 3; (b) Hugging Face gated access requests running in parallel (non-blocking for Phase 3; required before Phase 15); (c) Ollama + MedGemma 1.5 **already installed** ✅. |
 
 ---
 
@@ -33,8 +33,8 @@
 |---|---|---|---|---|---|
 | 0 | Foundation (scaffolding + CI) | v0.1 | ✅ complete (2026-04-23, tag `phase-00-complete`) | [phase-00-foundation.md](phase-00-foundation.md) | 3 d target / same-day actual |
 | 1 | Primitives: cache + node decorator + typed graph | v0.1 | ✅ complete (2026-04-23, tag `phase-01-complete`) | [phase-01-primitives.md](phase-01-primitives.md) | 1 w target / same-day actual |
-| 2 | Data layer: tile datasets + WSI I/O + cohorts | v0.1 | ⏳ pending (awaiting user go-ahead) | — | 1.5 w |
-| 3 | Model zoo + training engine (Tier A) | v0.1 | ⏳ pending | — | 1 w |
+| 2 | Data layer: tile datasets + WSI I/O + cohorts | v0.1 | ✅ complete (2026-04-23, tag `phase-02-complete`) | [phase-02-data-layer.md](phase-02-data-layer.md) | 1.5 w target / same-day actual |
+| 3 | Model zoo + training engine (Tier A) | v0.1 | ⏳ pending (awaiting user go-ahead) | — | 1 w |
 | 4 | Explainability (Grad-CAM + attention rollout + IG) | v0.1 | ⏳ pending | — | 1 w |
 | 5 | CLI + notebook driver | v0.1 | ⏳ pending | — | 3–5 d |
 | 6 | Gradio GUI: Analyse / Train / Datasets / Models / Settings | v0.1 | ⏳ pending | — | 1.5 w |
