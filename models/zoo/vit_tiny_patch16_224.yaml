@@ -1,0 +1,24 @@
+name: vit_tiny_patch16_224
+display_name: ViT-Tiny /16 (ImageNet1k)
+family: vit
+task: classification
+source:
+  framework: timm
+  identifier: vit_tiny_patch16_224
+  license: Apache-2.0
+num_params_m: 5.7
+input_size: [224, 224]
+channels: 3
+preprocessing_mean: [0.5, 0.5, 0.5]
+preprocessing_std: [0.5, 0.5, 0.5]
+citation:
+  text: "Dosovitskiy et al., 'An Image is Worth 16×16 Words' (ICLR 2021)."
+  arxiv: "2010.11929"
+tier_compatibility:
+  T1: ok
+  T2: ok
+  T3: ok
+recommended_datasets: [lc25000, pcam, mhist]
+notes: >
+  Smallest canonical ViT; fits a laptop GPU and gives the attention
+  rollout explainability path something to work on.

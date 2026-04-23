@@ -1,0 +1,24 @@
+name: vit_small_patch16_224
+display_name: ViT-Small /16 (ImageNet1k)
+family: vit
+task: classification
+source:
+  framework: timm
+  identifier: vit_small_patch16_224
+  license: Apache-2.0
+num_params_m: 22.1
+input_size: [224, 224]
+channels: 3
+preprocessing_mean: [0.5, 0.5, 0.5]
+preprocessing_std: [0.5, 0.5, 0.5]
+citation:
+  text: "Dosovitskiy et al., 'An Image is Worth 16×16 Words' (ICLR 2021)."
+  arxiv: "2010.11929"
+tier_compatibility:
+  T1: slow
+  T2: ok
+  T3: ok
+recommended_datasets: [lc25000, pcam, mhist]
+notes: >
+  Standard ViT-S attention baseline at 224×224. The go-to ViT for
+  pathology transfer-learning experiments in the v0.1 engine.

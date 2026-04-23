@@ -1,4 +1,4 @@
-"""Phase 0 smoke tests for the CLI skeleton."""
+"""Smoke tests for the CLI skeleton (Phase 0 + Phase 3 extensions)."""
 
 from __future__ import annotations
 
@@ -31,5 +31,28 @@ def test_hello_prints_live_message() -> None:
 def test_bare_invocation_shows_help() -> None:
     """Running ``openpathai`` with no args prints help (exit 0 or 2 is fine)."""
     result = runner.invoke(app, [])
-    # Typer's `no_args_is_help=True` prints help and exits non-zero.
     assert "OpenPathAI" in result.stdout or "Usage" in result.stdout
+
+
+@pytest.mark.unit
+def test_models_list_includes_shipped_cards() -> None:
+    result = runner.invoke(app, ["models", "list"])
+    assert result.exit_code == 0, result.stdout
+    assert "resnet18" in result.stdout
+    assert "vit_small_patch16_224" in result.stdout
+
+
+@pytest.mark.unit
+def test_models_list_family_filter() -> None:
+    result = runner.invoke(app, ["models", "list", "--family", "vit"])
+    assert result.exit_code == 0, result.stdout
+    assert "vit_small_patch16_224" in result.stdout
+    # Swin is a different family even though both are transformers.
+    assert "swin_tiny_patch4_window7_224" not in result.stdout
+
+
+@pytest.mark.unit
+def test_train_without_synthetic_flag_exits_with_guidance() -> None:
+    result = runner.invoke(app, ["train", "--model", "resnet18", "--num-classes", "4"])
+    assert result.exit_code == 2
+    assert "Phase 5" in result.stdout

@@ -1,0 +1,24 @@
+name: resnet18
+display_name: ResNet-18 (ImageNet1k)
+family: resnet
+task: classification
+source:
+  framework: timm
+  identifier: resnet18
+  license: Apache-2.0
+num_params_m: 11.7
+input_size: [224, 224]
+channels: 3
+preprocessing_mean: [0.485, 0.456, 0.406]
+preprocessing_std: [0.229, 0.224, 0.225]
+citation:
+  text: "He et al., 'Deep Residual Learning for Image Recognition' (CVPR 2016)."
+  arxiv: "1512.03385"
+tier_compatibility:
+  T1: ok
+  T2: ok
+  T3: ok
+recommended_datasets: [lc25000, pcam, mhist]
+notes: >
+  Robust, well-calibrated classical baseline; trains fast on laptop GPUs
+  and is the "does anything even work" sanity model for new datasets.

@@ -229,6 +229,73 @@ Every operation is registered as an ``@openpathai.node`` in Phase 3's
 pipelines; the snippet above is the bare-metal form you'd use in a
 notebook or REPL.
 
+## Training (Phase 3)
+
+Phase 3 lands the Tier-A model zoo + supervised training engine. Public
+API under ``openpathai.models`` and ``openpathai.training``:
+
+- **`ModelCard`** — pydantic schema for YAML model cards
+  (`models/zoo/*.yaml`). Ten cards ship with the repo: ResNet-18/50,
+  EfficientNet-B0/B3, MobileNetV3-Small/Large, ViT-Tiny/Small,
+  Swin-Tiny, ConvNeXt-Tiny.
+- **`ModelRegistry`** — discovers cards from `models/zoo/` and user
+  overrides at `~/.openpathai/models/`.
+- **`TimmAdapter`** — materialises a card into a ``torch.nn.Module``
+  via the ``timm`` library (lazy-imported via the ``[train]`` extra).
+- **`TrainingConfig`** — every knob that affects the trained weights
+  (model card, classes, epochs, batch size, seed, loss, optimizer,
+  scheduler, calibration). Content-addressable by its JSON hash.
+- **`cross_entropy_loss` / `focal_loss` / `ldam_loss`** — numpy
+  reference implementations. The training loop uses the torch
+  counterparts; numerical equivalence is verified in the unit tests.
+- **`accuracy` / `macro_f1` / `expected_calibration_error` /
+  `reliability_bins`** — metrics in pure numpy.
+- **`TemperatureScaler`** — scalar temperature-scaling calibrator
+  (Guo et al. 2017) fit in pure numpy on held-out validation logits.
+- **`LightningTrainer`** — the end-to-end trainer. Exposed as the
+  ``training.train`` pipeline node so a run is just another DAG step.
+
+Torch, timm, and lightning are optional via the ``[train]`` extra; the
+module is importable and unit-testable without them.
+
+Installing the training extra:
+
+```bash
+uv sync --extra dev --extra train
+```
+
+Minimal end-to-end (requires ``[train]``):
+
+```python
+from openpathai import (
+    LightningTrainer, TrainingConfig,
+    default_model_registry, synthetic_tile_batch,
+)
+
+card = default_model_registry().get("resnet18")
+config = TrainingConfig(
+    model_card="resnet18",
+    num_classes=4,
+    epochs=1,
+    batch_size=16,
+    device="cpu",
+    pretrained=False,
+)
+train = synthetic_tile_batch(num_classes=4, seed=0)
+val = synthetic_tile_batch(num_classes=4, seed=1)
+
+report = LightningTrainer(config, card=card).fit(train=train, val=val)
+print(report.final_val_accuracy, report.ece_after_calibration)
+```
+
+Or from the CLI (smoke path):
+
+```bash
+openpathai models list
+openpathai models list --family vit
+openpathai train --model resnet18 --num-classes 4 --epochs 1 --synthetic
+```
+
 ## License
 
 By contributing, you agree your contribution is licensed under the

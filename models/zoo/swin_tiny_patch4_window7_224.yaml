@@ -1,0 +1,25 @@
+name: swin_tiny_patch4_window7_224
+display_name: Swin-Tiny /4, window 7 (ImageNet1k)
+family: swin
+task: classification
+source:
+  framework: timm
+  identifier: swin_tiny_patch4_window7_224
+  license: Apache-2.0
+num_params_m: 28.3
+input_size: [224, 224]
+channels: 3
+preprocessing_mean: [0.485, 0.456, 0.406]
+preprocessing_std: [0.229, 0.224, 0.225]
+citation:
+  text: "Liu et al., 'Swin Transformer: Hierarchical Vision Transformer using Shifted Windows' (ICCV 2021)."
+  arxiv: "2103.14030"
+tier_compatibility:
+  T1: slow
+  T2: ok
+  T3: ok
+recommended_datasets: [lc25000, pcam]
+notes: >
+  Hierarchical transformer with strong pathology transfer. Use when
+  ViT-S underfits; the shifted-window attention captures local tile
+  structure well.

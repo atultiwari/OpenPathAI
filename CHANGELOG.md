@@ -167,5 +167,75 @@ Tagged `phase-02-complete`. Acceptance criteria in
 - **Developer guide** updated with a "Data layer (Phase 2)" section and
   a self-contained runnable example that needs no real slide.
 
-### Phase 3 (not yet started)
-- Awaiting user authorisation to begin.
+### Phase 3 — Model zoo + training engine (complete, 2026-04-23)
+
+Tagged `phase-03-complete`. Acceptance criteria in
+[`docs/planning/phases/phase-03-model-zoo-training.md`](docs/planning/phases/phase-03-model-zoo-training.md)
+§4 all ticked.
+
+- **New package `openpathai.models/`** — Tier-A model registry:
+  - `cards.ModelCard` (+ `ModelSource`, `ModelCitation`, `ModelFamily`,
+    `ModelFramework`, `ModelTask`) pydantic schema for YAML model cards.
+  - `registry.ModelRegistry` — discovers cards from `models/zoo/` and
+    user overrides at `~/.openpathai/models/`.
+  - `adapter.ModelAdapter` Protocol + `adapter_for_card(...)` resolver.
+  - `timm_adapter.TimmAdapter` — materialises any `framework=timm`
+    card into a `torch.nn.Module`. Lazy imports; no torch in the hot
+    path until the adapter actually builds.
+  - `artifacts.ModelArtifact` — identity of a built model (name, classes,
+    adapter, state-dict hash) for cache keys.
+- **New package `openpathai.training/`** — supervised training engine:
+  - `config.TrainingConfig` + `LossConfig` + `OptimizerConfig` +
+    `SchedulerConfig`. Every run is fully described by a single
+    hashable struct.
+  - `losses.py` — pure-numpy reference implementations of
+    `cross_entropy_loss` (+ class weights + label smoothing),
+    `focal_loss` (Lin et al. 2017), and `ldam_loss` (Cao et al. 2019).
+    Torch implementations inside `engine._build_loss_fn` reuse the
+    same maths; equivalence is unit-tested.
+  - `metrics.py` — pure-numpy `accuracy`, `macro_f1`,
+    `confusion_matrix`, `expected_calibration_error`, and
+    `reliability_bins` (Guo et al. 2017).
+  - `calibration.TemperatureScaler` — scalar temperature scaling fit
+    by Adam-on-log-T in numpy. Applies post-hoc to validation logits.
+  - `datasets.py` — `InMemoryTileBatch` dataclass and
+    `synthetic_tile_batch(...)` generator for unit + integration tests
+    (no real dataset required).
+  - `engine.LightningTrainer` + `TileClassifierModule` —
+    Lightning-compatible training loop with deterministic seeding,
+    per-epoch validation, ECE + calibration reporting, and a
+    content-hashed checkpoint filename.
+  - `artifacts.TrainingReportArtifact` + `EpochRecord` — JSON-safe
+    end-of-run report (final metrics, ECE before/after calibration,
+    per-epoch history, class names).
+  - `node.train` — `@openpathai.node(id="training.train")` entry point
+    so a training run is just another DAG step with a cached output.
+- **Model zoo cards shipped under `models/zoo/`** — `resnet18`,
+  `resnet50`, `efficientnet_b0`, `efficientnet_b3`,
+  `mobilenetv3_small_100`, `mobilenetv3_large_100`,
+  `vit_tiny_patch16_224`, `vit_small_patch16_224`,
+  `swin_tiny_patch4_window7_224`, `convnext_tiny`.
+- **CLI extensions:** `openpathai models list [--family|--framework|--tier]`
+  and `openpathai train --model ... --num-classes ... --synthetic`
+  (the synthetic path is the smoke route; real cohort training lands
+  in Phase 5). All heavy deps are lazy-imported inside command bodies
+  so `openpathai --help` stays torch-free.
+- **New optional extra `[train]`** bundling `torch`, `torchvision`,
+  `timm`, `torchmetrics`, and `lightning`. Kept out of `[dev]` so CI
+  stays fast; tests that need torch gracefully skip when absent.
+- **Public API re-exported** from `openpathai`:
+  `ModelAdapter`, `ModelArtifact`, `ModelCard`, `ModelRegistry`,
+  `TimmAdapter`, `TrainingConfig`, `LossConfig`, `OptimizerConfig`,
+  `SchedulerConfig`, `TrainingReportArtifact`, `EpochRecord`,
+  `LightningTrainer`, `TileClassifierModule`, `TemperatureScaler`,
+  `InMemoryTileBatch`, `TrainingNodeInput`, `accuracy`, `macro_f1`,
+  `expected_calibration_error`, `cross_entropy_loss`, `focal_loss`,
+  `ldam_loss`, `synthetic_tile_batch`, `adapter_for_card`,
+  `default_model_registry`.
+- **Tests:** 34 new unit + integration tests (181 total green; 6
+  skipped cleanly when torch is absent). Coverage on
+  `openpathai.models` + `openpathai.training` is **92.3 %**
+  (torch-gated function bodies are marked `# pragma: no cover` so
+  the denominator reflects the code you can exercise without torch).
+- **Developer guide** updated with a "Training (Phase 3)" section and
+  a self-contained runnable example.

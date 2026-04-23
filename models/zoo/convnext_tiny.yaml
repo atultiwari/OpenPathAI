@@ -1,0 +1,25 @@
+name: convnext_tiny
+display_name: ConvNeXt-Tiny (ImageNet1k)
+family: convnext
+task: classification
+source:
+  framework: timm
+  identifier: convnext_tiny
+  license: Apache-2.0
+num_params_m: 28.6
+input_size: [224, 224]
+channels: 3
+preprocessing_mean: [0.485, 0.456, 0.406]
+preprocessing_std: [0.229, 0.224, 0.225]
+citation:
+  text: "Liu et al., 'A ConvNet for the 2020s' (CVPR 2022)."
+  arxiv: "2201.03545"
+tier_compatibility:
+  T1: slow
+  T2: ok
+  T3: ok
+recommended_datasets: [lc25000, pcam]
+notes: >
+  Modern ConvNet that matches transformer accuracy at similar size;
+  pairs well with Grad-CAM-family explainability without the
+  attention-rollout footwork.

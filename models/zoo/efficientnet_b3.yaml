@@ -1,0 +1,25 @@
+name: efficientnet_b3
+display_name: EfficientNet-B3 (ImageNet1k)
+family: efficientnet
+task: classification
+source:
+  framework: timm
+  identifier: efficientnet_b3
+  license: Apache-2.0
+num_params_m: 12.2
+input_size: [300, 300]
+channels: 3
+preprocessing_mean: [0.485, 0.456, 0.406]
+preprocessing_std: [0.229, 0.224, 0.225]
+citation:
+  text: "Tan & Le, 'EfficientNet: Rethinking Model Scaling for CNNs' (ICML 2019)."
+  arxiv: "1905.11946"
+tier_compatibility:
+  T1: slow
+  T2: ok
+  T3: ok
+recommended_datasets: [lc25000, pcam]
+notes: >
+  Larger EfficientNet variant with a 300×300 native resolution; use when
+  tissue context beyond ~224 px matters. Needs a GPU for practical
+  training.

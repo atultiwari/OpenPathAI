@@ -1,0 +1,24 @@
+name: efficientnet_b0
+display_name: EfficientNet-B0 (ImageNet1k)
+family: efficientnet
+task: classification
+source:
+  framework: timm
+  identifier: efficientnet_b0
+  license: Apache-2.0
+num_params_m: 5.3
+input_size: [224, 224]
+channels: 3
+preprocessing_mean: [0.485, 0.456, 0.406]
+preprocessing_std: [0.229, 0.224, 0.225]
+citation:
+  text: "Tan & Le, 'EfficientNet: Rethinking Model Scaling for CNNs' (ICML 2019)."
+  arxiv: "1905.11946"
+tier_compatibility:
+  T1: ok
+  T2: ok
+  T3: ok
+recommended_datasets: [lc25000, pcam, mhist]
+notes: >
+  Compound-scaled CNN that hits a strong accuracy/compute ratio. Good
+  laptop-GPU default when ResNet-18 underfits.
