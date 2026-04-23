@@ -227,6 +227,22 @@ git push origin main --tags
 
 ## 8. Worklog (append-only, newest on top)
 
+### 2026-04-23 · pre-phase-0 corrections
+**What:** applied user corrections before Phase 0 execution — LICENSE /
+NOTICE copyright updated to "Dr. Atul Tiwari, Vedant Research Labs, and
+OpenPathAI contributors"; Hugging Face guide fixed (MedGemma link
+`medgemma-1.5-4b-it`, Hibou split into b/L with laptop-fit notes, SPIDER
+models + datasets added as organ-specific Tier C-organ entries, CTransPath
+reconciled with community mirrors — recommend `kaczmarj/CTransPath`);
+master plan §10.1 and §11.3 updated accordingly; README surfaced the docs
+URL.
+**Why:** the user has already started HF approval requests and needed the
+guide aligned with their actual access set (including SPIDER + both Hibou
+variants) before setup work continues.
+**Next:** begin §3.1 deliverables (pyproject.toml, LICENSE verify, .gitignore
+check, CI workflows).
+**Blockers:** none.
+
 ### 2026-04-23 · phase initialised
 **What:** created Phase 0 spec from template; repo folder renamed to
 `OpenPathAI`; master plan moved to `docs/planning/master-plan.md`; previous

@@ -89,20 +89,69 @@ before you need them.
 
 ### B.1 The gated models OpenPathAI uses
 
-| # | Model | Purpose | HF URL | Typical wait |
-|---|---|---|---|---|
-| 1 | **UNI** | ViT-L feature extractor (linear probe / fine-tune) | https://huggingface.co/MahmoodLab/UNI | 1–3 days with institutional email |
-| 2 | **UNI2-h** | Next-generation UNI (ViT-H) | https://huggingface.co/MahmoodLab/UNI2-h | 1–3 days |
-| 3 | **CONCH** | Vision-language, zero-shot classification (**Bet 2** backbone) | https://huggingface.co/MahmoodLab/CONCH | 1–3 days |
-| 4 | **Virchow2** | Paige foundation model | https://huggingface.co/paige-ai/Virchow2 | 1–2 weeks (institutional confirmation) |
-| 5 | **Prov-GigaPath** | Microsoft/Providence slide-level encoder | https://huggingface.co/prov-gigapath/prov-gigapath | 1–2 weeks |
-| 6 | **MedSAM2** | Medical SAM2 (**Bet 2** segmentation backbone) | https://huggingface.co/wanglab/MedSAM2 | often immediate; may be ungated |
-| 7 | **MedGemma 1.5** | Google medical Gemma (local LLM for Bet 2) | https://huggingface.co/google/medgemma-1.5 *(if this slug changes upstream, search "MedGemma")* | 1–3 days |
+**Already got access to some?** Skip the request step on those; the guide
+below is written to work whether you're requesting from scratch or adding
+the last one or two.
+
+#### Core foundation models (gated)
+
+| # | Model | Purpose | HF URL | Params | Laptop fit | Typical wait |
+|---|---|---|---|---|---|---|
+| 1 | **UNI** | ViT-L feature extractor (linear probe / fine-tune) | https://huggingface.co/MahmoodLab/UNI | ~300M | Fits 16 GB MacBook | 1–3 days (institutional email) |
+| 2 | **UNI2-h** | ViT-H successor to UNI | https://huggingface.co/MahmoodLab/UNI2-h | ~600M | Fits 32 GB MacBook | 1–3 days |
+| 3 | **CONCH** | Vision-language, zero-shot classification (**Bet 2** backbone) | https://huggingface.co/MahmoodLab/CONCH | ~700M combined | Fits 16 GB MacBook (inference) | 1–3 days |
+| 4 | **Virchow2** | Paige foundation model | https://huggingface.co/paige-ai/Virchow2 | ~632M | Fits 32 GB MacBook | 1–2 weeks |
+| 5 | **Prov-GigaPath** | Microsoft/Providence tile + slide encoder | https://huggingface.co/prov-gigapath/prov-gigapath | ~1.1B | Colab T4+ recommended | 1–2 weeks |
+| 6 | **MedSAM2** | Medical SAM2 (**Bet 2** segmentation backbone) | https://huggingface.co/wanglab/MedSAM2 | ~310M | Fits any MacBook | Often immediate; may be ungated |
+| 7 | **MedGemma 1.5 4B (instruct)** | Google medical Gemma — local LLM orchestrator (**Bet 2**) | https://huggingface.co/google/medgemma-1.5-4b-it | 4B | Fits 16 GB MacBook at Q4 quant | 1–3 days |
+
+#### Hibou (open-weights but gated for attribution)
+
+Histai distributes the entire Hibou family behind an access click-through.
+OpenPathAI can use either — pick based on your laptop.
+
+| Model | HF URL | Params | Laptop fit |
+|---|---|---|---|
+| **Hibou-b** (ViT-B/14) | https://huggingface.co/histai/hibou-b | ~86M | Fits any laptop (≥ 8 GB RAM). Use this first. |
+| **Hibou-L** (ViT-L/14) | https://huggingface.co/histai/hibou-L | ~304M | Fits 16 GB MacBook; comfortable on 32 GB. |
+
+Collection link (both): https://huggingface.co/collections/histai/hibou-foundation-models
+
+#### SPIDER models and datasets (Histai — gated, **organ-specific**)
+
+SPIDER pairs organ-specific **pretrained classifiers** with the **matching
+labelled tile datasets** they were trained on. That pairing is unusually
+valuable — most projects ship a dataset *or* a model, not both. OpenPathAI
+treats SPIDER as:
+
+- **Ready-to-use classifier** out of the box for breast / colorectal tile
+  classification (inference straight away, no training needed).
+- **Feature extractor** for organ-specific linear probes.
+- **Baseline** to beat when fine-tuning any general foundation model on
+  the same data.
+- **First-class dataset** in the OpenPathAI dataset registry (§10.1 of the
+  master plan), alongside LC25000 and PCam.
+
+| Artifact | HF URL | Use |
+|---|---|---|
+| **SPIDER-breast model** | https://huggingface.co/histai/SPIDER-breast-model | Classifier for breast pathology tiles. |
+| **SPIDER-colorectal model** | https://huggingface.co/histai/SPIDER-colorectal-model | Classifier for colorectal pathology tiles. |
+| **SPIDER-breast dataset** | https://huggingface.co/datasets/histai/SPIDER-breast | Labelled tile dataset; train / fine-tune / benchmark. |
+| **SPIDER-colorectal dataset** | https://huggingface.co/datasets/histai/SPIDER-colorectal | Labelled tile dataset; train / fine-tune / benchmark. |
+
+**Laptop fit:** SPIDER classifiers are typical CNN / ViT sizes (under 100M
+params) and run comfortably on any MacBook for inference. Fine-tuning on a
+MacBook is fine for Hibou-b-sized backbones, Colab T4 is recommended for
+anything larger.
+
+**Verdict — yes, very useful.** Slot into Phase 14 (Detection &
+Segmentation) as baseline classifiers and into Phase 2 (Data layer) as
+dataset cards once the foundation work is ready.
 
 > **Heads-up:** HF slugs occasionally move between org names. If any link
 > 404s, search `https://huggingface.co/models?search=<model name>`; the
 > author org is usually `MahmoodLab`, `paige-ai`, `prov-gigapath`, `wanglab`,
-> or `google`.
+> `histai`, or `google`.
 
 ### B.2 What the request form asks (typical)
 
@@ -133,13 +182,34 @@ These download with the same token, no approval step:
 | Model | Purpose | HF URL |
 |---|---|---|
 | **DINOv2** | Open baseline feature extractor | https://huggingface.co/facebook/dinov2-base |
-| **CTransPath** | Swin-based pathology baseline | https://huggingface.co/hrlblab/CTransPath |
-| **Hibou** | Open pathology foundation model | https://huggingface.co/histai/hibou-b |
+| **CTransPath** | Swin-based pathology baseline | (community mirrors — see note below) |
 | **SAM2** | Meta SAM2 (general promptable segmentation) | https://huggingface.co/facebook/sam2-hiera-large |
 | **RT-DETRv2** | Real-time detection transformer | https://huggingface.co/PekingU/rtdetr_v2_r50vd |
+| **YOLOv8 / v11 / v26** | Ultralytics object detection | Installed via `pip install ultralytics`; weights pull on first use. |
 
-OpenPathAI falls back to these automatically when a gated counterpart is
-unavailable, and the run manifest logs which model was actually used.
+**CTransPath — community-mirrored weights**
+
+The original CTransPath authors (Wang et al., 2022) distribute weights via
+OneDrive from their GitHub repo (https://github.com/Xiyue-Wang/TransPath),
+which is inconvenient for scripted installs. Two community mirrors exist on
+Hugging Face:
+
+- https://huggingface.co/kaczmarj/CTransPath (recommended — Jakub Kaczmarj,
+  Mahmood Lab)
+- https://huggingface.co/jamesdolezal/CTransPath (alternative — James
+  Dolezal, Slideflow maintainer)
+
+OpenPathAI's model card for CTransPath (Phase 13) will default to the
+Kaczmarj mirror. If Kaczmarj's checksum ever differs from upstream, the card
+will be updated and `NOTICE` regenerated. Both mirrors are valid for
+research use and match the upstream weights at time of writing.
+
+**Hibou is listed under §B.1** (gated but open-weights) — you already have
+access.
+
+OpenPathAI falls back to these open models automatically when a gated
+counterpart is unavailable, and the run manifest logs which model was
+actually used.
 
 ---
 

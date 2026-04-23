@@ -40,8 +40,9 @@ through a Python library, CLI, Jupyter notebooks, or Google Colab.
 | **Detection** | YOLOv8 / v11 / **v26**, RT-DETRv2, DETR |
 | **Segmentation (closed)** | U-Net, Attention U-Net, nnU-Net v2, SegFormer, HoVer-Net |
 | **Segmentation (promptable)** | SAM2, MedSAM, **MedSAM2** |
-| **Foundation models** | UNI, UNI2-h, CONCH, Virchow2, Prov-GigaPath, CTransPath, DINOv2, Hibou |
-| **Datasets (tile)** | LC25000, PCam, BreakHis, NCT-CRC-HE-100K, MHIST |
+| **Foundation models (general)** | UNI, UNI2-h, CONCH, Virchow2, Prov-GigaPath, CTransPath, DINOv2, Hibou-b, Hibou-L |
+| **Foundation models (organ-specific)** | Histai SPIDER-breast, Histai SPIDER-colorectal (model + paired dataset) |
+| **Datasets (tile)** | LC25000, PCam, BreakHis, NCT-CRC-HE-100K, MHIST, SPIDER-breast, SPIDER-colorectal |
 | **Datasets (WSI)** | Camelyon16/17, TCGA, PANDA, BACH |
 | **Datasets (detection/seg)** | MoNuSeg, PanNuke, MoNuSAC, GlaS, MIDOG, HuBMAP |
 | **Explainability** | Grad-CAM, Grad-CAM++, EigenCAM, Integrated Gradients, attention rollout |
@@ -118,8 +119,9 @@ Before the GUI exists, see [`docs/planning/phases/phase-00-foundation.md`](docs/
 
 ## User actions needed outside this repo
 
-1. **Hugging Face access** for gated foundation models (UNI, CONCH,
-   Virchow2, Prov-GigaPath). Step-by-step:
+1. **Hugging Face access** for gated foundation models (UNI, UNI2-h, CONCH,
+   Virchow2, Prov-GigaPath, Hibou-b / Hibou-L, SPIDER models + datasets,
+   MedGemma 1.5). Step-by-step:
    [`docs/setup/huggingface.md`](docs/setup/huggingface.md).
 2. **Local LLM backend** for natural-language features (MedGemma 1.5 via
    Ollama or LM Studio):
@@ -127,6 +129,12 @@ Before the GUI exists, see [`docs/planning/phases/phase-00-foundation.md`](docs/
 
 Both take days to set up (mostly waiting for HF approval). Start them now,
 in parallel with early-phase work.
+
+## Docs site
+
+Once Phase 0 ships, the rendered docs live at
+**https://atultiwari.github.io/OpenPathAI/** (auto-deployed from `main`
+via GitHub Actions).
 
 ---
 

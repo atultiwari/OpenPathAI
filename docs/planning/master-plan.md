@@ -550,6 +550,15 @@ directory and populates its Dataset Browser. New datasets are pull-requestable.
 | **BreakHis** | 7 909 | 8 (benign/malignant subtypes) | variable | [Kaggle](https://www.kaggle.com/datasets/ambarish/breakhis) | Multi-magnification (40×, 100×, 200×, 400×) — teaches magnification awareness. |
 | **NCT-CRC-HE-100K** | 100 000 | 9 (colorectal tissue types) | 224×224 | [Zenodo](https://zenodo.org/records/1214456) | Strong baseline. |
 | **MHIST** | 3 152 | 2 (HP vs SSA) | 224×224 | [BMIRDS](https://bmirds.github.io/MHIST/) | Tiny; rapid iteration. |
+| **SPIDER-breast** | Histai curated | organ-specific | varies | [HF (gated)](https://huggingface.co/datasets/histai/SPIDER-breast) | Breast tile labels paired with [SPIDER-breast model](https://huggingface.co/histai/SPIDER-breast-model). |
+| **SPIDER-colorectal** | Histai curated | organ-specific | varies | [HF (gated)](https://huggingface.co/datasets/histai/SPIDER-colorectal) | Colorectal tile labels paired with [SPIDER-colorectal model](https://huggingface.co/histai/SPIDER-colorectal-model). |
+
+**SPIDER note:** the breast / colorectal SPIDER pairs are the first two of
+(potentially) an expanding organ series from Histai. Because each dataset
+ships with a pretrained model that was trained on it, SPIDER is both a
+dataset entry here and a Tier C-organ model entry in §11.3a. Use either
+half independently, or use them together for a guaranteed-compatible
+in-distribution training/inference pair.
 
 ### 10.2 WSI datasets (v0.5+)
 
@@ -669,21 +678,53 @@ pattern:
 
 ### 11.3 Tier C — Pathology foundation models (v0.5–v1.0)
 
-| Model | Creator | Availability | Use |
-|---|---|---|---|
-| **DINOv2** | Meta | Open | Default open fallback. |
-| **CTransPath** | Wang et al., 2022 | Open | Strong open baseline (Swin-based). |
-| **UNI / UNI2-h** | Mahmood Lab (MGH) | HuggingFace (gated, institutional email) | SOTA linear-probe / fine-tune. |
-| **CONCH** | Mahmood Lab | HF (gated) | Vision-language, zero-shot + linear probe. Bet 2 backbone. |
-| **Virchow / Virchow2** | Paige | HF (gated) | Linear probe. |
-| **Prov-GigaPath** | Microsoft / Providence | HF (gated) | Slide-level encoder. |
-| **Hibou** | Histai | HF | Open foundation model. |
+General-purpose pathology encoders.
 
-Foundation models are exposed as:
+| Model | Creator | Availability | Params | Laptop fit | Use |
+|---|---|---|---|---|---|
+| **DINOv2** | Meta | Open | 21M – 1.1B | all variants fit except giant | Default open fallback. |
+| **CTransPath** | Wang et al., 2022 (upstream); Kaczmarj / Dolezal HF mirrors | Open (community mirrors) | ~28M | Fits any laptop | Strong open baseline (Swin-based). Default mirror: `kaczmarj/CTransPath`. |
+| **UNI** | Mahmood Lab (MGH) | HF (gated, institutional email) | ~300M | Fits 16 GB MacBook | SOTA linear-probe / fine-tune. |
+| **UNI2-h** | Mahmood Lab | HF (gated) | ~600M | Fits 32 GB MacBook | Next-gen UNI (ViT-H). |
+| **CONCH** | Mahmood Lab | HF (gated) | ~700M combined | Fits 16 GB MacBook (inference) | Vision-language, zero-shot + linear probe. **Bet 2 backbone.** |
+| **Virchow / Virchow2** | Paige | HF (gated) | ~632M | Fits 32 GB MacBook | Linear probe. |
+| **Prov-GigaPath** | Microsoft / Providence | HF (gated) | ~1.1B | Colab T4+ recommended | Tile + slide-level encoder. |
+| **Hibou-b** (ViT-B/14) | Histai | HF (gated but open-weights) | ~86M | Fits any laptop | Open foundation model; quick iteration. |
+| **Hibou-L** (ViT-L/14) | Histai | HF (gated but open-weights) | ~304M | Fits 16 GB MacBook | Stronger Hibou variant; still laptop-friendly. |
+
+### 11.3a Tier C-organ — Organ-specific pathology models (Histai SPIDER)
+
+SPIDER ships **matched model + dataset pairs** — the model is pretrained on
+the corresponding SPIDER dataset, which ships with tile-level labels. That
+pairing is unusual and valuable: you get a ready-to-use classifier *and*
+the data it was trained on, in one place.
+
+| Model | HF URL | Paired dataset | Role |
+|---|---|---|---|
+| **SPIDER-breast** | https://huggingface.co/histai/SPIDER-breast-model | https://huggingface.co/datasets/histai/SPIDER-breast | Ready-to-use breast-tile classifier and fine-tuning baseline. |
+| **SPIDER-colorectal** | https://huggingface.co/histai/SPIDER-colorectal-model | https://huggingface.co/datasets/histai/SPIDER-colorectal | Ready-to-use colorectal-tile classifier and fine-tuning baseline. |
+
+**How SPIDER slots into OpenPathAI:**
+
+- **Model zoo** (this section) — registered as gated Tier C classifiers with
+  YAML cards.
+- **Dataset registry** (§10.1) — registered as first-class tile datasets so
+  pathologists can train / fine-tune / benchmark on them directly.
+- **Analyse tab** (Phase 6) — offered as a one-click "drop your breast /
+  colorectal tile → get a prediction" option.
+- **Benchmark suite** (v0.5) — used as an organ-specific evaluation
+  alongside LC25000.
+
+### 11.3b Foundation-model usage patterns
+
+Foundation models (both Tier C and Tier C-organ) are exposed as:
 1. **Frozen feature extractor** → linear probe or MLP head.
 2. **Fine-tune** (unfrozen or LoRA via `peft`).
 3. **MIL backbone** — CLAM/TransMIL on top of frozen embeddings.
 4. **Zero-shot classifier** (CONCH only) — text prompts → class labels.
+5. **Ready-to-use classifier** (SPIDER only) — the model already has a
+   classification head matching the paired dataset; no training needed for
+   in-distribution tiles.
 
 ### 11.4 Tier D — Detection & Segmentation models (v1.0, Phase 14)
 
