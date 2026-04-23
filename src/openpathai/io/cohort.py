@@ -10,7 +10,8 @@ from __future__ import annotations
 
 import hashlib
 import json
-from pathlib import Path
+import re
+from pathlib import PureWindowsPath
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -45,10 +46,34 @@ class SlideRef(BaseModel):
     @field_validator("path")
     @classmethod
     def _normalise_path(cls, value: str) -> str:
+        """Normalise a filesystem path in a cross-platform way.
+
+        The Phase 2 contract is "collapse repeated separators without
+        otherwise touching the path shape". ``pathlib.Path`` is
+        OS-dependent (PosixPath on macOS/Linux, WindowsPath on
+        Windows) and would rewrite ``/tmp/slide.svs`` to
+        ``\\tmp\\slide.svs`` on Windows, which is wrong for slide
+        paths that routinely come from URIs / POSIX cohorts.
+        """
         # Keep URIs as-is; only normalise pure filesystem paths.
         if "://" in value:
             return value
-        return str(Path(value))
+        # Pure Windows paths (drive letter, or containing ``\``) are
+        # normalised through ``PureWindowsPath`` so ``C:\\foo\\\\bar``
+        # collapses correctly.
+        if re.match(r"^[A-Za-z]:[\\/]", value) or "\\" in value:
+            return str(PureWindowsPath(value))
+        # Everything else is treated as POSIX-style: collapse any run
+        # of forward slashes to a single slash. This is deliberately
+        # OS-agnostic — the path remains a verbatim string that the
+        # Phase 2 SlideReader interprets.
+        collapsed = re.sub(r"/+", "/", value)
+        # Preserve the historical trailing-slash semantics of
+        # ``str(PurePosixPath(...))``: a bare "/" stays as "/", any
+        # non-root path drops a trailing separator.
+        if len(collapsed) > 1 and collapsed.endswith("/"):
+            collapsed = collapsed.rstrip("/") or "/"
+        return collapsed
 
     @property
     def is_file(self) -> bool:

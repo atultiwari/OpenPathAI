@@ -68,6 +68,22 @@ def test_slideref_url_path_preserved() -> None:
 @pytest.mark.unit
 def test_slideref_local_path_normalised() -> None:
     s = SlideRef(slide_id="s1", path="/tmp//slide1.svs")
-    # PosixPath collapses double slashes.
+    # Double slashes collapse; forward slashes preserved on every OS.
     assert s.path == "/tmp/slide1.svs"
     assert s.is_file is True
+
+
+@pytest.mark.unit
+def test_slideref_posix_path_is_stable_on_windows() -> None:
+    # Regression guard: on Windows, pathlib.Path would rewrite "/tmp/..."
+    # to "\\tmp\\..." — which would silently break any cohort declared
+    # with forward slashes. The normaliser must keep POSIX paths intact
+    # on every OS.
+    s = SlideRef(slide_id="s1", path="/data/cohort/slide.svs")
+    assert s.path == "/data/cohort/slide.svs"
+
+
+@pytest.mark.unit
+def test_slideref_windows_path_collapses_separators() -> None:
+    s = SlideRef(slide_id="s1", path=r"C:\\data\\\\slide.svs")
+    assert s.path == r"C:\data\slide.svs"
