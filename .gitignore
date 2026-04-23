@@ -86,6 +86,8 @@ data/cohorts/user/
 data/stain_references/user/
 ~/.openpathai/
 runs/
+analyse-output/
+try-it-scratch/
 mlruns/
 mlartifacts/
 outputs/
