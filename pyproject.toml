@@ -98,8 +98,16 @@ train = [
     "torchmetrics>=1.3,<2",
     "lightning>=2.2,<3",
 ]
+# Explainability (Phase 4+) — pure-torch Grad-CAM / attention rollout /
+# IG ship in-tree; this extra pulls the *reference* library flavours
+# (pytorch-grad-cam + captum) for users who want them. Lazy-imported.
+explain = [
+    "openpathai[train]",
+    "grad-cam>=1.5,<2",
+    "captum>=0.7,<1",
+]
 local = [
-    "openpathai[data,kaggle,wsi,train]",
+    "openpathai[data,kaggle,wsi,train,explain]",
 ]
 colab = [
     "openpathai[local]",

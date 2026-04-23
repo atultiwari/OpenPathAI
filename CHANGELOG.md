@@ -239,3 +239,57 @@ Tagged `phase-03-complete`. Acceptance criteria in
   the denominator reflects the code you can exercise without torch).
 - **Developer guide** updated with a "Training (Phase 3)" section and
   a self-contained runnable example.
+
+### Phase 4 — Explainability (complete, 2026-04-24)
+
+Tagged `phase-04-complete`. Acceptance criteria in
+[`docs/planning/phases/phase-04-explainability.md`](docs/planning/phases/phase-04-explainability.md)
+§4 all ticked.
+
+- **New package `openpathai.explain/`** — unified explainability:
+  - `base.py` — pure numpy helpers: `normalise_01`, `resize_heatmap`,
+    `heatmap_to_rgb`, `overlay_on_tile`, `encode_png`, `decode_png`.
+  - `gradcam.py` — `GradCAM` (Selvaraju 2017), `GradCAMPlusPlus`
+    (Chattopadhay 2018), `EigenCAM` (Muhammad & Yeasin 2020) driven
+    by context-managed forward/backward hooks. An
+    `eigencam_from_activation(...)` helper exposes the SVD math
+    torch-free for unit tests.
+  - `attention_rollout.py` — `AttentionRollout` + `attention_rollout`
+    (Abnar & Zuidema 2020). A `rollout_from_matrices(...)` helper
+    makes the per-layer composition testable without torch.
+  - `integrated_gradients.py` — `integrated_gradients(model, tile,
+    target, ...)` (Sundararajan et al. 2017). Streams interpolated
+    inputs through a loop so peak memory stays bounded regardless of
+    step count.
+  - `slide_aggregator.py` — `SlideHeatmapGrid` + `TilePlacement`
+    stitch per-tile heatmaps onto a slide-wide canvas
+    (`max` / `mean` / `sum` aggregation). Pure numpy; full DZI path
+    arrives in Phase 9.
+  - `artifacts.py` — `HeatmapArtifact` pydantic artifact wrapping a
+    base64-encoded PNG plus provenance. Content-hashable for the
+    pipeline cache.
+  - `node.py` — registers `explain.gradcam`,
+    `explain.attention_rollout`, `explain.integrated_gradients`
+    pipeline nodes plus `register_explain_target` /
+    `lookup_explain_target` helpers so JSON-safe node inputs can
+    reference live torch models + tiles.
+- **New optional extra `[explain]`** bundling `grad-cam`
+  (pytorch-grad-cam) and `captum`. Every shipped explainer works
+  without these; the extra is a convenience for users who want the
+  reference library flavours. `[local]` now aggregates
+  `[data,kaggle,wsi,train,explain]`.
+- **Public API re-exported** from `openpathai`: `GradCAM`,
+  `GradCAMPlusPlus`, `EigenCAM`, `AttentionRollout`,
+  `HeatmapArtifact`, `SlideHeatmapGrid`, `TilePlacement`,
+  `attention_rollout`, `integrated_gradients`, `decode_png`,
+  `encode_png`, `normalise_01`, `overlay_on_tile`, `resize_heatmap`.
+- **Tests:** 59 new unit + integration tests (240 total green; 15
+  torch-gated tests skip cleanly without torch). Coverage on
+  `openpathai.explain` is **95.9 %** — torch-only branches are
+  marked `# pragma: no cover` so the denominator reflects the code
+  runnable without `[train]`.
+- **Developer guide** updated with an "Explainability (Phase 4)"
+  section including a runnable Grad-CAM example.
+- **Known limitation:** attention rollout is ViT-only in v0.1. Swin's
+  hierarchical stages break the naive rollout; full coverage lands
+  with Phase 13 alongside the Tier-C foundation-model integration.

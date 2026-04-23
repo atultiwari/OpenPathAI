@@ -296,6 +296,64 @@ openpathai models list --family vit
 openpathai train --model resnet18 --num-classes 4 --epochs 1 --synthetic
 ```
 
+## Explainability (Phase 4)
+
+Phase 4 lands a unified explainability layer over every Tier-A backbone.
+Public API under ``openpathai.explain``:
+
+- **`GradCAM` / `GradCAMPlusPlus` / `EigenCAM`** — CNN heatmaps via
+  forward/backward hooks (Selvaraju 2017, Chattopadhay 2018,
+  Muhammad & Yeasin 2020).
+- **`AttentionRollout`** / **`attention_rollout(model, tile)`** —
+  Abnar & Zuidema 2020 attention rollout for fixed-token ViTs.
+- **`integrated_gradients(model, tile, target)`** — Sundararajan et al.
+  2017 axiomatic attribution.
+- **`SlideHeatmapGrid`** + **`TilePlacement`** — deterministic
+  stitching of per-tile heatmaps onto a slide-wide canvas (full DZI
+  overlay arrives in Phase 9).
+- **`HeatmapArtifact`** — pydantic artifact wrapping a base64 PNG,
+  hashable by the pipeline cache.
+- Utility helpers: ``normalise_01``, ``resize_heatmap``,
+  ``heatmap_to_rgb``, ``overlay_on_tile``, ``encode_png``, ``decode_png``.
+
+Three pipeline nodes register automatically: ``explain.gradcam``,
+``explain.attention_rollout``, and ``explain.integrated_gradients``.
+
+Torch is an optional dependency via the ``[train]`` extra. The
+reference implementations ship in-tree; the ``[explain]`` extra pulls
+``pytorch-grad-cam`` and ``captum`` for users who prefer the canonical
+library flavours.
+
+Minimal end-to-end (requires ``[train]``):
+
+```python
+import torch
+import torch.nn as nn
+
+from openpathai import GradCAM, encode_png
+
+
+class _Tiny(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.conv = nn.Conv2d(3, 8, kernel_size=3, padding=1)
+        self.pool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Linear(8, 2)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.fc(self.pool(torch.relu(self.conv(x))).flatten(1))
+
+
+model = _Tiny()
+tile = torch.randn(1, 3, 64, 64)
+cam = GradCAM(model, target_layer=model.conv).explain(tile, target_class=0)
+# cam is a (H, W) numpy array in [0, 1] — encode as PNG or overlay.
+```
+
+Known limitation: ``attention_rollout`` supports fixed-token ViTs only.
+Swin's hierarchical stages change the token count across layers; that
+support lands with Phase 13's foundation-model integration.
+
 ## License
 
 By contributing, you agree your contribution is licensed under the
