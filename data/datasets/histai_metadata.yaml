@@ -1,0 +1,58 @@
+name: histai_metadata
+display_name: "HISTAI-Metadata — slide-level metadata registry"
+modality: wsi
+num_classes: 1
+classes:
+  - metadata
+tile_size: null
+total_images: null
+license: "CC-BY-4.0 (verify on the repo before redistribution)"
+tissue: [mixed]
+stain: "H&E"
+magnification: "varies"
+mpp: null
+
+download:
+  method: huggingface
+  huggingface_repo: histai/HISTAI-metadata
+  size_gb: 0.2
+  gated: true
+  requires_confirmation: false
+  partial_download_hint: |
+    Small JSON/CSV companion to the HISTAI image cohorts; the whole
+    thing fits on a laptop. Fetch with ``huggingface-cli download
+    histai/HISTAI-metadata --repo-type dataset`` or via
+    ``openpathai download histai_metadata``.
+  instructions_md: |
+    1. Request access on https://huggingface.co/datasets/histai/HISTAI-metadata.
+    2. Run ``huggingface-cli login`` and paste your access token.
+    3. The dataset is small (few hundred MB) and safe to stage locally.
+
+citation:
+  text: >
+    HistAI. HISTAI-Metadata: slide-level metadata registry for the
+    HISTAI cohorts.
+    https://huggingface.co/datasets/histai/HISTAI-metadata (2025).
+  url: https://huggingface.co/datasets/histai/HISTAI-metadata
+
+recommended_models: []
+recommended_splits:
+  type: slide_level
+  train: 0.70
+  val: 0.15
+  test: 0.15
+  stratify_by: [slide]
+
+tier_compatibility:
+  T1: ok
+  T2: ok
+  T3: ok
+
+qc_gates: []
+
+notes: |
+  Metadata-only companion to the HISTAI WSI cohorts. No pixels are
+  distributed here — the card exists so a pipeline can declare "resolve
+  slide metadata from this registry" without pulling the image data.
+  Useful for filtering the full HISTAI-breast release to a subset of
+  interest before downloading slides.

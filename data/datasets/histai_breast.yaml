@@ -1,0 +1,72 @@
+name: histai_breast
+display_name: "HISTAI-Breast — Breast Histopathology WSI cohort"
+modality: wsi
+num_classes: 1
+classes:
+  - unlabeled
+tile_size: null
+total_images: null
+license: "CC-BY-4.0 (verify on the repo before redistribution)"
+tissue: [breast]
+stain: "H&E"
+magnification: "40X"
+mpp: null
+
+download:
+  method: huggingface
+  huggingface_repo: histai/HISTAI-breast
+  size_gb: 800.0
+  gated: true
+  requires_confirmation: true
+  partial_download_hint: |
+    The full cohort is very large (~0.5-1 TB depending on the release).
+    For a POC, use the HuggingFace Hub snapshot_download API with an
+    allow_patterns glob to pull a handful of slides, e.g.:
+    ``snapshot_download(repo_id="histai/HISTAI-breast", repo_type="dataset",
+    allow_patterns=["slides/HB-0001*"])``. Phase 5's CLI offers
+    ``openpathai download histai_breast --subset N`` to wrap this.
+  instructions_md: |
+    1. Create a Hugging Face account and click **Request access** on
+       https://huggingface.co/datasets/histai/HISTAI-breast. Access is
+       usually granted within a few days.
+    2. Run ``huggingface-cli login`` and paste your access token.
+    3. Expect tens to hundreds of GB on disk once staged. Prefer
+       ``--subset`` for first-time exploration.
+
+citation:
+  text: >
+    HistAI. HISTAI-Breast: a whole-slide breast histopathology dataset.
+    https://huggingface.co/datasets/histai/HISTAI-breast (2025).
+  url: https://huggingface.co/datasets/histai/HISTAI-breast
+
+recommended_models:
+  - uni
+  - uni2_h
+  - conch
+  - virchow2
+  - hibou_b
+recommended_splits:
+  type: slide_level
+  train: 0.70
+  val: 0.15
+  test: 0.15
+  stratify_by: [slide]
+
+tier_compatibility:
+  T1: "no"
+  T2: slow
+  T3: ok
+
+qc_gates:
+  - blur
+  - stain_quality
+  - tissue_fraction
+
+notes: |
+  Large-scale breast WSI cohort released by the HistAI foundation-model
+  authors. Intended for **foundation-model feature extraction and MIL**
+  (Phase 13) rather than tile classification — most tiles are unlabeled
+  and the slides come at 40X, so laptop (T1) training is impractical
+  without heavy subsetting. First-time users should pull a few slides
+  via ``openpathai download histai_breast --subset 5`` to sanity-check
+  the I/O path before pulling the full release.

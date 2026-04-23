@@ -20,6 +20,8 @@ from __future__ import annotations
 
 __version__ = "0.0.1.dev0"
 
+from openpathai import demo as _demo_nodes
+from openpathai.cli.pipeline_yaml import PipelineYamlError, dump_pipeline, load_pipeline
 from openpathai.data import (
     DatasetCard,
     DatasetRegistry,
@@ -108,6 +110,11 @@ from openpathai.training import (
     synthetic_tile_batch,
 )
 
+# Touch the demo module so ruff doesn't treat the side-effecting
+# ``from openpathai import demo`` above as unused. Importing that
+# module registers its ``demo.*`` nodes onto the global REGISTRY.
+_ = _demo_nodes
+
 __all__ = [
     "REGISTRY",
     "Artifact",
@@ -145,6 +152,7 @@ __all__ = [
     "PatientFold",
     "Pipeline",
     "PipelineStep",
+    "PipelineYamlError",
     "RunManifest",
     "RunResult",
     "ScalarArtifact",
@@ -173,11 +181,13 @@ __all__ = [
     "default_cache_root",
     "default_model_registry",
     "default_registry",
+    "dump_pipeline",
     "encode_png",
     "expected_calibration_error",
     "focal_loss",
     "integrated_gradients",
     "ldam_loss",
+    "load_pipeline",
     "macro_f1",
     "node",
     "normalise_01",

@@ -1,0 +1,30 @@
+id: demo-smoke
+mode: exploratory
+
+# A minimal DAG wired from the shipped ``demo.*`` nodes — runs on any
+# Python install, with no torch, no dataset download, and no external
+# network calls. Exercises:
+#
+# * Pipeline YAML parsing (``openpathai.cli.pipeline_yaml.load_pipeline``).
+# * Kahn topological sort on a three-step chain with branching.
+# * ``@step.field`` reference resolution (``@source.value``).
+# * Content-addressable caching — rerun is all-hits.
+#
+# Real training pipelines (Phase 3 + 9) reuse exactly the same shape
+# with ``training.train`` as the op.
+steps:
+  - id: source
+    op: demo.constant
+    inputs:
+      value: 7
+
+  - id: doubled
+    op: demo.double
+    inputs:
+      value: "@source.value"
+
+  - id: average
+    op: demo.mean
+    inputs:
+      a: "@source.value"
+      b: "@doubled.value"

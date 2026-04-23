@@ -293,3 +293,73 @@ Tagged `phase-04-complete`. Acceptance criteria in
 - **Known limitation:** attention rollout is ViT-only in v0.1. Swin's
   hierarchical stages break the naive rollout; full coverage lands
   with Phase 13 alongside the Tier-C foundation-model integration.
+
+### Phase 5 — CLI + notebook driver (complete, 2026-04-24)
+
+Tagged `phase-05-complete`. Acceptance criteria in
+[`docs/planning/phases/phase-05-cli-notebook.md`](docs/planning/phases/phase-05-cli-notebook.md)
+§4 all ticked.
+
+- **CLI reorganised** into per-subcommand modules under
+  `openpathai.cli/`: `_app.py` (root app), `main.py` (wiring),
+  `models_cmd.py`, `train_cmd.py`, `run_cmd.py`, `analyse_cmd.py`,
+  `download_cmd.py`, `datasets_cmd.py`, `cache_cmd.py`. Every heavy
+  import (torch / timm / huggingface_hub / kaggle) happens inside
+  command bodies so `openpathai --help` stays fast and torch-free.
+- **New subcommands:**
+  - `openpathai run PIPELINE.yaml` — parse a YAML pipeline via
+    `openpathai.cli.pipeline_yaml.load_pipeline` and execute through
+    the Phase 1 executor; writes a `RunManifest` + artifact summary.
+  - `openpathai analyse --tile ... --model ...` — tile inference +
+    heatmap generation (gradcam / gradcam_plus_plus / eigencam /
+    integrated_gradients). Requires `[train]`.
+  - `openpathai download NAME [--yes] [--subset N]` — staged dataset
+    fetcher with size + gated-access confirmation UX. Dispatches to
+    the new `openpathai.data.downloaders` module (kaggle / hf / http
+    / zenodo / manual backends, lazy-imported).
+  - `openpathai datasets list | show` — inspect the card registry.
+  - `openpathai cache show | clear | invalidate` — inspect / prune
+    the Phase 1 content-addressable cache.
+- **New module `openpathai.cli.pipeline_yaml`** — `load_pipeline(path)`
+  returns a typed `Pipeline`; `dump_pipeline(pipeline)` round-trips
+  to YAML. Pydantic-validated; clear errors on malformed YAML.
+- **New module `openpathai.data.downloaders`** — `dispatch_download`
+  + per-backend functions + `describe_download` (human-readable
+  pre-download summary that surfaces size, gated status, partial-
+  download hints, and card instructions). Zenodo dispatch raises
+  `NotImplementedError` — lands in Phase 9.
+- **New module `openpathai.demo`** — tiny `demo.constant`,
+  `demo.double`, `demo.mean` nodes registered globally. Gives
+  `openpathai run` a torch-free smoke target for docs + tests.
+- **New optional extra behaviour on `DatasetDownload`**:
+  - `gated: bool` — marks sources that require prior access approval.
+  - `requires_confirmation: bool | None` — explicit override on the
+    size-threshold logic.
+  - `partial_download_hint: str | None` — POC-sized fetch guidance.
+  - `should_confirm_before_download` property — defaults to `True`
+    when `size_gb >= 5.0` or the card overrides explicitly.
+- **New dataset cards** under `data/datasets/`:
+  - `histai_breast.yaml` — HuggingFace `histai/HISTAI-breast`
+    (~800 GB, **gated**, WSI breast cohort for Phase 13 feature
+    extraction; partial-download hint points at a 5-slide allow-list
+    glob via `--subset`).
+  - `histai_metadata.yaml` — HuggingFace `histai/HISTAI-metadata`
+    (~200 MB, gated-but-small, metadata-only companion). Useful for
+    filtering the HISTAI-Breast release before downloading slides.
+- **Notebook** `notebooks/01_quick_start.ipynb` — self-contained
+  tour of Phase 2/3/4/5 running on CPU with no dataset download.
+- **Pipeline YAML** `pipelines/supervised_synthetic.yaml` + a short
+  `pipelines/README.md` on the YAML shape.
+- **Docs** — new `docs/cli.md` page linked from `mkdocs.yml` nav;
+  `docs/developer-guide.md` extended with a "CLI + notebook driver
+  (Phase 5)" block; HuggingFace setup guide gains a HISTAI cohorts
+  section with size + access guidance.
+- **Public API** re-exports `load_pipeline`, `dump_pipeline`,
+  `PipelineYamlError`.
+- **Tests:** 35 new unit + integration tests across `tests/unit/cli/`
+  and `tests/unit/data/test_downloaders.py` (275 total green; 16
+  torch-gated tests skip cleanly without torch). Coverage on
+  `openpathai.cli` + `openpathai.data.downloaders` +
+  `openpathai.demo` is **94.6 %** — torch-gated CLI bodies are
+  `# pragma: no cover` so the denominator reflects the torch-free
+  surface.

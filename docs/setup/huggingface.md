@@ -148,6 +148,23 @@ anything larger.
 Segmentation) as baseline classifiers and into Phase 2 (Data layer) as
 dataset cards once the foundation work is ready.
 
+#### HISTAI cohorts (Histai — gated, **WSI-scale**)
+
+Two companion datasets to the Hibou / SPIDER model family. Registered
+in the dataset registry as `histai_breast` and `histai_metadata`
+respectively, so Phase 5's CLI can surface them via
+`openpathai datasets list`.
+
+| Artifact | HF URL | Size (staged) | Notes |
+|---|---|---|---|
+| **HISTAI-Breast** | https://huggingface.co/datasets/histai/HISTAI-breast | **~0.5–1 TB** | Whole-slide breast cohort. Pull a POC subset first with `openpathai download histai_breast --subset 5`. Intended for **Phase 13** foundation-model feature extraction / MIL — not laptop training. |
+| **HISTAI-Metadata** | https://huggingface.co/datasets/histai/HISTAI-metadata | ~200 MB | Slide-level metadata registry; no pixels. Safe to stage on a laptop. Useful for filtering HISTAI-Breast before downloading slides. |
+
+**Request-flow tip:** You can request both from different HF accounts if
+needed — once metadata is staged locally, you can pre-filter the slides
+you care about before requesting breast-image access on your main
+account. Approvals are usually granted within a few days.
+
 > **Heads-up:** HF slugs occasionally move between org names. If any link
 > 404s, search `https://huggingface.co/models?search=<model name>`; the
 > author org is usually `MahmoodLab`, `paige-ai`, `prov-gigapath`, `wanglab`,

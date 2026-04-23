@@ -32,7 +32,22 @@ DownloadMethod = Literal["kaggle", "zenodo", "huggingface", "http", "manual"]
 
 
 class DatasetDownload(BaseModel):
-    """Where and how to fetch the dataset."""
+    """Where and how to fetch the dataset.
+
+    Phase 5 introduces three optional fields that drive the
+    ``openpathai download`` CLI flow:
+
+    * ``gated`` — the source requires the user to have explicitly
+      requested access (typical for Hugging Face gated repos). The CLI
+      surfaces a reminder instead of attempting a silent download.
+    * ``requires_confirmation`` — the dataset is large enough that the
+      CLI should print ``size_gb`` and prompt ``y/n`` before it pulls
+      anything. Defaults to ``True`` for anything with ``size_gb`` above
+      5 GB, but a card can override explicitly.
+    * ``partial_download_hint`` — human-readable instructions on how to
+      fetch a POC subset (e.g. "pass `--subset N` to grab N slides"),
+      shown alongside the size warning.
+    """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -43,6 +58,9 @@ class DatasetDownload(BaseModel):
     url: str | None = None
     size_gb: float | None = Field(default=None, ge=0.0)
     instructions_md: str | None = None
+    gated: bool = False
+    requires_confirmation: bool | None = None
+    partial_download_hint: str | None = None
 
     @model_validator(mode="after")
     def _require_source(self) -> DatasetDownload:
@@ -58,6 +76,14 @@ class DatasetDownload(BaseModel):
         if self.method == "manual" and not self.instructions_md:
             raise ValueError("download.method='manual' requires instructions_md")
         return self
+
+    @property
+    def should_confirm_before_download(self) -> bool:
+        """Whether the CLI should prompt the user before fetching."""
+        if self.requires_confirmation is not None:
+            return self.requires_confirmation
+        # Anything large enough to be painful on a laptop warrants a prompt.
+        return self.size_gb is not None and self.size_gb >= 5.0
 
 
 class DatasetCitation(BaseModel):

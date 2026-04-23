@@ -354,6 +354,55 @@ Known limitation: ``attention_rollout`` supports fixed-token ViTs only.
 Swin's hierarchical stages change the token count across layers; that
 support lands with Phase 13's foundation-model integration.
 
+## CLI + notebook driver (Phase 5)
+
+Phase 5 unifies everything from Phases 1–4 behind a single
+``openpathai`` entry point. See [CLI reference](cli.md) for the full
+subcommand list; the high points:
+
+- **`openpathai run PIPELINE.yaml`** — parses YAML (``load_pipeline``)
+  and executes via the Phase 1 executor. Writes a ``RunManifest`` +
+  per-step artifact summary to ``runs/<uuid>/``.
+- **`openpathai analyse --tile ... --model ...`** — inference + heatmap
+  generation for a single tile. Requires ``[train]``.
+- **`openpathai download NAME [--yes] [--subset N]`** — staged dataset
+  fetch with size + gated-access confirmation. Backends dispatch on
+  `DatasetCard.download.method`; large or gated cards require an
+  explicit ``--yes``.
+- **`openpathai datasets list | show`** — inspect the Phase 2 card
+  registry. Phase 5 adds two HISTAI cohorts (``histai_breast``,
+  ``histai_metadata``) alongside LC25000 / PCam / mhist.
+- **`openpathai cache show | clear | invalidate`** — introspect and
+  prune the Phase 1 content-addressable cache.
+
+The library also ships a tiny **demo node set** (``demo.constant``,
+``demo.double``, ``demo.mean``) so ``openpathai run`` has a torch-free
+smoke target; real training pipelines swap in ``training.train`` with
+the same YAML shape.
+
+Pipeline YAML shape:
+
+```yaml
+id: demo
+mode: exploratory
+steps:
+  - id: source
+    op: demo.constant
+    inputs:
+      value: 7
+  - id: doubled
+    op: demo.double
+    inputs:
+      value: "@source.value"
+```
+
+The ``@step`` / ``@step.field`` syntax is resolved by the executor at
+dispatch time. See
+[`pipelines/supervised_synthetic.yaml`](https://github.com/atultiwari/OpenPathAI/blob/main/pipelines/supervised_synthetic.yaml)
+for a shipped example and
+[`notebooks/01_quick_start.ipynb`](https://github.com/atultiwari/OpenPathAI/blob/main/notebooks/01_quick_start.ipynb)
+for a cell-by-cell walk-through.
+
 ## License
 
 By contributing, you agree your contribution is licensed under the

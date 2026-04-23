@@ -20,10 +20,10 @@
 
 | | |
 |---|---|
-| Active phase | (none — **Phase 4 closed 2026-04-24**; Phase 5 pending user authorisation) |
-| Latest Git tag | `phase-04-complete` |
+| Active phase | (none — **Phase 5 closed 2026-04-24**; Phase 6 pending user authorisation) |
+| Latest Git tag | `phase-05-complete` |
 | Latest released version | (none yet — v0.1.0 ships after Phases 0–6 complete) |
-| Blocked on user | (a) authorisation to start Phase 5; (b) Hugging Face gated access requests running in parallel (non-blocking for Phase 5; required before Phase 15); (c) Ollama + MedGemma 1.5 **already installed** ✅. |
+| Blocked on user | (a) authorisation to start Phase 6; (b) HISTAI-breast gated-access still pending on the main HF account (non-blocking; CLI already lands the card + download flow, bulk download can wait); (c) Ollama + MedGemma 1.5 **already installed** ✅. |
 
 ---
 
@@ -36,7 +36,7 @@
 | 2 | Data layer: tile datasets + WSI I/O + cohorts | v0.1 | ✅ complete (2026-04-23, tag `phase-02-complete`) | [phase-02-data-layer.md](phase-02-data-layer.md) | 1.5 w target / same-day actual |
 | 3 | Model zoo + training engine (Tier A) | v0.1 | ✅ complete (2026-04-23, tag `phase-03-complete`) | [phase-03-model-zoo-training.md](phase-03-model-zoo-training.md) | 1 w target / same-day actual |
 | 4 | Explainability (Grad-CAM + attention rollout + IG) | v0.1 | ✅ complete (2026-04-24, tag `phase-04-complete`) | [phase-04-explainability.md](phase-04-explainability.md) | 1 w target / same-day actual |
-| 5 | CLI + notebook driver | v0.1 | ⏳ pending | — | 3–5 d |
+| 5 | CLI + notebook driver | v0.1 | ✅ complete (2026-04-24, tag `phase-05-complete`) | [phase-05-cli-notebook.md](phase-05-cli-notebook.md) | 3–5 d target / same-day actual |
 | 6 | Gradio GUI: Analyse / Train / Datasets / Models / Settings | v0.1 | ⏳ pending | — | 1.5 w |
 | 7 | Safety v1: PDF reports + model cards + borderline band | v0.2 | ⏳ pending | — | 1 w |
 | 8 | Audit + history + run diff | v0.2 | ⏳ pending | — | 1 w |
