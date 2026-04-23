@@ -59,6 +59,7 @@ nav:
       - Hugging Face: setup/huggingface.md
       - Local LLM backend: setup/llm-backend.md
   - CLI reference: cli.md
+  - GUI: gui.md
   - Developer guide: developer-guide.md
 
 markdown_extensions:

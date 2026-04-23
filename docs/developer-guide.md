@@ -403,6 +403,27 @@ for a shipped example and
 [`notebooks/01_quick_start.ipynb`](https://github.com/atultiwari/OpenPathAI/blob/main/notebooks/01_quick_start.ipynb)
 for a cell-by-cell walk-through.
 
+## Gradio GUI (Phase 6)
+
+Phase 6 lands the user-facing surface — `openpathai gui` opens a
+five-tab Gradio app (Analyse, Train, Datasets, Models, Settings).
+Complete walkthrough: [GUI docs](gui.md).
+
+Library-first architecture: every gradio callback is a thin wrapper
+around `openpathai.{training, explain, data, pipeline}` calls. The
+view-model helpers live in `openpathai.gui.views` (pure Python, no
+gradio dependency) so the same row-shaping code drives the Gradio
+tabs today and will drive the React canvas in Phase 20.
+
+Gradio is strictly optional — the `[gui]` extra pins
+`gradio>=5,<6`. Every `import gradio` lives inside a function body,
+so `import openpathai.gui` loads nothing gradio-specific (verified by
+a regression test that checks `sys.modules`).
+
+```python
+from openpathai.gui import build_app, AppState, datasets_rows, models_rows
+```
+
 ## License
 
 By contributing, you agree your contribution is licensed under the

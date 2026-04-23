@@ -46,6 +46,7 @@ from openpathai.explain import (
     overlay_on_tile,
     resize_heatmap,
 )
+from openpathai.gui import AppState, build_app, launch_app
 from openpathai.io import Cohort, SlideRef, open_slide
 from openpathai.models import (
     ModelAdapter,
@@ -117,6 +118,7 @@ _ = _demo_nodes
 
 __all__ = [
     "REGISTRY",
+    "AppState",
     "Artifact",
     "AttentionRollout",
     "CacheEntryMeta",
@@ -173,6 +175,7 @@ __all__ = [
     "accuracy",
     "adapter_for_card",
     "attention_rollout",
+    "build_app",
     "canonical_json",
     "canonical_sha256",
     "capture_environment",
@@ -186,6 +189,7 @@ __all__ = [
     "expected_calibration_error",
     "focal_loss",
     "integrated_gradients",
+    "launch_app",
     "ldam_loss",
     "load_pipeline",
     "macro_f1",

@@ -106,17 +106,21 @@ explain = [
     "grad-cam>=1.5,<2",
     "captum>=0.7,<1",
 ]
+# Gradio surface (Phase 6+). Gradio is a ~200 MB dependency chain, so
+# it lives in its own extra. Every ``import gradio`` in the
+# ``openpathai.gui`` package is lazy-resolved inside a function body.
+gui = [
+    "openpathai[explain]",
+    "gradio>=5,<6",
+]
 local = [
-    "openpathai[data,kaggle,wsi,train,explain]",
+    "openpathai[data,kaggle,wsi,train,explain,gui]",
 ]
 colab = [
     "openpathai[local]",
 ]
 runpod = [
     "openpathai[colab]",
-]
-gui = [
-    "openpathai[local]",
 ]
 notebook = [
     "openpathai[local]",

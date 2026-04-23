@@ -363,3 +363,50 @@ Tagged `phase-05-complete`. Acceptance criteria in
   `openpathai.demo` is **94.6 %** — torch-gated CLI bodies are
   `# pragma: no cover` so the denominator reflects the torch-free
   surface.
+
+### Phase 6 — Gradio GUI (complete, 2026-04-24)
+
+Tagged `phase-06-complete`. Acceptance criteria in
+[`docs/planning/phases/phase-06-gradio-gui.md`](docs/planning/phases/phase-06-gradio-gui.md)
+§4 all ticked. **This closes out v0.1.0.**
+
+- **New package `openpathai.gui/`** — five-tab Gradio 5 app:
+  - `state.py` — `AppState` immutable dataclass (cache root, device,
+    last selections, host/port/share knobs). Pure Python.
+  - `views.py` — pure-Python view-model helpers: `datasets_rows`,
+    `models_rows`, `cache_summary`, `explainer_choices`,
+    `device_choices`, `target_layer_hint`. No gradio dependency —
+    the same helpers will drive the Phase 17 auto-Methods generator
+    and the Phase 20 React canvas.
+  - `analyse_tab.py` / `train_tab.py` / `datasets_tab.py` /
+    `models_tab.py` / `settings_tab.py` — one module per tab, each
+    a thin `build(state)` renderer that lazy-imports gradio.
+  - `app.py` — `build_app(state)` returns a `gradio.Blocks`;
+    `launch_app(state, **kwargs)` calls `.launch(...)`.
+- **New CLI subcommand** `openpathai gui` with `--host`, `--port`,
+  `--share`, `--cache-root`, `--device` flags. Exits 3 with a
+  friendly "install the `[gui]` extra" message when gradio is absent.
+- **New optional extra `[gui]`** pinning `gradio>=5,<6`. Pulls
+  `[explain]` transitively. `[local]` now aggregates
+  `[data,kaggle,wsi,train,explain,gui]`.
+- **Iron rule #1 (library-first, UI-last) upheld** — every callback
+  in every tab module delegates to an existing library function.
+  A regression test asserts `sys.modules` has no `gradio` entry after
+  `import openpathai.gui`, so importing the package never triggers
+  the ~200 MB gradio dependency chain.
+- **Public API** re-exports `AppState`, `build_app`, `launch_app`.
+- **Docs:** new `docs/gui.md` page linked from `mkdocs.yml`;
+  developer guide gains a "Gradio GUI (Phase 6)" block.
+- **Tests:** 19 new unit tests across `tests/unit/gui/` + CLI
+  (`tests/unit/cli/test_cli_gui.py`). 294 tests green; 17
+  torch/gradio-gated tests skip cleanly. Coverage on
+  `openpathai.gui` + `openpathai.cli.gui_cmd` is **94.3 %** — torch/
+  gradio-only bodies are `# pragma: no cover` so the denominator
+  reflects the lean surface.
+
+### v0.1.0 release cut — unblocked at Phase 6 close
+
+Phases 0–6 shipped v0.1.0's feature set: library primitives + data
+layer + training + explainability + CLI + GUI. Next phase (Phase 7 —
+Safety v1: PDF reports + model cards + borderline band) opens the
+v0.2.0 development line.
