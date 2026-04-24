@@ -20,9 +20,9 @@
 
 | | |
 |---|---|
-| Active phase | **Phase 17 — Diagnostic mode + signed manifests + auto-Methods** (🔄 spec authored + implementation in flight, 2026-04-24) |
-| Latest Git tag | `phase-16-complete` (pushed to `origin`) |
-| Latest released version | v0.1.0 feature set landed; v0.2.0 complete; v0.5.0 fully landed; v1.0.0 line advancing (Phase 13 ✅, 14 ✅, 15 ✅ — Bet 2 live, 16 ✅ — **Bet 1 complete** ✨, Phase 17 in flight — Bet 3 closing). |
+| Active phase | **Phase 18 — Packaging + Docker + docs site** (pending spec; Phase 17 closed 2026-04-24) |
+| Latest Git tag | `phase-17-complete` (pushed to `origin`) |
+| Latest released version | v0.1.0 feature set landed; v0.2.0 complete; v0.5.0 fully landed; v1.0.0 line complete (Phases 13–17 ✅). **All three bets live**: Bet 1 ✅ (active learning), Bet 2 ✅ (NL + zero-shot), Bet 3 ✅ (reproducibility). 🎯 |
 | Blocked on user | (a) HISTAI-breast gated-access still pending on the main HF account (non-blocking); (b) Ollama + MedGemma 1.5 **already installed** ✅. |
 
 ---
@@ -48,7 +48,7 @@
 | 14 | **Detection & Segmentation** (YOLOv8/11/26, RT-DETR, nnU-Net, MedSAM2) | v1.0 | ✅ complete (2026-04-24, tag `phase-14-complete`) | [phase-14-detection-segmentation.md](phase-14-detection-segmentation.md) | 2 w target / same-day actual |
 | 15 | CONCH zero-shot + NL pipelines + **MedGemma 1.5** backend (Bet 2 live) | v1.0 | ✅ complete (2026-04-24, tag `phase-15-complete`) | [phase-15-nl-zeroshot-medgemma.md](phase-15-nl-zeroshot-medgemma.md) | 1.5 w target / same-day actual |
 | 16 | Active learning GUI + Annotate tab (MedSAM2-assisted) (Bet 1 complete) | v1.0 | ✅ complete (2026-04-24, tag `phase-16-complete`) | [phase-16-annotate-gui.md](phase-16-annotate-gui.md) | 1.5 w target / same-day actual |
-| 17 | Diagnostic mode + signed manifests + auto-Methods (Bet 3 complete) | v1.0 | 🔄 active (2026-04-24) | [phase-17-diagnostic-mode-sigstore.md](phase-17-diagnostic-mode-sigstore.md) | 1 w |
+| 17 | Diagnostic mode + signed manifests + auto-Methods (Bet 3 complete) | v1.0 | ✅ complete (2026-04-24, tag `phase-17-complete`) | [phase-17-diagnostic-mode-sigstore.md](phase-17-diagnostic-mode-sigstore.md) | 1 w target / same-day actual |
 | 18 | Packaging + Docker + docs site | v1.1 | ⏳ pending | — | 1 w |
 | 19 | FastAPI backend for canvas | v2.0 | ⏳ pending | — | 2–3 w |
 | 20 | React + React Flow canvas (visual pipeline builder) | v2.0 | ⏳ pending | — | 3–4 w |
@@ -83,8 +83,8 @@ When a phase is deferred:
 | Bet | Starts | Complete | Status |
 |---|---|---|---|
 | **Bet 1 — Active learning loop** | Phase 12 (CLI) ✅ | Phase 16 (GUI) ✅ | ✅ Bet 1 complete (2026-04-24) |
-| **Bet 2 — NL + zero-shot (CONCH / MedSAM2 / MedGemma 1.5)** | Phase 14 (MedSAM2 lands) | Phase 15 (MedGemma + CONCH wired) | ⏳ |
-| **Bet 3 — Reproducibility as architecture** | Phase 1 (cache + node decorator) ✅ | Phase 17 (sigstore + auto-Methods) | 🔄 scaffolding landed |
+| **Bet 2 — NL + zero-shot (CONCH / MedSAM2 / MedGemma 1.5)** | Phase 14 ✅ | Phase 15 ✅ | ✅ Bet 2 complete (2026-04-24) |
+| **Bet 3 — Reproducibility as architecture** | Phase 1 (cache + node decorator) ✅ | Phase 17 (sigstore + auto-Methods) ✅ | ✅ Bet 3 complete (2026-04-24) |
 
 ---
 

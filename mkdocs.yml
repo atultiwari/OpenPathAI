@@ -74,6 +74,8 @@ nav:
   - Segmentation (Phase 14): segmentation.md
   - NL + zero-shot (Phase 15): nl-features.md
   - Annotate workflow (Phase 16): annotate-workflow.md
+  - Diagnostic mode (Phase 17): diagnostic-mode.md
+  - Methods writer (Phase 17): methods-writer.md
   - Developer guide: developer-guide.md
 
 markdown_extensions:

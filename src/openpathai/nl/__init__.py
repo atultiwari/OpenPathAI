@@ -40,6 +40,11 @@ from openpathai.nl.llm_backends.registry import (
     default_llm_backend_registry,
     detect_default_backend,
 )
+from openpathai.nl.methods_writer import (
+    MethodsParagraph,
+    MethodsWriterError,
+    write_methods,
+)
 from openpathai.nl.pipeline_gen import (
     PipelineDraft,
     PipelineDraftError,
@@ -59,6 +64,8 @@ __all__ = [
     "LLMBackendRegistry",
     "LLMUnavailableError",
     "LMStudioBackend",
+    "MethodsParagraph",
+    "MethodsWriterError",
     "OllamaBackend",
     "PipelineDraft",
     "PipelineDraftError",
@@ -68,4 +75,5 @@ __all__ = [
     "detect_default_backend",
     "draft_pipeline_from_prompt",
     "segment_text_prompt",
+    "write_methods",
 ]

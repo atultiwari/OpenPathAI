@@ -15,6 +15,7 @@ root Typer app so ``openpathai`` exposes a single, coherent surface.
 * Phase 13 — ``foundation``, ``mil``, ``linear-probe``.
 * Phase 14 — ``detection``, ``segmentation``.
 * Phase 15 — ``llm``, ``nl``.
+* Phase 17 — ``manifest``, ``methods``.
 """
 
 from __future__ import annotations
@@ -34,6 +35,8 @@ from openpathai.cli.foundation_cmd import foundation_app
 from openpathai.cli.gui_cmd import register as _register_gui
 from openpathai.cli.linear_probe_cmd import register as _register_linear_probe
 from openpathai.cli.llm_cmd import llm_app
+from openpathai.cli.manifest_cmd import manifest_app
+from openpathai.cli.methods_cmd import methods_app
 from openpathai.cli.mil_cmd import mil_app
 from openpathai.cli.mlflow_cmd import register as _register_mlflow
 from openpathai.cli.models_cmd import models_app
@@ -53,6 +56,8 @@ app.add_typer(detection_app)
 app.add_typer(segmentation_app)
 app.add_typer(llm_app)
 app.add_typer(nl_app)
+app.add_typer(manifest_app)
+app.add_typer(methods_app)
 _register_run(app)
 _register_analyse(app)
 _register_download(app)

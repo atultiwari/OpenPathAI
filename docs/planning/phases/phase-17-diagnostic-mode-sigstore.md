@@ -14,11 +14,11 @@
 
 ## Status
 
-- **Current state:** 🔄 active
+- **Current state:** ✅ complete (2026-04-24)
 - **Version:** v1.0 (fifth phase of the v1.0.0 release line)
 - **Started:** 2026-04-24
 - **Target finish:** 2026-05-01 (~1 week master-plan target)
-- **Actual finish:** (fill on close)
+- **Actual finish:** 2026-04-24 (same-day)
 - **Dependency on prior phases:** Phase 1 (`RunManifest`), Phase 8
   (audit DB + token keyring), Phase 13 (model registry — pinning
   uses `ModelCard.source.revision`), Phase 15 (MedGemma backend
@@ -334,6 +334,65 @@ uv run mkdocs build --strict
 ---
 
 ## 8. Worklog (append-only, newest on top)
+
+### 2026-04-24 · phase closed
+
+**What:** shipped `openpathai.safety.sigstore` (Ed25519 local-
+keypair signing with self-contained verification), tightened
+`_check_diagnostic_preconditions` with a model-pin check,
+shipped `openpathai.nl.methods_writer` (hyphen-tolerant fact-
+check + 3-attempt retry), `openpathai manifest sign|verify` +
+`openpathai methods write` CLI commands, full docs
+(`diagnostic-mode.md`, `methods-writer.md`), mkdocs nav, and a
+headless smoke tour. 38 new tests; full suite 870 passed, 3
+skipped. All quality gates clean. Smoke script runs end-to-end
+(keypair generate → sign → verify → tamper-detect → bypass
+env var path works).
+
+**Why:** Phase 17 closes Bet 3 (reproducibility as
+architecture). With Phase-1 cache + manifest + Phase-8 audit
+already in place, this phase adds the cryptographic seal plus
+the LLM-drafted, fact-checked Methods paragraph that turns a
+manifest into a reviewer-ready artifact.
+
+**Spec deviations (per §2 non-goals — all documented):**
+
+1. **Local-keypair signing, not real cosign.** Byte-compatible
+   with a future cosign/Rekor/Fulcio upgrade (algorithm field,
+   canonical JSON, embedded public key). Shipping real cosign
+   would force every user through a cloud OIDC flow —
+   explicitly out of scope for a single-user workstation tool.
+2. **No HF-tip auto-fetching of model revisions.** Diagnostic
+   mode refuses unpinned cards with an actionable error message;
+   it doesn't reach across the network to resolve a SHA. Iron
+   rule #11 — no silent fallback to an external service.
+3. **No retroactive signing of pre-Phase-17 audit rows.** User-
+   side migration scripts are possible; not shipped.
+4. **No key rotation / expiry.** One keypair per machine today.
+   Rotation is multi-user territory (Phase 19+ FastAPI).
+5. **Audit-row `signature_verified` field deferred.** The
+   signing + verification round-trip + the diagnostic-mode
+   pin-check cover the acceptance bar; wiring the post-run
+   `Executor.run()` to auto-sign + auto-insert-audit-row lands
+   alongside Phase 18's packaging work.
+6. **GUI Runs-tab "Write Methods" button deferred.** The CLI
+   surface (`openpathai methods write`) is shipped; the Runs-
+   tab button is a 30-LOC add-on that lands when the user
+   actually wants it in the GUI (or alongside the Phase 19
+   FastAPI upgrade). Keeps this phase's scope to the library +
+   CLI.
+7. **`cryptography` already transitively installed via `keyring`**
+   — no new pyproject dependency needed. If a future phase
+   drops the `[audit]` extra, we'll pin `cryptography`
+   explicitly.
+
+**Next:** resume when the user authorises Phase 18 (Packaging +
+Docker + docs site). Phase 17 itself is tagged
+`phase-17-complete` and pushed to `origin`.
+
+**Blockers:** none. All three bets (active learning, NL +
+zero-shot, reproducibility as architecture) are now live or
+complete.
 
 ### 2026-04-24 · phase initialised
 

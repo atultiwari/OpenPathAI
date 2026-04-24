@@ -9,6 +9,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Phase 17 (v1.0.0 line) — Diagnostic mode + signed manifests + Methods writer (Bet 3 complete) (2026-04-24)
+
+Added
+- `openpathai.safety.sigstore` subpackage — Ed25519 local-keypair
+  manifest signing.
+  - `ManifestSignature` frozen pydantic record (manifest-hash,
+    base64 signature + embedded public key, ISO-8601 signed-at).
+  - `generate_keypair(path)` / `load_keypair(path)` with chmod
+    0600 on POSIX.
+  - `sign_manifest(manifest)` / `verify_manifest(manifest, sig)` —
+    canonical-JSON signing; verification is self-contained (uses
+    the public key embedded in the signature record).
+  - Auto-generate-on-first-sign so fresh installs aren't blocked.
+- Diagnostic-mode tightening — `Executor._check_diagnostic_preconditions`
+  gains a **model-pin check**: every step whose `inputs.model`
+  names a registered `ModelCard` must have a non-empty
+  `source.revision`. Rejection message names the offending card
+  and cites iron rule #7. Opt-out via
+  `OPENPATHAI_DIAGNOSTIC_SKIP_MODEL_PIN_CHECK=1`.
+- `openpathai.nl.methods_writer` — MedGemma-drafted Methods
+  paragraph with a fact-check loop that rejects any dataset /
+  model mention absent from the manifest (iron rule #11 — no
+  invented citations). 3-attempt retry before `MethodsWriterError`.
+  Hyphen-tolerant matching (`ResNet-18` ↔ `resnet18`) + a
+  common-words allow-list for prose fragments.
+- CLI: `openpathai manifest sign | verify`, `openpathai methods write`.
+- Docs: `docs/diagnostic-mode.md`, `docs/methods-writer.md`;
+  mkdocs nav; `scripts/try-phase-17.sh` smoke tour.
+
+Quality
+- 38 new tests (9 keys + 6 signing + 7 diagnostic-mode-pin + 6
+  methods-writer + 6 CLI manifest + 4 CLI methods). Full suite:
+  870 passed, 3 skipped.
+- ruff + ruff format + pyright + pytest + mkdocs --strict all
+  clean.
+
+PHI safety (unchanged)
+- Signing operates on canonical-JSON bytes; no PHI added to
+  signatures.
+- Methods writer records `prompt_hash` (SHA-256, 16 hex); raw
+  manifest text never persisted to `audit.db`.
+
+Spec deviations (phase-17 §2 + §8)
+- No real cosign / Rekor / Fulcio network integration —
+  local-keypair Ed25519 is byte-compatible with a future
+  upgrade. Phase 18+ when a user needs transparency logs.
+- No retroactive signing of pre-Phase-17 audit rows.
+- No HF-tip auto-fetch of model revisions — diagnostic mode
+  refuses if a card isn't pinned.
+- No manifest-signature rotation / key expiry — one keypair per
+  machine today.
+- No in-GUI Methods editing — paragraphs render in the
+  Runs-tab detail accordion but edits happen in the user's
+  editor. Rich in-GUI editing is Phase 19 FastAPI territory.
+
+Bet 3 (reproducibility as architecture) is now end-to-end
+complete: content-addressable cache (Phase 1) + run manifests
+(Phase 1) + patient-level CV (Phase 2) + audit DB (Phase 8) +
+diagnostic-mode clean-tree + pin checks (Phase 12 audit fix +
+Phase 17) + signed manifests (Phase 17) + fact-checked Methods
+paragraphs (Phase 17). All three bets are now live or complete.
+
 ### Phase 16 (v1.0.0 line) — Active learning GUI + Annotate tab (Bet 1 complete) (2026-04-24)
 
 Added

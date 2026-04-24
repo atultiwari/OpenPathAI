@@ -282,6 +282,49 @@ class Executor:
                 f"git status --porcelain:\n{summary}"
             )
 
+        # Phase 17 — model-pin check. Every training-style step's
+        # model input must reference a ModelCard whose
+        # ``source.revision`` is pinned. Without it, the manifest
+        # can't uniquely identify the weights that produced the
+        # run, defeating the reproducibility guarantee.
+        self._check_model_pins(pipeline)
+
+    def _check_model_pins(self, pipeline: Pipeline) -> None:
+        """Reject diagnostic runs whose ModelCards lack pinned revisions.
+
+        Only steps that name a ``model`` input trigger the check;
+        non-training ops are ignored. The error message names the
+        offending card and quotes the exact YAML line to add.
+        """
+        import os
+
+        if os.environ.get("OPENPATHAI_DIAGNOSTIC_SKIP_MODEL_PIN_CHECK") == "1":
+            return
+        try:
+            from openpathai.models import default_model_registry
+        except ImportError:  # pragma: no cover — [train] extra missing
+            return
+
+        registry = None
+        for step in pipeline.steps:
+            model_ref = step.inputs.get("model") if isinstance(step.inputs, dict) else None
+            if not isinstance(model_ref, str) or _is_ref(model_ref):
+                continue
+            if registry is None:
+                registry = default_model_registry()
+            if not registry.has(model_ref):
+                continue  # unknown cards are caught elsewhere
+            card = registry.get(model_ref)
+            if not getattr(card.source, "revision", None):
+                raise DiagnosticModeError(
+                    f"Pipeline mode is 'diagnostic' but model card "
+                    f"{model_ref!r} has no pinned `source.revision`. "
+                    'Add e.g. `source.revision: "abc123de"` to '
+                    f"`models/zoo/{model_ref}.yaml` (iron rule #7). "
+                    "Opt-out: "
+                    "OPENPATHAI_DIAGNOSTIC_SKIP_MODEL_PIN_CHECK=1."
+                )
+
     def _topo_order(self, pipeline: Pipeline) -> list[PipelineStep]:
         """Kahn's algorithm — respects the original order as a tiebreaker."""
         id_to_step = {s.id: s for s in pipeline.steps}
