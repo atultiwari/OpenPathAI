@@ -483,6 +483,54 @@ gains `local_path: Path | None`; validator requires `local_path` set
 when method is `"local"`, and marks such cards
 `should_confirm_before_download=False` by construction.
 
+## Audit (Phase 8)
+
+Phase 8 adds the history surface: every analyse / training / pipeline
+run lands in `~/.openpathai/audit.db`. Full user-facing docs:
+[Audit (Phase 8)](audit.md). Library-side surface:
+
+```python
+from openpathai.safety.audit import (
+    AuditDB,
+    log_analysis,
+    log_training,
+    log_pipeline,
+    diff_runs,
+    hash_filename,
+    strip_phi,
+)
+```
+
+Hook contract
+:    Every `log_*` hook is **fire-and-forget**:
+     - no-op when `audit_enabled()` is false (checks
+       `OPENPATHAI_AUDIT_ENABLED`),
+     - wraps the write in `try / except Exception` and logs a warning
+       on failure — **audit failures never surface as training /
+       inference failures** (tested; see `test_phi.py`).
+     - every params dict runs through `strip_phi` before it lands in
+       `runs.metrics_json`.
+
+Database layer
+:    `AuditDB` opens SQLite in WAL mode + `busy_timeout=5000` so the
+     GUI's Runs tab can poll while a training job writes. Rows are
+     typed pydantic models (`AuditEntry`, `AnalysisEntry`). The `kind`
+     column + 5 indexes are added in addition to the master-plan §16.3
+     schema — all listed in the Phase 8 spec deliverables for
+     traceability.
+
+PHI contract
+:    `hash_filename` hashes **only the basename** — never the parent
+     path. `strip_phi` recursively drops path-looking keys and values.
+     The grep-style test at
+     `tests/unit/safety/audit/test_phi.py::test_log_analysis_never_writes_phi_to_db`
+     is the canary; treat failures as P0.
+
+Delete-token store
+:    `KeyringTokenStore` prefers the OS keyring and falls back to a
+     chmod-0600 file at `$OPENPATHAI_HOME/audit.token` when keyring is
+     unavailable. Constant-time compare via `hmac.compare_digest`.
+
 ## License
 
 By contributing, you agree your contribution is licensed under the

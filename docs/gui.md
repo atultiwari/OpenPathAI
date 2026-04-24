@@ -69,10 +69,22 @@ Phase 7 adds **status** and **issues** columns: cards failing the
 safety-v1 contract are listed with their failing codes and are hidden
 from the Analyse / Train pickers until their YAML is updated.
 
+### Runs
+
+**Phase 8** — the audit history tab. Every `openpathai analyse` /
+`openpathai run` / `openpathai train` invocation lands as a row here.
+Filter by kind / status / date range, open a run's JSON detail,
+diff two runs side-by-side, or prune history (keyring-gated). See
+[Audit (Phase 8)](audit.md) for the full schema + PHI-protection
+contract.
+
 ### Settings
 
 Cache root path, OpenPathAI version, entry count, total size on
-disk. One-click **Clear cache** with an in-app confirmation.
+disk. One-click **Clear cache** with an in-app confirmation. Phase 8
+adds an **Audit** accordion with a live summary of the audit DB
+(path / row counts / token backend) and a "disable audit for this
+session" checkbox.
 
 ## Architecture (library-first)
 
@@ -109,6 +121,7 @@ checks `sys.modules` after a fresh import).
 
 | Extra | Pulls | When to install |
 |-------|-------|-----------------|
-| `[gui]` | `[explain,safety]` (transitively `[train]`) + `gradio>=5,<6` | You want to run `openpathai gui`. |
-| `[safety]` | `reportlab>=4,<5` | PDF reports only (no Gradio). CI, headless servers. |
-| `[local]` | `[data,kaggle,wsi,train,explain,gui,safety]` | Full laptop setup — everything you need. |
+| `[gui]` | `[explain,safety]` (transitively `[train,audit]`) + `gradio>=5,<6` | You want to run `openpathai gui`. |
+| `[safety]` | `[audit]` + `reportlab>=4,<5` | PDF reports + audit DB (no Gradio). CI, headless servers. |
+| `[audit]` | `keyring>=24,<26` | Audit layer only — delete-token storage via OS keyring. |
+| `[local]` | `[data,kaggle,wsi,train,explain,gui,safety,audit]` | Full laptop setup — everything you need. |

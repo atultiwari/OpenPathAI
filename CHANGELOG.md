@@ -9,6 +9,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Phase 8 (v0.2.0 line) — Audit + SQLite history + run diff (2026-04-24)
+
+Added
+- `openpathai.safety.audit` package: `schema` (DDL + `SCHEMA_VERSION`),
+  `phi` (`hash_filename` / `strip_phi`), `db` (`AuditDB` + pydantic
+  `AuditEntry` / `AnalysisEntry`), `token` (`KeyringTokenStore` with
+  file fallback), `diff` (`diff_runs` / `RunDiff` / `FieldDelta`),
+  `hooks` (`log_analysis` / `log_training` / `log_pipeline`).
+- SQLite audit DB at `~/.openpathai/audit.db` opened in WAL mode with
+  `busy_timeout=5000`; two tables (`runs`, `analyses`) plus
+  `schema_info` for future migrations. Matches master-plan §16.3
+  with three Phase-8 additions (`runs.kind`, `runs.timestamp_end`,
+  `analyses.{image_sha256, decision, band}`).
+- PHI contract: filenames SHA-256-hashed to the **basename** only;
+  `strip_phi` drops path-like keys/values from every `metrics_json`.
+  Grep-style assertion in `test_phi.py` guards the contract.
+- Delete-token store via `keyring` with chmod-0600 file fallback
+  under `$OPENPATHAI_HOME/audit.token` for headless Linux / Docker.
+- New CLI commands: `openpathai audit init / status / list / show /
+  delete` and `openpathai diff <run_a> <run_b>` (colour-coded, ANSI
+  honours `NO_COLOR`). `analyse` / `train` / `run` gained `--no-audit`.
+- GUI: new **Runs** tab (6th; tab order is now Analyse / Train /
+  Datasets / Models / Runs / Settings) with filter + run-detail JSON
+  + two-run diff + keyring-gated delete. Settings tab gained an
+  **Audit** accordion with a live summary + per-session disable
+  toggle.
+- `[audit]` pyproject extra pinning `keyring>=24,<26`; `[safety]`
+  pulls it in transitively.
+- Docs: new `docs/audit.md`; `docs/safety.md` + `docs/gui.md` +
+  `docs/developer-guide.md` extended.
+- `scripts/try-phase-8.sh` — guided smoke tour mirroring
+  `try-phase-7.sh`.
+
+Quality
+- New unit tests under `tests/unit/safety/audit/` +
+  `tests/unit/cli/test_cli_audit.py` + `tests/unit/cli/test_cli_diff.py`
+  + `tests/unit/gui/test_views_audit.py`. New integration test
+  `tests/integration/test_analyse_audit_e2e.py`.
+- Total: 61 new tests (436 passed / 2 skipped across the full suite).
+- Coverage on new modules ≥ 80%.
+
 ### Phase 7 (v0.2.0 line) — Safety v1 + Local-first datasets (2026-04-24)
 
 Added

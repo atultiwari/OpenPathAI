@@ -48,6 +48,46 @@ def build(state: AppState) -> Any:  # pragma: no cover - gradio-gated renderer
             )
 
         clear_btn.click(_clear, outputs=[status, summary_box])
+
+        # --- Phase 8: audit sub-section -----------------------------------
+        with gr.Accordion("Audit (Phase 8)", open=False):
+            gr.Markdown(
+                "Every `openpathai analyse` / `openpathai run` / "
+                "`openpathai train` run is logged to the audit DB. "
+                "Filenames are hashed before write — no filesystem "
+                "paths are persisted. Use the **Runs** tab to browse "
+                "and prune history."
+            )
+            audit_json = gr.JSON(label="Audit DB summary")
+            audit_refresh = gr.Button("Refresh audit summary")
+            audit_toggle = gr.Checkbox(
+                label="Disable audit logging for this session",
+                value=False,
+            )
+            audit_toggle_status = gr.Markdown("")
+
+            def _audit_refresh() -> dict[str, object]:
+                from openpathai.gui.views import audit_summary
+
+                return audit_summary()
+
+            def _audit_toggle(disabled: bool) -> str:
+                import os
+
+                os.environ["OPENPATHAI_AUDIT_ENABLED"] = "0" if disabled else "1"
+                return (
+                    "Audit logging **disabled** for this process."
+                    if disabled
+                    else "Audit logging **enabled** for this process."
+                )
+
+            audit_refresh.click(_audit_refresh, outputs=[audit_json])
+            audit_toggle.change(
+                _audit_toggle,
+                inputs=[audit_toggle],
+                outputs=[audit_toggle_status],
+            )
+
         gr.Markdown(
             "Documentation: "
             "[atultiwari.github.io/OpenPathAI](https://atultiwari.github.io/OpenPathAI/)."

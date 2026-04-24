@@ -110,3 +110,22 @@ GUI surface
      a `status` column (`ok` / `incomplete`) and an `issues` column
      naming the failing fields. Incomplete cards do not appear in the
      Analyse or Train pickers.
+
+---
+
+## Audit trail (Phase 8)
+
+Phase 8 adds the **history** half of the safety layer — every
+`analyse` / `run` / `train` invocation is logged to a SQLite DB at
+`~/.openpathai/audit.db`. See [Audit (Phase 8)](audit.md) for the
+full contract; highlights:
+
+- Filenames are hashed (`SHA-256` of the basename) before write. No
+  filesystem path ever lands in the DB.
+- Destructive pruning (`audit delete`) is gated by a `keyring`-stored
+  token generated via `openpathai audit init`.
+- Audit failures never break a real run — every hook is wrapped in
+  `try / except` and logs a warning on failure.
+- The Gradio app gained a sixth **Runs** tab to browse, filter, and
+  diff history; the Settings tab exposes a "disable audit for this
+  session" toggle.

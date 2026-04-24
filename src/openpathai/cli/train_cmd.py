@@ -37,6 +37,13 @@ def register(app: typer.Typer) -> None:
                 help="Train on a tiny synthetic multi-class tile batch (Phase 3 smoke path).",
             ),
         ] = False,
+        no_audit: Annotated[
+            bool,
+            typer.Option(
+                "--no-audit",
+                help="Skip the Phase 8 audit log write for this run.",
+            ),
+        ] = False,
     ) -> None:
         """Train a Tier-A tile classifier.
 
@@ -94,6 +101,27 @@ def register(app: typer.Typer) -> None:
                 encoding="utf-8",
             )
         typer.echo(json.dumps(report.model_dump(mode="json"), indent=2, default=str))
+
+        if not no_audit:
+            from openpathai.safety.audit import log_training
+
+            run_id = log_training(
+                model_id=model,
+                metrics={
+                    "num_classes": num_classes,
+                    "epochs": epochs,
+                    "batch_size": batch_size,
+                    "loss": loss,
+                    "lr": lr,
+                    "seed": seed,
+                    "final_val_accuracy": report.final_val_accuracy,
+                    "ece_before_calibration": report.ece_before_calibration,
+                    "ece_after_calibration": report.ece_after_calibration,
+                },
+                manifest_path=str(output_dir / "report.json") if output_dir else "",
+            )
+            if run_id:
+                typer.echo(f"audit: {run_id}")
 
 
 __all__ = ["register"]

@@ -35,6 +35,13 @@ def register(app: typer.Typer) -> None:
                 help="Cache directory (defaults to ~/.openpathai/cache/).",
             ),
         ] = None,
+        no_audit: Annotated[
+            bool,
+            typer.Option(
+                "--no-audit",
+                help="Skip the Phase 8 audit log write for this run.",
+            ),
+        ] = False,
     ) -> None:
         """Execute a pipeline YAML via the Phase 1 executor."""
         try:
@@ -67,6 +74,13 @@ def register(app: typer.Typer) -> None:
             f"hits={result.cache_stats.hits} misses={result.cache_stats.misses}"
         )
         typer.echo(f"manifest: {manifest_path}")
+
+        if not no_audit:
+            from openpathai.safety.audit import log_pipeline
+
+            run_id = log_pipeline(result.manifest, manifest_path=str(manifest_path))
+            if run_id:
+                typer.echo(f"audit: {run_id}")
 
 
 __all__ = ["register"]

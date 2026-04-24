@@ -30,6 +30,7 @@ def test_tab_order_matches_docs() -> None:
         "Train",
         "Datasets",
         "Models",
+        "Runs",
         "Settings",
     )
 

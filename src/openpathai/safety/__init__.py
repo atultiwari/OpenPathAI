@@ -25,6 +25,23 @@ model-card validation without pulling a PDF toolkit.
 
 from __future__ import annotations
 
+from openpathai.safety.audit import (
+    AnalysisEntry,
+    AuditDB,
+    AuditEntry,
+    KeyringTokenStore,
+    PipelineEntry,
+    RunDiff,
+    TrainingEntry,
+    audit_enabled,
+    default_audit_db_path,
+    diff_runs,
+    hash_filename,
+    log_analysis,
+    log_pipeline,
+    log_training,
+    strip_phi,
+)
 from openpathai.safety.borderline import (
     BorderlineBand,
     BorderlineDecision,
@@ -39,13 +56,28 @@ from openpathai.safety.model_card import (
 from openpathai.safety.result import AnalysisResult, ClassProbability
 
 __all__ = [
+    "AnalysisEntry",
     "AnalysisResult",
+    "AuditDB",
+    "AuditEntry",
     "BorderlineBand",
     "BorderlineDecision",
     "BorderlineLabel",
     "CardIssue",
     "CardIssueCode",
     "ClassProbability",
+    "KeyringTokenStore",
+    "PipelineEntry",
+    "RunDiff",
+    "TrainingEntry",
+    "audit_enabled",
     "classify_with_band",
+    "default_audit_db_path",
+    "diff_runs",
+    "hash_filename",
+    "log_analysis",
+    "log_pipeline",
+    "log_training",
+    "strip_phi",
     "validate_card",
 ]

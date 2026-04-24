@@ -73,6 +73,25 @@ def _run_synthetic_training(  # pragma: no cover - torch-gated
         f"ECE before={report.ece_before_calibration} "
         f"ECE after={report.ece_after_calibration}"
     )
+
+    # Phase 8 audit log — fire-and-forget; never raises.
+    from openpathai.safety.audit import log_training
+
+    log_training(
+        model_id=model_name,
+        metrics={
+            "num_classes": int(num_classes),
+            "epochs": int(epochs),
+            "batch_size": int(batch_size),
+            "loss": loss_kind,
+            "lr": float(lr),
+            "seed": int(seed),
+            "final_val_accuracy": report.final_val_accuracy,
+            "ece_before_calibration": report.ece_before_calibration,
+            "ece_after_calibration": report.ece_after_calibration,
+        },
+    )
+
     return rows, status
 
 

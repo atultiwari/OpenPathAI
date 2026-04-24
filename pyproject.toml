@@ -132,11 +132,19 @@ gui = [
 ]
 # Safety v1 (Phase 7) — PDF reports via ReportLab. Pure-Python, BSD-3
 # licence. Lazy-imported inside openpathai.safety.report.
+# Phase 8 adds `keyring` for the audit delete-token store — gracefully
+# falls back to a chmod-0600 file when keyring is unavailable.
 safety = [
+    "openpathai[audit]",
     "reportlab>=4.0,<5",
 ]
+# Audit layer (Phase 8) — SQLite (stdlib) + keyring for the delete
+# token. SQLite is always available; only keyring is optional.
+audit = [
+    "keyring>=24,<26",
+]
 local = [
-    "openpathai[data,kaggle,wsi,train,explain,gui,safety]",
+    "openpathai[data,kaggle,wsi,train,explain,gui,safety,audit]",
 ]
 colab = [
     "openpathai[local]",

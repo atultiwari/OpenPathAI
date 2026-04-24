@@ -31,6 +31,7 @@ TAB_ORDER: tuple[str, ...] = (
     "Train",
     "Datasets",
     "Models",
+    "Runs",
     "Settings",
 )
 
@@ -57,6 +58,7 @@ def build_app(state: AppState | None = None) -> gr.Blocks:  # pragma: no cover -
         analyse_tab,
         datasets_tab,
         models_tab,
+        runs_tab,
         settings_tab,
         train_tab,
     )
@@ -79,6 +81,8 @@ def build_app(state: AppState | None = None) -> gr.Blocks:  # pragma: no cover -
                 datasets_tab.build(state)
             with gr.Tab("Models"):
                 models_tab.build(state)
+            with gr.Tab("Runs"):
+                runs_tab.build(state)
             with gr.Tab("Settings"):
                 settings_tab.build(state)
     return app

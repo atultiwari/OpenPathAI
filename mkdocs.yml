@@ -62,6 +62,7 @@ nav:
   - GUI: gui.md
   - Datasets: datasets.md
   - Safety (v1): safety.md
+  - Audit (Phase 8): audit.md
   - Developer guide: developer-guide.md
 
 markdown_extensions:

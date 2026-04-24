@@ -209,6 +209,25 @@ def _run_analysis(  # pragma: no cover - torch-gated
     run_state.overlay_png = _png_bytes(overlay)
     run_state.thumbnail_png = _png_bytes(resized)
 
+    # Phase 8 audit log — fire-and-forget; never raises.
+    from openpathai.safety import AnalysisResult, ClassProbability
+    from openpathai.safety.audit import log_analysis
+
+    log_result = AnalysisResult(
+        image_sha256=run_state.image_sha256,
+        model_name=run_state.model_name,
+        explainer_name=run_state.explainer_name,
+        probabilities=tuple(
+            ClassProbability(class_name=n, probability=p)
+            for n, p in zip(class_names, run_state.probabilities_values, strict=False)
+        ),
+        borderline=decision,
+        manifest_hash="",
+        overlay_png=run_state.overlay_png,
+        thumbnail_png=run_state.thumbnail_png,
+    )
+    log_analysis(log_result)
+
     return heatmap_u8, overlay, status, badge, prob_table, snippet, run_state
 
 

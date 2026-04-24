@@ -20,6 +20,9 @@ from openpathai.safety import CardIssue, validate_card
 __all__ = [
     "DatasetsTable",
     "ModelsTable",
+    "audit_detail",
+    "audit_rows",
+    "audit_summary",
     "borderline_badge",
     "cache_summary",
     "datasets_rows",
@@ -30,6 +33,7 @@ __all__ = [
     "model_issue_summary",
     "models_rows",
     "probability_rows",
+    "run_diff_rows",
     "target_layer_hint",
 ]
 
@@ -268,3 +272,99 @@ def target_layer_hint(model_name: str | None) -> str:
     if model_name.startswith("swin"):
         return "layers"
     return ""
+
+
+# --------------------------------------------------------------------------- #
+# Audit view-model helpers (Phase 8)
+# --------------------------------------------------------------------------- #
+
+
+def audit_rows(
+    *,
+    kind: str | None = None,
+    since: str | None = None,
+    until: str | None = None,
+    status: str | None = None,
+    limit: int = 100,
+) -> list[dict[str, str]]:
+    """Return a list of row dicts for the Runs tab DataFrame.
+
+    Lazy-imports :mod:`openpathai.safety.audit` so tests that exercise
+    other view helpers never pay the SQLite init cost.
+    """
+    from openpathai.safety.audit import AuditDB
+
+    db = AuditDB.open_default()
+    entries = db.list_runs(
+        kind=kind,  # type: ignore[arg-type]
+        since=since,
+        until=until,
+        status=status,  # type: ignore[arg-type]
+        limit=limit,
+    )
+    return [
+        {
+            "run_id": e.run_id,
+            "kind": e.kind,
+            "mode": e.mode,
+            "status": e.status,
+            "timestamp_start": e.timestamp_start,
+            "timestamp_end": e.timestamp_end or "",
+            "tier": e.tier,
+            "git_commit": (e.git_commit or "")[:10],
+            "pipeline_yaml_hash": (e.pipeline_yaml_hash or "")[:10],
+        }
+        for e in entries
+    ]
+
+
+def audit_detail(run_id: str) -> dict[str, object]:
+    """Return a full row + linked analyses for the detail accordion.
+
+    Empty dict if the run doesn't exist.
+    """
+    from openpathai.safety.audit import AuditDB
+
+    db = AuditDB.open_default()
+    entry = db.get_run(run_id)
+    if entry is None:
+        return {}
+    return {
+        "run": entry.model_dump(mode="json"),
+        "analyses": [a.model_dump(mode="json") for a in db.list_analyses(run_id=run_id, limit=200)],
+    }
+
+
+def audit_summary() -> dict[str, object]:
+    """Return path / size / row counts for the Settings audit sub-section."""
+    from openpathai.safety.audit import AuditDB, KeyringTokenStore
+
+    db = AuditDB.open_default()
+    stats = db.stats()
+    stats["token"] = KeyringTokenStore().status()
+    return stats
+
+
+def run_diff_rows(run_id_a: str, run_id_b: str) -> list[list[str]]:
+    """Shape a :class:`RunDiff` into a table-friendly list of rows.
+
+    Returns ``[[field, kind, before, after], ...]``. Empty list when
+    either run is missing or the diff is empty.
+    """
+    from openpathai.safety.audit import AuditDB, diff_runs
+
+    db = AuditDB.open_default()
+    a = db.get_run(run_id_a)
+    b = db.get_run(run_id_b)
+    if a is None or b is None:
+        return []
+    diff = diff_runs(a, b)
+    return [
+        [
+            d.field,
+            d.kind,
+            "" if d.before is None else str(d.before),
+            "" if d.after is None else str(d.after),
+        ]
+        for d in diff.deltas
+    ]

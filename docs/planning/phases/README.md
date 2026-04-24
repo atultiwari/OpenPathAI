@@ -20,10 +20,10 @@
 
 | | |
 |---|---|
-| Active phase | (none — **Phase 7 closed 2026-04-24**; v0.2.0 line opened with Safety v1 + Local-first datasets; Phase 8 pending user authorisation) |
-| Latest Git tag | `phase-07-complete` (pending push) |
-| Latest released version | v0.1.0 feature set landed (Phase 6 close); v0.2.0 feature set in progress. |
-| Blocked on user | (a) authorisation to start Phase 8 (Audit + SQLite history + run diff); (b) HISTAI-breast gated-access still pending on the main HF account (non-blocking); (c) Ollama + MedGemma 1.5 **already installed** ✅. |
+| Active phase | (none — **Phase 8 closed 2026-04-24**; v0.2.0 feature set complete; Phase 9 pending user authorisation) |
+| Latest Git tag | `phase-08-complete` (pending push) |
+| Latest released version | v0.1.0 feature set landed (Phase 6 close); v0.2.0 feature set complete (Phase 7 ✅, Phase 8 ✅ — release tag pending). |
+| Blocked on user | (a) authorisation to start Phase 9 (Cohorts + QC + stain references — the phase that unblocks the Train-tab dataset picker + tab reorder deferred from Phases 7 and 8); (b) HISTAI-breast gated-access still pending on the main HF account (non-blocking); (c) Ollama + MedGemma 1.5 **already installed** ✅. |
 
 ---
 
@@ -39,7 +39,7 @@
 | 5 | CLI + notebook driver | v0.1 | ✅ complete (2026-04-24, tag `phase-05-complete`) | [phase-05-cli-notebook.md](phase-05-cli-notebook.md) | 3–5 d target / same-day actual |
 | 6 | Gradio GUI: Analyse / Train / Datasets / Models / Settings | v0.1 | ✅ complete (2026-04-24, tag `phase-06-complete`) | [phase-06-gradio-gui.md](phase-06-gradio-gui.md) | 1.5 w target / same-day actual |
 | 7 | Safety v1 + Local-first datasets (PDF reports, borderline band, model-card contract, Kather-CRC-5k card, `register_folder` lib + CLI + GUI) | v0.2 | ✅ complete (2026-04-24, tag `phase-07-complete`) | [phase-07-safety-and-local-datasets.md](phase-07-safety-and-local-datasets.md) | 1.5–2 w target / same-day actual |
-| 8 | Audit + history + run diff | v0.2 | ⏳ pending | — | 1 w |
+| 8 | Audit + SQLite history + run diff (AuditDB, Runs tab, `openpathai diff`, keyring-gated delete) | v0.2 | ✅ complete (2026-04-24, tag `phase-08-complete`) | [phase-08-audit-history-diff.md](phase-08-audit-history-diff.md) | 1 w target / same-day actual |
 | 9 | Cohorts + QC + stain references | v0.5 | ⏳ pending | — | 1 w |
 | 10 | Snakemake orchestration + MLflow tracking | v0.5 | ⏳ pending | — | 1.5 w |
 | 11 | Colab exporter (one-click `.ipynb`) | v0.5 | ⏳ pending | — | 3–5 d |

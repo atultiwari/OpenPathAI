@@ -105,6 +105,13 @@ def register(app: typer.Typer) -> None:
                 ),
             ),
         ] = False,
+        no_audit: Annotated[
+            bool,
+            typer.Option(
+                "--no-audit",
+                help="Skip the Phase 8 audit log write for this run.",
+            ),
+        ] = False,
     ) -> None:
         """Produce a heatmap + optional PDF for a single tile under a Tier-A
         classifier.
@@ -283,21 +290,29 @@ def register(app: typer.Typer) -> None:
             f"(confidence={borderline.confidence:.3f}, band={borderline.band})"
         )
 
+        result = AnalysisResult(
+            image_sha256=image_sha256,
+            model_name=card.name,
+            explainer_name=explainer,
+            probabilities=probabilities,
+            borderline=borderline,
+            manifest_hash="",
+            overlay_png=_png_bytes(overlay),
+            thumbnail_png=_png_bytes(resized_rgb),
+        )
+
         if pdf is not None:
             from openpathai.safety.report import render_pdf
 
-            result = AnalysisResult(
-                image_sha256=image_sha256,
-                model_name=card.name,
-                explainer_name=explainer,
-                probabilities=probabilities,
-                borderline=borderline,
-                manifest_hash="",
-                overlay_png=_png_bytes(overlay),
-                thumbnail_png=_png_bytes(resized_rgb),
-            )
             render_pdf(result, pdf)
             typer.echo(f"report: {pdf}")
+
+        if not no_audit:
+            from openpathai.safety.audit import log_analysis
+
+            analysis_id = log_analysis(result, input_path=tile_path)
+            if analysis_id:
+                typer.echo(f"audit: {analysis_id}")
 
 
 __all__ = ["register"]
