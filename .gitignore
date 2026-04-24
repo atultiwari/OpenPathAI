@@ -119,6 +119,8 @@ yarn-error.log*
 # ─── Misc ─────────────────────────────────────────────────────────────
 *.log
 .history/
+# scripts/run-full.sh drops stdout/stderr here
+/logs/
 
 # Claude Code runtime artifacts
 .claude/
