@@ -20,9 +20,9 @@
 
 | | |
 |---|---|
-| Active phase | **Phase 19 — FastAPI backend for canvas** (pending spec; Phase 18 closed 2026-04-24) |
-| Latest Git tag | `phase-18-complete` (pushed to `origin`) |
-| Latest released version | v1.0.0 complete (Phases 13–17 ✅). **All three bets live** 🎯. v1.1.0 complete (Phase 18 ✅) — `pipx install`, Docker CPU + GPU, full docs site. Next: v2.0.0 React canvas. |
+| Active phase | **Phase 20 — React canvas** (pending spec; Phase 19 closed 2026-04-24) |
+| Latest Git tag | `phase-19-complete` (pushed to `origin`) |
+| Latest released version | v1.0.0 complete (Phases 13–17 ✅). **All three bets live** 🎯. v1.1.0 complete (Phase 18 ✅) — `pipx install`, Docker CPU + GPU, full docs site. Pre-Phase-19 audit closed (tag `phase-18-audit-complete`): 6 must-fix + 8 warnings + docker.yml workflow shipped. Next: v2.0.0 React canvas (19 backend · 20 canvas · 21 viewer). |
 | Blocked on user | (a) HISTAI-breast gated-access still pending on the main HF account (non-blocking); (b) Ollama + MedGemma 1.5 **already installed** ✅. |
 
 ---
@@ -50,7 +50,7 @@
 | 16 | Active learning GUI + Annotate tab (MedSAM2-assisted) (Bet 1 complete) | v1.0 | ✅ complete (2026-04-24, tag `phase-16-complete`) | [phase-16-annotate-gui.md](phase-16-annotate-gui.md) | 1.5 w target / same-day actual |
 | 17 | Diagnostic mode + signed manifests + auto-Methods (Bet 3 complete) | v1.0 | ✅ complete (2026-04-24, tag `phase-17-complete`) | [phase-17-diagnostic-mode-sigstore.md](phase-17-diagnostic-mode-sigstore.md) | 1 w target / same-day actual |
 | 18 | Packaging + Docker + docs site | v1.1 | ✅ complete (2026-04-24, tag `phase-18-complete`) | [phase-18-packaging-docker-docs.md](phase-18-packaging-docker-docs.md) | 1 w target / same-day actual |
-| 19 | FastAPI backend for canvas | v2.0 | ⏳ pending | — | 2–3 w |
+| 19 | FastAPI backend for canvas | v2.0 | ✅ complete (2026-04-24, tag `phase-19-complete`) | [phase-19-fastapi-backend.md](phase-19-fastapi-backend.md) | 2–3 w target / same-day actual |
 | 20 | React + React Flow canvas (visual pipeline builder) | v2.0 | ⏳ pending | — | 3–4 w |
 | 21 | OpenSeadragon viewer + run-audit modal + tier badges | v2.0 | ⏳ pending | — | 1–2 w |
 | 22+ | Conditional: RunPod tier, marketplace, DICOM-SR, SaMD | v2.5+ | 🧊 deferred | — | conditional |

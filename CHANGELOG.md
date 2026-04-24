@@ -9,6 +9,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Phase 19 (v2.0 line) — FastAPI backend for the React canvas (2026-04-24)
+
+First of three phases (19 backend · 20 canvas · 21 viewer) that
+together ship the v2.0 visual pipeline builder. Phase 19 ships only
+the backend — the React canvas is Phase 20.
+
+Added
+- `[server]` optional extra in `pyproject.toml` pulling `fastapi`,
+  `uvicorn[standard]`, `python-multipart`.
+- `src/openpathai/server/` package: `create_app()` factory with
+  CORS middleware, a PHI-redaction response middleware, pluggable
+  `ServerSettings`, bearer-token `require_token` dependency, in-
+  process `JobRunner` (`concurrent.futures.ThreadPoolExecutor`).
+- Nine sub-routers mounted under `/v1`:
+  - `/v1/health`, `/v1/version` — public.
+  - `/v1/nodes` — every `@openpathai.node` with pydantic input /
+    output JSON schemas for the Phase-20 canvas to auto-derive
+    node palettes.
+  - `/v1/models` — flat merge of classifier zoo + foundation +
+    detection + segmentation registries; `?kind=foundation` filters.
+  - `/v1/datasets` — dataset cards (local_path redacted).
+  - `/v1/pipelines` CRUD — YAML on disk, JSON on the wire, with
+    `POST /v1/pipelines/validate` for dry-runs.
+  - `/v1/runs` — 202 async enqueue, GET for status, GET /manifest
+    for the completed `RunManifest` (PHI-stripped), DELETE to cancel.
+  - `/v1/audit/runs` + `/v1/audit/analyses` — Phase-8 audit DB
+    passthrough.
+  - `/v1/nl/draft-pipeline`, `/v1/nl/classify`, `/v1/nl/segment` —
+    NL primitives; `draft-pipeline` returns YAML only (never
+    chains into `/v1/runs`), and the raw prompt is never echoed
+    back (iron rule #9 + #8).
+  - `/v1/manifest/sign`, `/v1/manifest/verify` — Phase-17 Ed25519
+    sigstore endpoints.
+- `openpathai serve` CLI — uvicorn launcher with `--host`, `--port`,
+  `--token`, `--cors-origin`, `--home`, `--reload`, `--log-level`.
+- `docs/api.md` — user-facing reference + curl quick-start.
+- `tests/unit/server/*` — 45 httpx/TestClient tests covering auth,
+  every route, and a regex-backed PHI-at-the-wire assertion (unix
+  `/Users/` + `/home/` + windows `C:\…` paths all redacted before
+  JSON serialisation).
+- `docs/planning/phases/phase-19-fastapi-backend.md` — phase spec.
+
+Iron-rule enforcement at the new surface
+- **#1 library-first** — every route is a thin shell over a typed
+  library call; no raw-Python path.
+- **#8 no PHI in plaintext** — two layers: pydantic schemas omit
+  raw paths + a response-body middleware rewrites any
+  `/Users/…`, `/home/…`, `/root/…`, `C:\…` strings to
+  `basename#<sha256[:8]>`. JSON escape sequences are exempt so
+  dataset prose doesn't false-positive.
+- **#9 never auto-execute LLM-generated pipelines** —
+  `/v1/nl/draft-pipeline` returns YAML only; three-step gap
+  (validate → save → run) is the human-review checkpoint.
+- **#11 no silent fallbacks** — manifest responses preserve
+  `resolved_*_id` + `fallback_reason` from the executor.
+
+Non-goals (Phase 19)
+- No React frontend (Phase 20).
+- No OpenSeadragon / DZI tile serving (Phase 21).
+- No multi-user auth — one shared bearer token per deployment.
+- No distributed execution — single-process thread pool.
+- No websockets — polling + (future) SSE is enough for the canvas.
+
 ### Post-Phase-18 audit fixes (2026-04-24)
 
 Pre-Phase-19 full-project audit surfaced 6 must-fix bugs (2

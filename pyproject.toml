@@ -182,8 +182,19 @@ mlflow = [
 snakemake = [
     "snakemake>=8,<9",
 ]
+# FastAPI backend (Phase 19) for the v2.0 React canvas. FastAPI
+# pulls starlette + anyio + pydantic (already core); uvicorn[standard]
+# adds the ASGI server + httptools + websockets + watchfiles.
+# Kept out of the default install because plain-library users of
+# ``openpathai`` never need it.
+server = [
+    "openpathai[audit]",
+    "fastapi>=0.110,<1",
+    "uvicorn[standard]>=0.30,<1",
+    "python-multipart>=0.0.9,<1",
+]
 local = [
-    "openpathai[data,kaggle,wsi,train,explain,gui,safety,audit,mlflow,snakemake]",
+    "openpathai[data,kaggle,wsi,train,explain,gui,safety,audit,mlflow,snakemake,server]",
 ]
 colab = [
     "openpathai[local]",
@@ -265,6 +276,12 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = [
     "N802",  # function names in tests may not follow pep8
+]
+# FastAPI's canonical dependency-injection pattern is ``param =
+# Depends(...)`` / ``Query(...)`` as default values. Flake8-bugbear's
+# B008 flags these, but they are safe and idiomatic here.
+"src/openpathai/server/**/*.py" = [
+    "B008",
 ]
 
 [tool.ruff.format]

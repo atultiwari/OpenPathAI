@@ -16,6 +16,7 @@ root Typer app so ``openpathai`` exposes a single, coherent surface.
 * Phase 14 — ``detection``, ``segmentation``.
 * Phase 15 — ``llm``, ``nl``.
 * Phase 17 — ``manifest``, ``methods``.
+* Phase 19 — ``serve`` (FastAPI backend for the v2.0 React canvas).
 """
 
 from __future__ import annotations
@@ -43,6 +44,7 @@ from openpathai.cli.models_cmd import models_app
 from openpathai.cli.nl_cmd import nl_app
 from openpathai.cli.run_cmd import register as _register_run
 from openpathai.cli.segmentation_cmd import segmentation_app
+from openpathai.cli.serve_cmd import register as _register_serve
 from openpathai.cli.train_cmd import register as _register_train
 
 app.add_typer(models_app)
@@ -68,6 +70,7 @@ _register_mlflow(app)
 _register_export(app)
 _register_active_learn(app)
 _register_linear_probe(app)
+_register_serve(app)
 
 __all__ = ["app"]
 
