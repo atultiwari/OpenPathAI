@@ -18,6 +18,13 @@ from openpathai.data.cards import (
     TierCompatibility,
 )
 from openpathai.data.download import KaggleDownloader, kaggle_credentials_path
+from openpathai.data.local import (
+    LOCAL_DATASET_EXTENSIONS,
+    deregister_folder,
+    list_local,
+    register_folder,
+    user_datasets_dir,
+)
 from openpathai.data.registry import DatasetRegistry, default_registry
 from openpathai.data.splits import (
     PatientFold,
@@ -26,6 +33,7 @@ from openpathai.data.splits import (
 )
 
 __all__ = [
+    "LOCAL_DATASET_EXTENSIONS",
     "DatasetCard",
     "DatasetCitation",
     "DatasetDownload",
@@ -35,7 +43,11 @@ __all__ = [
     "PatientFold",
     "TierCompatibility",
     "default_registry",
+    "deregister_folder",
     "kaggle_credentials_path",
+    "list_local",
     "patient_level_kfold",
     "patient_level_split",
+    "register_folder",
+    "user_datasets_dir",
 ]

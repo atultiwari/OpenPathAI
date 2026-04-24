@@ -27,8 +27,11 @@ from openpathai.data import (
     DatasetRegistry,
     PatientFold,
     default_registry,
+    deregister_folder,
+    list_local,
     patient_level_kfold,
     patient_level_split,
+    register_folder,
 )
 from openpathai.explain import (
     AttentionRollout,
@@ -89,6 +92,14 @@ from openpathai.preprocessing import (
     otsu_threshold,
     otsu_tissue_mask,
 )
+from openpathai.safety import (
+    AnalysisResult,
+    BorderlineDecision,
+    CardIssue,
+    ClassProbability,
+    classify_with_band,
+    validate_card,
+)
 from openpathai.tiling import GridTiler, TileCoordinate, TileGrid
 from openpathai.training import (
     EpochRecord,
@@ -118,11 +129,15 @@ _ = _demo_nodes
 
 __all__ = [
     "REGISTRY",
+    "AnalysisResult",
     "AppState",
     "Artifact",
     "AttentionRollout",
+    "BorderlineDecision",
     "CacheEntryMeta",
     "CacheStats",
+    "CardIssue",
+    "ClassProbability",
     "Cohort",
     "ContentAddressableCache",
     "DatasetCard",
@@ -179,11 +194,13 @@ __all__ = [
     "canonical_json",
     "canonical_sha256",
     "capture_environment",
+    "classify_with_band",
     "cross_entropy_loss",
     "decode_png",
     "default_cache_root",
     "default_model_registry",
     "default_registry",
+    "deregister_folder",
     "dump_pipeline",
     "encode_png",
     "expected_calibration_error",
@@ -191,6 +208,7 @@ __all__ = [
     "integrated_gradients",
     "launch_app",
     "ldam_loss",
+    "list_local",
     "load_pipeline",
     "macro_f1",
     "node",
@@ -201,6 +219,8 @@ __all__ = [
     "overlay_on_tile",
     "patient_level_kfold",
     "patient_level_split",
+    "register_folder",
     "resize_heatmap",
     "synthetic_tile_batch",
+    "validate_card",
 ]

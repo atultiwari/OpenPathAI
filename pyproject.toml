@@ -121,7 +121,7 @@ explain = [
 # it lives in its own extra. Every ``import gradio`` in the
 # ``openpathai.gui`` package is lazy-resolved inside a function body.
 gui = [
-    "openpathai[explain]",
+    "openpathai[explain,safety]",
     # gradio>=5.20 / gradio_client>=1.7 fixes the
     # ``TypeError: argument of type 'bool' is not iterable`` crash in
     # ``gradio_client.utils.get_type`` when pydantic emits a schema with
@@ -130,8 +130,13 @@ gui = [
     "gradio>=5.20,<6",
     "gradio-client>=1.7,<2",
 ]
+# Safety v1 (Phase 7) — PDF reports via ReportLab. Pure-Python, BSD-3
+# licence. Lazy-imported inside openpathai.safety.report.
+safety = [
+    "reportlab>=4.0,<5",
+]
 local = [
-    "openpathai[data,kaggle,wsi,train,explain,gui]",
+    "openpathai[data,kaggle,wsi,train,explain,gui,safety]",
 ]
 colab = [
     "openpathai[local]",

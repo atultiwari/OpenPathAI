@@ -19,6 +19,28 @@ tier_compatibility:
   T2: ok
   T3: ok
 recommended_datasets: [lc25000, pcam, mhist]
+
+training_data: >
+  Weights pretrained on ImageNet-1k (ILSVRC 2012): ~1.28M natural images
+  across 1000 object classes. OpenPathAI treats these as transfer-learning
+  features — fine-tuning on labelled pathology tiles is the caller's
+  responsibility.
+intended_use: >
+  Transfer-learning backbone for supervised tile classification in
+  histopathology workflows. Fine-tune on labelled tiles with patient-level
+  cross-validation and consume outputs as calibrated probabilities through
+  OpenPathAI's borderline band.
+out_of_scope_use: >
+  Not a medical device. Not validated for stand-alone clinical
+  decision-making. Not intended for whole-slide MIL, detection, or
+  segmentation without task-specific retraining. Outputs must not be the
+  sole basis for diagnostic or treatment decisions.
+known_biases:
+  - "Pretraining corpus (ImageNet-1k) is dominated by natural images; pathology staining, magnification, and scanner artefacts sit outside its native distribution."
+  - "Performance depends heavily on fine-tuning data diversity; single-institution training tends to overfit scanner, stain, and cohort-specific features."
+  - "Transformer backbones typically need stronger regularisation or linear probing on small labelled cohorts to avoid overfitting."
+  - "16×16 patch tokenisation discretises the tile; features misaligned with gland or nuclei scale may be missed at 224×224."
+
 notes: >
   Smallest canonical ViT; fits a laptop GPU and gives the attention
   rollout explainability path something to work on.

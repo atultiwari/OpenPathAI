@@ -13,10 +13,19 @@ can override a shipped card without editing the repo.
 The registry does **not** import torch or timm. It only reads YAML. The
 :class:`openpathai.models.adapter.ModelAdapter` is responsible for
 building an actual model from a card.
+
+Phase 7 adds the **safety v1 contract**: every card that pydantic
+accepts is handed to :func:`openpathai.safety.model_card.validate_card`;
+cards with contract violations are logged at ``WARNING`` and moved to a
+separate bucket so :meth:`ModelRegistry.names` (and therefore anything
+the GUI / CLI surfaces as selectable) cannot present them. Set the
+environment variable ``OPENPATHAI_STRICT_MODEL_CARDS=1`` to raise at
+load time instead.
 """
 
 from __future__ import annotations
 
+import logging
 import os
 from collections.abc import Iterable, Iterator
 from pathlib import Path
@@ -25,11 +34,15 @@ from typing import Any
 import yaml
 
 from openpathai.models.cards import ModelCard, ModelFamily, ModelFramework
+from openpathai.safety.model_card import CardIssue, validate_card
 
 __all__ = [
     "ModelRegistry",
     "default_model_registry",
 ]
+
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def _repo_zoo_dir() -> Path | None:
@@ -45,6 +58,12 @@ def _user_zoo_dir() -> Path:
     return Path(os.environ.get("OPENPATHAI_HOME", Path.home() / ".openpathai")) / "models"
 
 
+def _strict_mode() -> bool:
+    """Opt-in strict validation — raise at load time on any card issue."""
+    value = os.environ.get("OPENPATHAI_STRICT_MODEL_CARDS", "").strip().lower()
+    return value in {"1", "true", "yes", "on"}
+
+
 class ModelRegistry:
     """Loads and exposes model YAML cards.
 
@@ -57,6 +76,9 @@ class ModelRegistry:
         Whether to include the repo-shipped ``models/zoo/`` dir.
     include_user
         Whether to include ``~/.openpathai/models/``.
+    strict
+        Opt-in strict validation override. When ``None`` the env var
+        ``OPENPATHAI_STRICT_MODEL_CARDS`` is consulted.
     """
 
     def __init__(
@@ -65,6 +87,7 @@ class ModelRegistry:
         *,
         include_repo: bool = True,
         include_user: bool = True,
+        strict: bool | None = None,
     ) -> None:
         dirs: list[Path] = [Path(p).resolve() for p in search_paths]
         if include_repo:
@@ -77,8 +100,12 @@ class ModelRegistry:
                 dirs.append(user)
 
         self._search_paths: tuple[Path, ...] = tuple(dirs)
+        self._strict: bool = strict if strict is not None else _strict_mode()
         self._cards: dict[str, ModelCard] = {}
         self._sources: dict[str, Path] = {}
+        self._invalid_cards: dict[str, ModelCard] = {}
+        self._invalid_sources: dict[str, Path] = {}
+        self._invalid_issues: dict[str, tuple[CardIssue, ...]] = {}
         self._load()
 
     def _load(self) -> None:
@@ -87,7 +114,21 @@ class ModelRegistry:
                 continue
             for yaml_path in sorted(directory.glob("*.yaml")):
                 card = self._load_card(yaml_path)
-                if card.name in self._cards:
+                if card.name in self._cards or card.name in self._invalid_cards:
+                    continue
+                issues = tuple(validate_card(card))
+                if issues:
+                    msg = (
+                        f"Model card {card.name!r} at {yaml_path} has "
+                        f"{len(issues)} safety-contract issue(s): "
+                        + ", ".join(f"{i.code}" for i in issues)
+                    )
+                    if self._strict:
+                        raise ValueError(msg)
+                    _LOGGER.warning("%s — excluded from registry.names()", msg)
+                    self._invalid_cards[card.name] = card
+                    self._invalid_sources[card.name] = yaml_path
+                    self._invalid_issues[card.name] = issues
                     continue
                 self._cards[card.name] = card
                 self._sources[card.name] = yaml_path
@@ -104,6 +145,10 @@ class ModelRegistry:
             return ModelCard.model_validate(payload)
         except Exception as exc:
             raise ValueError(f"Invalid model card {yaml_path}: {exc}") from exc
+
+    # ------------------------------------------------------------------
+    # Accessors — valid cards only
+    # ------------------------------------------------------------------
 
     def get(self, name: str) -> ModelCard:
         try:
@@ -128,6 +173,34 @@ class ModelRegistry:
             return self._sources[name]
         except KeyError as exc:
             raise KeyError(f"Model {name!r} is not registered") from exc
+
+    # ------------------------------------------------------------------
+    # Accessors — invalid (contract-failing) cards
+    # ------------------------------------------------------------------
+
+    def invalid_names(self) -> tuple[str, ...]:
+        """Names of cards parsed OK but failing the safety-v1 contract."""
+        return tuple(sorted(self._invalid_cards.keys()))
+
+    def invalid_card(self, name: str) -> ModelCard:
+        """Return a contract-failing card by name (raises if unknown)."""
+        try:
+            return self._invalid_cards[name]
+        except KeyError as exc:
+            raise KeyError(f"Model {name!r} is not registered as invalid") from exc
+
+    def invalid_issues(self, name: str) -> tuple[CardIssue, ...]:
+        """Return every :class:`CardIssue` recorded for ``name``."""
+        try:
+            return self._invalid_issues[name]
+        except KeyError as exc:
+            raise KeyError(f"Model {name!r} is not registered as invalid") from exc
+
+    def all_names(self) -> tuple[str, ...]:
+        """Valid + invalid names, sorted. Used by the GUI's Models tab."""
+        return tuple(sorted({*self._cards, *self._invalid_cards}))
+
+    # ------------------------------------------------------------------
 
     def filter(
         self,

@@ -9,6 +9,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Phase 7 (v0.2.0 line) — Safety v1 + Local-first datasets (2026-04-24)
+
+Added
+- `openpathai.safety` package: `borderline` (two-threshold decisioning),
+  `model_card` (load-time contract), `report` (deterministic PDF via
+  ReportLab), `result` (`AnalysisResult` typed struct).
+- Model-card schema gained four mandatory fields: `training_data`,
+  `intended_use`, `out_of_scope_use`, `known_biases`. Every shipped
+  `models/zoo/*.yaml` updated to populate them.
+- `ModelRegistry` validates every card on load; incomplete cards are
+  logged + excluded from `names()`. `OPENPATHAI_STRICT_MODEL_CARDS=1`
+  raises instead.
+- `openpathai models check` CLI — exits non-zero on any contract
+  failure.
+- `openpathai analyse` CLI gained `--low / --high / --pdf /
+  --allow-uncalibrated / --allow-incomplete-card` flags.
+- `DatasetDownload` gained a `"local"` method + `local_path` field.
+- `openpathai.data.local`: `register_folder`, `deregister_folder`,
+  `list_local` — library API for user-registered dataset cards.
+- `openpathai datasets register / deregister / list --source` CLI.
+- Shipped **Kather-CRC-5k** dataset card (~140 MB, 8 colon classes,
+  CC-BY-4.0, Zenodo DOI 10.5281/zenodo.53169) as the canonical
+  smoke-test dataset.
+- GUI **Analyse** tab: borderline band sliders, coloured badge,
+  per-class probability table, model-card accordion, deterministic
+  PDF download.
+- GUI **Models** tab: `status` + `issues` columns; invalid cards
+  excluded from Analyse / Train pickers.
+- GUI **Datasets** tab: `source` column + **Add local dataset** and
+  **Deregister local dataset** accordions.
+- `[safety]` pyproject extra pinning `reportlab>=4.0,<5`. `[gui]`
+  transitively depends on it.
+- Docs: new `docs/safety.md`, new `docs/datasets.md`, extended
+  `docs/gui.md` + `docs/developer-guide.md`.
+
+Quality
+- New unit tests across `tests/unit/safety/`, `tests/unit/data/`,
+  `tests/unit/cli/`, and `tests/unit/gui/`. New integration test
+  `tests/integration/test_analyse_pdf_e2e.py`.
+
 ### Planning (pre-code)
 - Master plan (`docs/planning/master-plan.md`) finalised — classification,
   detection, segmentation, zero-shot, training, reproducibility.

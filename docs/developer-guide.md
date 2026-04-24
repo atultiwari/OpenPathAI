@@ -424,6 +424,65 @@ a regression test that checks `sys.modules`).
 from openpathai.gui import build_app, AppState, datasets_rows, models_rows
 ```
 
+## Safety v1 (Phase 7)
+
+The `openpathai.safety` package lands three independently-testable
+surfaces:
+
+| Module | Purpose |
+|---|---|
+| `safety.borderline` | `classify_with_band` — pure function, stdlib only. |
+| `safety.model_card` | `validate_card` — pure function; called by `ModelRegistry` at load. |
+| `safety.report` | `render_pdf` — ReportLab-backed, lazy-imported. Pinned `invariant=True` + creation-date = result timestamp → byte-deterministic PDFs. |
+| `safety.result` | `AnalysisResult` frozen dataclass. The typed struct CLI + GUI route through. |
+
+The entire package is pure metadata / small utilities: no torch, no
+gradio, no network. ReportLab is lazy-imported inside
+`render_pdf`, so `import openpathai.safety` stays fast and callers who
+only need borderline decisioning never pay the PDF toolkit cost.
+
+### Model-card contract
+
+`ModelCard` carries four extra fields from Phase 7:
+
+```yaml
+training_data: "ImageNet-1k (…)."
+intended_use: "Transfer-learning backbone for tile classification."
+out_of_scope_use: "Not a medical device."
+known_biases:
+  - "Pretraining corpus dominated by natural images …"
+```
+
+All four (plus `known_biases`, `source.license`, `citation.text`) are
+required. `ModelRegistry` calls `validate_card` on load — incomplete
+cards are logged at `WARNING` and moved to
+`invalid_cards()`; `names()` never returns them. Set
+`OPENPATHAI_STRICT_MODEL_CARDS=1` to raise instead.
+
+## Local-first datasets (Phase 7)
+
+`openpathai.data.local` exports three helpers that wrap the dataset
+registry's existing `~/.openpathai/datasets/` user-dir support:
+
+```python
+from openpathai.data import register_folder, deregister_folder, list_local
+
+card = register_folder("/path/to/tree", name="my_demo", tissue=("colon",))
+deregister_folder("my_demo")
+for card in list_local():
+    print(card.name)
+```
+
+`register_folder` writes a `DatasetCard` with `download.method="local"`
+and `download.local_path=<abs>`. The card fingerprint is a SHA-256 of
+`(relative_path, file_size)` tuples — not file contents. Content
+hashing is Phase 9's job.
+
+The schema: `DownloadMethod` Literal gains `"local"`; `DatasetDownload`
+gains `local_path: Path | None`; validator requires `local_path` set
+when method is `"local"`, and marks such cards
+`should_confirm_before_download=False` by construction.
+
 ## License
 
 By contributing, you agree your contribution is licensed under the

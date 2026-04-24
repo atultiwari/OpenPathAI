@@ -9,6 +9,7 @@ typed struct.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -27,8 +28,14 @@ Modality = Literal["tile", "wsi"]
 SplitStrategy = Literal["patient_level", "tile_level", "slide_level"]
 """Default split strategy recommended by the dataset authors."""
 
-DownloadMethod = Literal["kaggle", "zenodo", "huggingface", "http", "manual"]
-"""Source location type for the dataset blob."""
+DownloadMethod = Literal["kaggle", "zenodo", "huggingface", "http", "manual", "local"]
+"""Source location type for the dataset blob.
+
+``local`` (added in Phase 7) means the card points at a directory already
+on disk — typically written by :func:`openpathai.data.local.register_folder`
+into ``~/.openpathai/datasets/``. Nothing is ever downloaded for a
+``local`` card.
+"""
 
 
 class DatasetDownload(BaseModel):
@@ -56,11 +63,20 @@ class DatasetDownload(BaseModel):
     zenodo_record: str | None = None
     huggingface_repo: str | None = None
     url: str | None = None
+    local_path: Path | None = None
     size_gb: float | None = Field(default=None, ge=0.0)
     instructions_md: str | None = None
     gated: bool = False
     requires_confirmation: bool | None = None
     partial_download_hint: str | None = None
+
+    @field_validator("local_path", mode="before")
+    @classmethod
+    def _coerce_local_path(cls, value: Any) -> Any:
+        """Allow YAML `~/foo` shorthand for ``local_path``."""
+        if value is None or isinstance(value, Path):
+            return value
+        return Path(str(value)).expanduser()
 
     @model_validator(mode="after")
     def _require_source(self) -> DatasetDownload:
@@ -70,6 +86,7 @@ class DatasetDownload(BaseModel):
             "huggingface": "huggingface_repo",
             "http": "url",
             "manual": None,  # manual only needs instructions
+            "local": "local_path",
         }[self.method]
         if needed is not None and getattr(self, needed) is None:
             raise ValueError(f"download.method={self.method!r} requires {needed!r} to be set")
@@ -79,7 +96,13 @@ class DatasetDownload(BaseModel):
 
     @property
     def should_confirm_before_download(self) -> bool:
-        """Whether the CLI should prompt the user before fetching."""
+        """Whether the CLI should prompt the user before fetching.
+
+        Local cards never trigger a download, so the prompt is skipped
+        regardless of ``size_gb``.
+        """
+        if self.method == "local":
+            return False
         if self.requires_confirmation is not None:
             return self.requires_confirmation
         # Anything large enough to be painful on a laptop warrants a prompt.

@@ -60,6 +60,8 @@ nav:
       - Local LLM backend: setup/llm-backend.md
   - CLI reference: cli.md
   - GUI: gui.md
+  - Datasets: datasets.md
+  - Safety (v1): safety.md
   - Developer guide: developer-guide.md
 
 markdown_extensions:

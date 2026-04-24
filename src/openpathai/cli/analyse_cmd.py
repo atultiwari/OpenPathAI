@@ -1,7 +1,13 @@
-"""``openpathai analyse`` — run inference + explainability on a tile."""
+"""``openpathai analyse`` — run inference + explainability on a tile.
+
+Phase 7 extends the command with ``--low / --high / --pdf`` so the same
+invocation can produce the Safety v1 PDF report alongside the heatmap.
+"""
 
 from __future__ import annotations
 
+import hashlib
+import io
 from pathlib import Path
 from typing import Annotated
 
@@ -18,6 +24,14 @@ def _load_tile_rgb(path: Path) -> np.ndarray:  # pragma: no cover - exercised vi
     if img.mode != "RGB":
         img = img.convert("RGB")
     return np.asarray(img, dtype=np.uint8)
+
+
+def _png_bytes(arr: np.ndarray) -> bytes:
+    """Encode an RGB or grayscale array to PNG bytes (deterministic)."""
+    buf = io.BytesIO()
+    mode = "RGB" if arr.ndim == 3 and arr.shape[-1] == 3 else "L"
+    Image.fromarray(arr, mode=mode).save(buf, format="PNG", optimize=False)
+    return buf.getvalue()
 
 
 def register(app: typer.Typer) -> None:
@@ -54,13 +68,53 @@ def register(app: typer.Typer) -> None:
             typer.Option("--output-dir", help="Where to write the heatmap PNG."),
         ] = Path("analyse-output"),
         device: Annotated[str, typer.Option(help="cpu / cuda / mps / auto.")] = "cpu",
+        low: Annotated[
+            float,
+            typer.Option(
+                min=0.0,
+                max=1.0,
+                help="Borderline band lower threshold (Phase 7).",
+            ),
+        ] = 0.4,
+        high: Annotated[
+            float,
+            typer.Option(
+                min=0.0,
+                max=1.0,
+                help="Borderline band upper threshold (Phase 7).",
+            ),
+        ] = 0.7,
+        pdf: Annotated[
+            Path | None,
+            typer.Option("--pdf", help="Also write a Safety v1 PDF report to this path."),
+        ] = None,
+        allow_uncalibrated: Annotated[
+            bool,
+            typer.Option(
+                help=(
+                    "Bypass the classify_with_band calibration guard. Only "
+                    "enable when you understand that raw softmax is misleading."
+                ),
+            ),
+        ] = False,
+        allow_incomplete_card: Annotated[
+            bool,
+            typer.Option(
+                help=(
+                    "Proceed even when the model card fails the safety contract. Off by default."
+                ),
+            ),
+        ] = False,
     ) -> None:
-        """Produce a heatmap for a single tile under a Tier-A classifier.
+        """Produce a heatmap + optional PDF for a single tile under a Tier-A
+        classifier.
 
         Requires the ``[train]`` extra (torch + timm). The tile is
         resized to the card's ``input_size`` before inference; the
         heatmap is written as ``<output-dir>/heatmap.png`` with an
-        overlay at ``overlay.png``.
+        overlay at ``overlay.png``. Passing ``--pdf PATH`` writes a
+        deterministic Safety v1 report (requires the ``[safety]``
+        extra — ReportLab).
         """
         try:
             import torch
@@ -80,14 +134,59 @@ def register(app: typer.Typer) -> None:
         )
         from openpathai.explain.integrated_gradients import integrated_gradients
         from openpathai.models import adapter_for_card, default_model_registry
+        from openpathai.safety import (
+            AnalysisResult,
+            ClassProbability,
+            classify_with_band,
+            validate_card,
+        )
         from openpathai.training.engine import resolve_device
 
         registry = default_model_registry()
-        if not registry.has(model):
+        card = None
+        if registry.has(model):
+            card = registry.get(model)
+        elif model in registry.invalid_names():
+            card = registry.invalid_card(model)
+            issues = registry.invalid_issues(model)
+            codes = ", ".join(sorted({i.code for i in issues}))
+            if allow_incomplete_card:
+                typer.secho(
+                    f"Warning: model card {model!r} fails the safety contract "
+                    f"({codes}); proceeding because --allow-incomplete-card is set.",
+                    fg="yellow",
+                    err=True,
+                )
+            else:
+                typer.secho(
+                    f"Model card {model!r} fails the safety contract ({codes}). "
+                    "Fix the card or pass --allow-incomplete-card.",
+                    fg="red",
+                    err=True,
+                )
+                raise typer.Exit(2)
+        else:
             typer.secho(f"Model card {model!r} is not registered.", fg="red", err=True)
             raise typer.Exit(2)
-        card = registry.get(model)
+        assert card is not None  # narrow for the type checker
+
+        # Final guardrail: even valid cards are re-checked in case of custom
+        # registry. Cheap; zero-cost on happy path.
+        issues = validate_card(card)
+        if issues and not allow_incomplete_card:
+            codes = ", ".join(sorted({i.code for i in issues}))
+            typer.secho(
+                f"Model card {card.name!r} fails the safety contract ({codes}). "
+                "Fix the card or pass --allow-incomplete-card.",
+                fg="red",
+                err=True,
+            )
+            raise typer.Exit(2)
+
         dev = resolve_device(device)
+
+        tile_bytes = tile_path.read_bytes()
+        image_sha256 = hashlib.sha256(tile_bytes).hexdigest()
 
         rgb = _load_tile_rgb(tile_path)
         tile_h, tile_w = card.input_size
@@ -105,6 +204,16 @@ def register(app: typer.Typer) -> None:
         adapter = adapter_for_card(card)
         net = adapter.build(card, num_classes=num_classes, pretrained=False).to(dev)
         net.eval()
+
+        # Run a forward pass once to capture probabilities; explainers
+        # re-run as needed with gradient tracking.
+        with torch.no_grad():
+            logits = net(tensor)
+            probs_tensor = torch.softmax(logits, dim=1)[0].detach().cpu().numpy()
+        probabilities = tuple(
+            ClassProbability(class_name=f"class_{i}", probability=float(p))
+            for i, p in enumerate(probs_tensor)
+        )
 
         if explainer == "gradcam":
             if target_layer is None:
@@ -161,6 +270,34 @@ def register(app: typer.Typer) -> None:
         _ = encode_png(heatmap_u8)
         typer.echo(f"heatmap: {heatmap_png_path}")
         typer.echo(f"overlay: {overlay_png_path}")
+
+        borderline = classify_with_band(
+            [cp.probability for cp in probabilities],
+            low=low,
+            high=high,
+            allow_uncalibrated=allow_uncalibrated,
+            calibrated=not allow_uncalibrated,
+        )
+        typer.echo(
+            f"decision: {borderline.decision} "
+            f"(confidence={borderline.confidence:.3f}, band={borderline.band})"
+        )
+
+        if pdf is not None:
+            from openpathai.safety.report import render_pdf
+
+            result = AnalysisResult(
+                image_sha256=image_sha256,
+                model_name=card.name,
+                explainer_name=explainer,
+                probabilities=probabilities,
+                borderline=borderline,
+                manifest_hash="",
+                overlay_png=_png_bytes(overlay),
+                thumbnail_png=_png_bytes(resized_rgb),
+            )
+            render_pdf(result, pdf)
+            typer.echo(f"report: {pdf}")
 
 
 __all__ = ["register"]

@@ -57,6 +57,12 @@ def test_registry_user_override_wins(tmp_path: Path) -> None:
         },
         "num_params_m": 11.7,
         "citation": {"text": "override"},
+        # Phase 7 safety-v1 fields — required for the card to survive
+        # validate_card() at registry load time.
+        "training_data": "ImageNet-1k (override fixture).",
+        "intended_use": "Test fixture — never real inference.",
+        "out_of_scope_use": "Everything except this test.",
+        "known_biases": ["synthetic override"],
     }
     (override_dir / "resnet18.yaml").write_text(yaml.safe_dump(payload))
 

@@ -48,4 +48,45 @@ def list_models(
         )
 
 
+@models_app.command("check")
+def check_models() -> None:
+    """Validate every registered model card against the Phase 7 contract.
+
+    Exits non-zero when any card fails. Prints a table of every card
+    (passes and fails) so CI and humans can see the full state.
+    """
+    from openpathai.models import default_model_registry
+    from openpathai.safety import validate_card
+
+    registry = default_model_registry()
+    failures = 0
+
+    valid_names = registry.names()
+    invalid_names = registry.invalid_names()
+    all_names = sorted({*valid_names, *invalid_names})
+
+    if not all_names:
+        typer.echo("(no model cards registered)")
+        raise typer.Exit(1)
+
+    for name in all_names:
+        card = registry.get(name) if name in valid_names else registry.invalid_card(name)
+        issues = validate_card(card)
+        if issues:
+            failures += 1
+            typer.secho(f"FAIL {name}", fg="red")
+            for issue in issues:
+                typer.echo(f"    [{issue.code}] {issue.message}")
+        else:
+            typer.secho(f"ok   {name}", fg="green")
+
+    if failures:
+        typer.secho(
+            f"\n{failures} model card(s) failed the safety contract.",
+            fg="red",
+            err=True,
+        )
+        raise typer.Exit(2)
+
+
 __all__ = ["models_app"]

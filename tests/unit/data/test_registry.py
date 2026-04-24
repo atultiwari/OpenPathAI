@@ -42,10 +42,11 @@ def test_filter_by_modality_tissue_tier() -> None:
     assert {c.name for c in tile_cards} >= {"lc25000", "pcam", "mhist"}
 
     colon = reg.filter(tissue="colon")
-    assert {c.name for c in colon} == {"lc25000", "mhist"}
+    # Phase 7 added kather_crc_5k (colon, CC-BY). The filter must include it.
+    assert {c.name for c in colon} == {"lc25000", "mhist", "kather_crc_5k"}
 
     t1_ok = reg.filter(tier="T1")
-    assert {c.name for c in t1_ok} >= {"lc25000", "mhist", "pcam"}
+    assert {c.name for c in t1_ok} >= {"lc25000", "mhist", "pcam", "kather_crc_5k"}
 
 
 @pytest.mark.unit

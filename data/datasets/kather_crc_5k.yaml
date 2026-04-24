@@ -1,0 +1,75 @@
+name: kather_crc_5k
+display_name: "Kather Colorectal Histology 5K (colorectal-histology-mnist)"
+modality: tile
+num_classes: 8
+classes:
+  - tumour_epithelium
+  - simple_stroma
+  - complex_stroma
+  - immune_cells
+  - debris
+  - normal_mucosal_glands
+  - adipose_tissue
+  - background
+tile_size: [150, 150]
+total_images: 5000
+license: CC-BY-4.0
+tissue: [colon]
+stain: "H&E"
+magnification: "20X"
+mpp: 0.495
+
+download:
+  method: zenodo
+  zenodo_record: "53169"
+  kaggle_slug: kmader/colorectal-histology-mnist
+  url: "https://zenodo.org/record/53169"
+  size_gb: 0.14
+  instructions_md: |
+    Canonical smoke-test dataset for OpenPathAI. Two equivalent sources:
+
+    **Zenodo (authoritative):**
+    `openpathai download kather_crc_5k` once Phase 5's downloader learns
+    Zenodo (tracked); or manually:
+    https://zenodo.org/record/53169 → download the 5,000-tile archive
+    (`Kather_texture_2016_image_tiles_5000.zip`, ~140 MB) and unzip into
+    `~/.openpathai/datasets/kather_crc_5k/` so each class name is its
+    own subdirectory.
+
+    **Kaggle mirror:**
+    `kmader/colorectal-histology-mnist` — place `kaggle.json` at
+    `~/.kaggle/kaggle.json` and run `openpathai datasets download
+    kather_crc_5k` once the CLI gains the Zenodo-aware path; otherwise
+    use the Kaggle CLI directly.
+
+citation:
+  text: "Kather JN, Weis C-A, Bianconi F, Melchers SM, Schad LR, Gaiser T, Marx A, Zöllner FG. Multi-class texture analysis in colorectal cancer histology. Scientific Reports 6 (2016)."
+  doi: "10.1038/srep27988"
+  url: "https://zenodo.org/record/53169"
+
+recommended_models:
+  - resnet18
+  - mobilenetv3_small_100
+  - efficientnet_b0
+recommended_splits:
+  type: tile_level
+  train: 0.70
+  val: 0.15
+  test: 0.15
+  stratify_by: [class]
+
+tier_compatibility:
+  T1: ok
+  T2: ok
+  T3: ok
+
+qc_gates:
+  - blur
+
+notes: |
+  The canonical OpenPathAI smoke-test dataset — 5,000 tiles at 150×150
+  across 8 colorectal tissue classes in a 140 MB archive, CC-BY-4.0. Use
+  this as the first dataset on a new machine: it downloads in under a
+  minute on a home connection and trains a ResNet-18 end-to-end in under
+  ten minutes on a laptop CPU. Not sufficient on its own for clinical
+  transfer claims.

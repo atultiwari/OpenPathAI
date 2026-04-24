@@ -115,7 +115,17 @@ class ModelCard(BaseModel):
     citation: ModelCitation
     tier_compatibility: TierCompatibility = Field(default_factory=TierCompatibility)
     recommended_datasets: tuple[str, ...] = ()
+
+    # --- Safety v1 (Phase 7) --------------------------------------------------
+    # These four fields are load-time optional so legacy cards keep parsing,
+    # but :func:`openpathai.safety.validate_card` treats an empty value as a
+    # contract violation and the registry excludes offending cards from
+    # ``names()``. Every shipped card under ``models/zoo/`` populates them.
+    training_data: str = ""
+    intended_use: str = ""
+    out_of_scope_use: str = ""
     known_biases: tuple[str, ...] = ()
+
     notes: str | None = None
 
     @field_validator("input_size")

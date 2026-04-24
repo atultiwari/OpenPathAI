@@ -1974,6 +1974,7 @@ colab = [
     { name = "kaggle" },
     { name = "lightning" },
     { name = "openslide-python" },
+    { name = "reportlab" },
     { name = "scikit-image" },
     { name = "tifffile" },
     { name = "timm" },
@@ -2013,6 +2014,7 @@ gui = [
     { name = "gradio" },
     { name = "gradio-client" },
     { name = "lightning" },
+    { name = "reportlab" },
     { name = "scikit-image" },
     { name = "tifffile" },
     { name = "timm" },
@@ -2031,6 +2033,7 @@ local = [
     { name = "kaggle" },
     { name = "lightning" },
     { name = "openslide-python" },
+    { name = "reportlab" },
     { name = "scikit-image" },
     { name = "tifffile" },
     { name = "timm" },
@@ -2046,6 +2049,7 @@ notebook = [
     { name = "kaggle" },
     { name = "lightning" },
     { name = "openslide-python" },
+    { name = "reportlab" },
     { name = "scikit-image" },
     { name = "tifffile" },
     { name = "timm" },
@@ -2061,12 +2065,16 @@ runpod = [
     { name = "kaggle" },
     { name = "lightning" },
     { name = "openslide-python" },
+    { name = "reportlab" },
     { name = "scikit-image" },
     { name = "tifffile" },
     { name = "timm" },
     { name = "torch" },
     { name = "torchmetrics" },
     { name = "torchvision" },
+]
+safety = [
+    { name = "reportlab" },
 ]
 train = [
     { name = "lightning" },
@@ -2098,8 +2106,8 @@ requires-dist = [
     { name = "openpathai", extras = ["data"], marker = "extra == 'dev'" },
     { name = "openpathai", extras = ["data"], marker = "extra == 'train'" },
     { name = "openpathai", extras = ["data"], marker = "extra == 'wsi'" },
-    { name = "openpathai", extras = ["data", "kaggle", "wsi", "train", "explain", "gui"], marker = "extra == 'local'" },
-    { name = "openpathai", extras = ["explain"], marker = "extra == 'gui'" },
+    { name = "openpathai", extras = ["data", "kaggle", "wsi", "train", "explain", "gui", "safety"], marker = "extra == 'local'" },
+    { name = "openpathai", extras = ["explain", "safety"], marker = "extra == 'gui'" },
     { name = "openpathai", extras = ["local"], marker = "extra == 'colab'" },
     { name = "openpathai", extras = ["local"], marker = "extra == 'notebook'" },
     { name = "openpathai", extras = ["train"], marker = "extra == 'explain'" },
@@ -2111,6 +2119,7 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3,<9" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0,<7" },
     { name = "pyyaml", specifier = ">=6.0,<7" },
+    { name = "reportlab", marker = "extra == 'safety'", specifier = ">=4.0,<5" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.9.3,<1.0" },
     { name = "scikit-image", marker = "extra == 'data'", specifier = ">=0.23,<0.26" },
     { name = "tifffile", marker = "extra == 'data'", specifier = ">=2024.7.2" },
@@ -2120,7 +2129,7 @@ requires-dist = [
     { name = "torchvision", marker = "extra == 'train'", specifier = ">=0.21,<1" },
     { name = "typer", specifier = ">=0.15,<1.0" },
 ]
-provides-extras = ["data", "wsi", "kaggle", "train", "explain", "gui", "local", "colab", "runpod", "notebook", "dev"]
+provides-extras = ["data", "wsi", "kaggle", "train", "explain", "gui", "safety", "local", "colab", "runpod", "notebook", "dev"]
 
 [[package]]
 name = "openslide-python"
@@ -2767,6 +2776,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/eb/2e/79c822141bfd05a853236b504869ebc6b70159afc570e1d5a20641782eaa/pyyaml_env_tag-1.1.tar.gz", hash = "sha256:2eb38b75a2d21ee0475d6d97ec19c63287a7e140231e4214969d0eac923cd7ff", size = 5737, upload-time = "2025-05-13T15:24:01.64Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/04/11/432f32f8097b03e3cd5fe57e88efb685d964e2e5178a48ed61e841f7fdce/pyyaml_env_tag-1.1-py3-none-any.whl", hash = "sha256:17109e1a528561e32f026364712fee1264bc2ea6715120891174ed1b980d2e04", size = 4722, upload-time = "2025-05-13T15:23:59.629Z" },
+]
+
+[[package]]
+name = "reportlab"
+version = "4.4.10"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "charset-normalizer" },
+    { name = "pillow" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/48/57/28bfbf0a775b618b6e4d854ef8dd3f5c8988e5d614d8898703502a35f61c/reportlab-4.4.10.tar.gz", hash = "sha256:5cbbb34ac3546039d0086deb2938cdec06b12da3cdb836e813258eb33cd28487", size = 3714962, upload-time = "2026-02-12T10:45:21.325Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8a/2e/e1798b8b248e1517e74c6cdf10dd6edd485044e7edf46b5f11ffcc5a0add/reportlab-4.4.10-py3-none-any.whl", hash = "sha256:5abc815746ae2bc44e7ff25db96814f921349ca814c992c7eac3c26029bf7c24", size = 1955400, upload-time = "2026-02-12T10:45:18.828Z" },
 ]
 
 [[package]]

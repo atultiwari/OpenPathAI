@@ -1,10 +1,30 @@
-"""Models tab — filter + inspect every registered model card."""
+"""Models tab — filter + inspect every registered model card.
+
+Phase 7 adds a **status + issues** column so cards that fail the
+safety-v1 contract render with their failure codes. The Analyse and
+Train pickers continue to consume :meth:`ModelRegistry.names` which
+already excludes failing cards, so a contract violation never lets an
+incomplete card reach a classifier.
+"""
 
 from __future__ import annotations
 
 from typing import Any
 
 from openpathai.gui.views import models_rows
+
+MODELS_HEADERS = [
+    "name",
+    "display_name",
+    "family",
+    "framework",
+    "params_m",
+    "input_size",
+    "license",
+    "gated",
+    "status",
+    "issues",
+]
 
 
 def _rows_as_list(  # pragma: no cover - gradio
@@ -16,8 +36,7 @@ def _rows_as_list(  # pragma: no cover - gradio
     rows = models_rows(family=family, framework=framework, tier=tier)
     if not rows:
         return []
-    keys = list(rows[0].keys())
-    return [[row[key] for key in keys] for row in rows]
+    return [[row[key] for key in MODELS_HEADERS] for row in rows]
 
 
 def build(state: Any) -> Any:  # pragma: no cover - gradio-gated renderer
@@ -25,23 +44,23 @@ def build(state: Any) -> Any:  # pragma: no cover - gradio-gated renderer
 
     del state
     with gr.Blocks() as tab:
-        gr.Markdown("### Model registry (Tier A)")
+        gr.Markdown(
+            "### Model registry (Tier A)\n"
+            "Cards are listed alphabetically. Rows with `status=incomplete` "
+            "fail the Phase 7 safety-v1 contract and are **excluded** from "
+            "the Analyse / Train pickers until the corresponding YAML is "
+            "updated; the `issues` column names the missing fields."
+        )
         with gr.Row():
             family = gr.Textbox(label="Family filter (resnet, vit, ...)", value="")
             framework = gr.Textbox(label="Framework filter", value="")
             tier = gr.Dropdown(["", "T1", "T2", "T3"], value="", label="Tier filter")
         refresh = gr.Button("Refresh")
-        headers = [
-            "name",
-            "display_name",
-            "family",
-            "framework",
-            "params_m",
-            "input_size",
-            "license",
-            "gated",
-        ]
-        table = gr.Dataframe(headers=headers, value=_rows_as_list(), interactive=False)
+        table = gr.Dataframe(
+            headers=MODELS_HEADERS,
+            value=_rows_as_list(),
+            interactive=False,
+        )
 
         def _filter(fam: str, fw: str, tier_opt: str) -> list[list[str]]:
             return _rows_as_list(
@@ -54,4 +73,4 @@ def build(state: Any) -> Any:  # pragma: no cover - gradio-gated renderer
     return tab
 
 
-__all__ = ["build"]
+__all__ = ["MODELS_HEADERS", "build"]

@@ -23,6 +23,19 @@ Upload a tile, pick a model card, choose an explainer
 Returns a heatmap plus a tile overlay. Requires the `[train]` extra
 (torch + timm).
 
+**Phase 7 safety surfaces:**
+
+- **Borderline band** sliders (`low` / `high`) drive the
+  `BorderlineDecision` — a coloured banner (`🟢 POSITIVE`
+  / `🔴 NEGATIVE` / `🟠 NEEDS REVIEW`) shows the outcome.
+- **Per-class probabilities** render in a sortable DataFrame.
+- **Model card** accordion surfaces the safety-contract fields
+  (training data, licence, citation, intended use, out-of-scope use,
+  known biases).
+- **Download PDF report** accordion renders a deterministic, PHI-safe
+  PDF via `openpathai.safety.report.render_pdf`. Requires the `[safety]`
+  extra (ReportLab).
+
 ### Train
 
 Drives the Phase 3 synthetic training path in-browser — pick a model,
@@ -35,13 +48,26 @@ training plugs in with the Phase 9 cohort driver.
 
 Filter and inspect every registered dataset card. The table shows
 name, modality, tissue, classes, size, gated status, confirmation
-policy, and licence. Large / gated cards (HISTAI-breast, PCam) flag
-automatically. Click **Show YAML** to render the full card.
+policy, **source** (shipped vs local), and licence. Large / gated
+cards (HISTAI-breast, PCam) flag automatically. Click **Show YAML**
+to render the full card.
+
+**Phase 7 additions:**
+
+- **Add local dataset** accordion — register any ImageFolder-style
+  tree under `~/.openpathai/datasets/` as a first-class card (see
+  [Datasets](datasets.md) for the full workflow).
+- **Deregister local dataset** accordion — removes a user card.
+- **Kather-CRC-5k** (~140 MB, 8 colon classes, CC-BY-4.0) ships as the
+  canonical smoke-test dataset.
 
 ### Models
 
 Filter and inspect every Tier-A model card (10 shipped under
 `models/zoo/` — ResNet, EfficientNet, MobileNet, ViT, Swin, ConvNeXt).
+Phase 7 adds **status** and **issues** columns: cards failing the
+safety-v1 contract are listed with their failing codes and are hidden
+from the Analyse / Train pickers until their YAML is updated.
 
 ### Settings
 
@@ -83,5 +109,6 @@ checks `sys.modules` after a fresh import).
 
 | Extra | Pulls | When to install |
 |-------|-------|-----------------|
-| `[gui]` | `[explain]` (transitively `[train]`) + `gradio>=5,<6` | You want to run `openpathai gui`. |
-| `[local]` | `[data,kaggle,wsi,train,explain,gui]` | Full laptop setup — everything you need. |
+| `[gui]` | `[explain,safety]` (transitively `[train]`) + `gradio>=5,<6` | You want to run `openpathai gui`. |
+| `[safety]` | `reportlab>=4,<5` | PDF reports only (no Gradio). CI, headless servers. |
+| `[local]` | `[data,kaggle,wsi,train,explain,gui,safety]` | Full laptop setup — everything you need. |
