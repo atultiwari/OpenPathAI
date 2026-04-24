@@ -21,7 +21,9 @@ from openpathai.foundation.fallback import (
     FallbackDecision,
     FallbackReason,
     GatedAccessError,
+    build_resolved_adapter,
     resolve_backbone,
+    resolve_backbone_and_build,
 )
 from openpathai.foundation.registry import (
     FoundationRegistry,
@@ -34,6 +36,8 @@ __all__ = [
     "FoundationAdapter",
     "FoundationRegistry",
     "GatedAccessError",
+    "build_resolved_adapter",
     "default_foundation_registry",
     "resolve_backbone",
+    "resolve_backbone_and_build",
 ]

@@ -13,6 +13,7 @@ from typing import Any
 import numpy as np
 
 from openpathai.gui.views import cohort_rows
+from openpathai.safety.audit.phi import redact_manifest_path
 
 COHORT_HEADERS: list[str] = [
     "slide_id",
@@ -57,7 +58,10 @@ def _build_from_directory(  # pragma: no cover - gradio
     except (NotADirectoryError, ValueError) as exc:
         return [], f"Build failed: {exc}"
     rows, status = _rows_for(output)
-    return rows, f"{status}  Wrote cohort YAML → {output}."
+    # Iron rule #8: never render absolute patient-context paths in the
+    # GUI. ``redact_manifest_path`` keeps the basename so users still see
+    # which YAML was written, but hashes the parent directory.
+    return rows, f"{status}  Wrote cohort YAML → {redact_manifest_path(output)}."
 
 
 def _fake_thumbnail(shape: tuple[int, int, int] = (256, 256, 3)) -> np.ndarray:
@@ -120,13 +124,15 @@ def _run_qc(  # pragma: no cover - gradio
     pdf_path = render_pdf(report, out_root / "cohort-qc.pdf") if want_pdf else None
 
     summary = report.summary()
+    safe_html = redact_manifest_path(html_path)
+    safe_pdf = redact_manifest_path(pdf_path) if pdf_path else None
     status = (
         f"QC complete. pass={summary['pass']}  warn={summary['warn']}  "
-        f"fail={summary['fail']}.  HTML → {html_path}"
+        f"fail={summary['fail']}.  HTML → {safe_html}"
     )
-    if pdf_path:
-        status += f"  PDF → {pdf_path}"
-    return status, str(html_path), (str(pdf_path) if pdf_path else None), summary
+    if safe_pdf:
+        status += f"  PDF → {safe_pdf}"
+    return status, safe_html, safe_pdf, summary
 
 
 def build(state: Any) -> Any:  # pragma: no cover - gradio-gated renderer

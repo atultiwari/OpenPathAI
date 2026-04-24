@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 if TYPE_CHECKING:  # pragma: no cover - type-only
+    from openpathai.foundation.adapter import FoundationAdapter
     from openpathai.foundation.registry import FoundationRegistry
 
 __all__ = [
@@ -28,8 +29,10 @@ __all__ = [
     "FallbackDecision",
     "FallbackReason",
     "GatedAccessError",
+    "build_resolved_adapter",
     "hf_token_present",
     "resolve_backbone",
+    "resolve_backbone_and_build",
 ]
 
 
@@ -84,10 +87,17 @@ def resolve_backbone(
 ) -> FallbackDecision:
     """Return a :class:`FallbackDecision` for ``requested_id``.
 
+    **Two-step contract:** this function only reports which backbone will
+    run (``decision.resolved_id``); it does not return the built adapter.
+    If you need the actual adapter — e.g. to embed tiles — call
+    :func:`build_resolved_adapter` or use the combined
+    :func:`resolve_backbone_and_build` helper. Iron rule #11 is preserved
+    either way because the manifest already records ``resolved_id``.
+
     The function never raises on its own — it calls the adapter's
     ``.build()`` inside a broad ``try`` so any import or gated-access
     error becomes a fallback rather than a crash. With
-    ``allow_fallback=False`` we re-raise as :class:`GatedAccessError`
+    ``allow_fallback=False`` we re-raise as :class:`GatedAccessError``
     so the caller can decide to hard-fail.
     """
     token_present = hf_token_present()
@@ -183,3 +193,43 @@ def resolve_backbone(
         message=f"{requested_id} loaded from gated source (token present).",
         hf_token_present=True,
     )
+
+
+def build_resolved_adapter(
+    decision: FallbackDecision,
+    *,
+    registry: FoundationRegistry,
+) -> FoundationAdapter:
+    """Return the built adapter that matches ``decision.resolved_id``.
+
+    Use this after :func:`resolve_backbone` when you need to actually
+    embed tiles — not just report the resolution in a manifest. For
+    callers that want a single call, see
+    :func:`resolve_backbone_and_build`.
+    """
+    try:
+        adapter = registry.get(decision.resolved_id)
+    except KeyError as exc:  # pragma: no cover - defensive; resolver guarantees resolved_id
+        raise ValueError(
+            f"resolved backbone {decision.resolved_id!r} is not registered; "
+            f"registry has drifted from the fallback resolver."
+        ) from exc
+    adapter.build(pretrained=True)
+    return adapter
+
+
+def resolve_backbone_and_build(
+    requested_id: str,
+    *,
+    registry: FoundationRegistry,
+    allow_fallback: bool = True,
+) -> tuple[FallbackDecision, FoundationAdapter]:
+    """Resolve + build in one call.
+
+    Returns both the :class:`FallbackDecision` (for manifest persistence)
+    and the built adapter (for embedding). Callers that only need the
+    decision string can keep using :func:`resolve_backbone` alone.
+    """
+    decision = resolve_backbone(requested_id, registry=registry, allow_fallback=allow_fallback)
+    adapter = build_resolved_adapter(decision, registry=registry)
+    return decision, adapter

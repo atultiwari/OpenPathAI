@@ -9,6 +9,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Post-Phase-18 audit fixes (2026-04-24)
+
+Pre-Phase-19 full-project audit surfaced 6 must-fix bugs (2
+cross-platform crashes / security holes, 3 PHI leaks, 1 contract
+gap), 8 warnings, and 1 CI regression. All fixed.
+
+Security / correctness
+- `LinearProbeConfig.__post_init__` now validates `max_iter >= 1`,
+  `l2 >= 0`, `learning_rate > 0`, `tolerance >= 0` — previously
+  `max_iter=0` crashed with `UnboundLocalError`.
+- `torch.load(..., weights_only=True)` added to UNI, CTransPath,
+  and TinyUNet checkpoint loads (CVE-class fix — PyTorch 2.6+
+  emits a FutureWarning; 2.8+ will execute arbitrary pickled
+  code without the flag).
+- `foundation.fallback` now ships `build_resolved_adapter` +
+  `resolve_backbone_and_build` so callers that need to embed
+  tiles with the fallback model cannot silently end up with
+  the requested adapter instead — closes iron-rule-#11
+  contract gap.
+
+PHI (iron rule #8)
+- `NodeRunRecord.input_config` in run manifests is now
+  PHI-stripped via `strip_phi()` before persistence. Raw file-
+  system paths from typed pipeline inputs no longer land in
+  `manifest.json` and therefore no longer leak into
+  `methods_writer` LLM prompts.
+- Cohorts tab: YAML-write + QC-report status strings in the
+  browser now render `basename#<sha256[:8]>` instead of raw
+  absolute paths. QC textbox outputs redacted as well.
+- `cohort_rows` hashes `patient_id` to `pt-<sha256[:8]>` so the
+  Cohorts dataframe never shows a plaintext patient identifier
+  in the browser.
+
+Reliability
+- Silent `except Exception: pass` fallbacks in `nl.zero_shot`,
+  `nl.text_prompt_seg`, `foundation.dinov2`, and
+  `safety.sigstore.keys._harden_private_file` now emit a
+  `logging.warning(exc_info=True)` so operators can reconcile
+  real-adapter failures against the audit trail (iron rule
+  #11).
+- `SegmentationResult.metadata` now wraps the dict in
+  `types.MappingProxyType` on construction; in-place mutation
+  raises `TypeError`.
+- `_predict_proba` is now a private helper; it was in `__all__`
+  but the weights/bias it requires are never persisted in
+  `LinearProbeReport`, so the public export was dead.
+- `openpathai pipeline draft` CLI no longer prints the raw
+  user prompt — just the `prompt_hash`. Prevents accidental
+  PHI in CI / terminal scrollback.
+- `OpenAICompatibleBackend` now refuses to construct against a
+  non-loopback `base_url` unless `OPENPATHAI_ALLOW_REMOTE_LLM=1`
+  is set. Keeps NL traffic on-host by default.
+
+CI
+- `.github/workflows/docker.yml` now evaluates
+  `secrets.GHCR_TOKEN` through a preliminary shell step that
+  writes a `can_push` step-output, consumed by downstream
+  `if:` expressions. GitHub's newer workflow validator rejects
+  direct `secrets.*` references in step-level `if:`, which
+  caused the workflow to fail at 0s on every push since
+  Phase 18 landed.
+
 ### Phase 18 (v1.1.0 line) — Packaging + Docker + docs site (2026-04-24)
 
 Added

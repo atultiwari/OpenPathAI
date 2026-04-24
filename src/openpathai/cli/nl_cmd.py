@@ -155,10 +155,13 @@ def draft_cmd(
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(yaml_text, encoding="utf-8")
 
+    # Iron rule #8: never print the raw prompt in CLI stdout. If the
+    # user piped in a path-containing prompt (slide paths, patient
+    # folders) it would land in CI logs / terminal scrollback. The
+    # ``prompt_hash`` is enough to correlate with the audit record.
     typer.echo(
         json.dumps(
             {
-                "prompt": draft.prompt,
                 "prompt_hash": draft.prompt_hash,
                 "backend_id": draft.backend_id,
                 "model_id": draft.model_id,

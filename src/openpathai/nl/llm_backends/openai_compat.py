@@ -16,7 +16,11 @@ URL triples.
 
 from __future__ import annotations
 
+import ipaddress
+import os
+import socket
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 
@@ -31,6 +35,50 @@ __all__ = ["OpenAICompatibleBackend"]
 
 
 _DEFAULT_TIMEOUT = httpx.Timeout(connect=3.0, read=60.0, write=15.0, pool=60.0)
+
+_ALLOW_REMOTE_ENV = "OPENPATHAI_ALLOW_REMOTE_LLM"
+"""Operators who intentionally point the backend at a remote host must
+set this env var to ``1``. Master plan keeps NL traffic on-host by
+default — iron rule #8 tolerates no silent off-host PHI egress."""
+
+
+def _assert_local_base_url(base_url: str) -> None:
+    """Raise :class:`LLMUnavailableError` when ``base_url`` resolves to a
+    non-loopback address unless ``OPENPATHAI_ALLOW_REMOTE_LLM=1``.
+
+    The check is deliberately lenient: unresolvable hosts pass through
+    (``probe()`` will then fail fast with a network error) so CI + air-
+    gapped tests aren't broken by a DNS lookup during construction.
+    """
+    if os.environ.get(_ALLOW_REMOTE_ENV) == "1":
+        return
+    parsed = urlparse(base_url)
+    host = parsed.hostname
+    if not host:
+        return
+    # Direct literals — fast path.
+    if host in {"localhost", "127.0.0.1", "::1", "0.0.0.0"}:
+        return
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        # Resolve DNS. Best-effort — a failure is not a red flag.
+        try:
+            resolved = socket.gethostbyname(host)
+        except OSError:
+            return
+        try:
+            ip = ipaddress.ip_address(resolved)
+        except ValueError:
+            return
+    if ip.is_loopback:
+        return
+    raise LLMUnavailableError(
+        f"refusing to connect to non-loopback LLM backend at {base_url!r} "
+        f"(host {host}). Iron rule #8 requires NL traffic to stay on-host. "
+        f"Set {_ALLOW_REMOTE_ENV}=1 to override — e.g. for a trusted "
+        "on-premise inference server."
+    )
 
 
 class OpenAICompatibleBackend:
@@ -56,6 +104,11 @@ class OpenAICompatibleBackend:
         transport: httpx.BaseTransport | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
+        # Iron rule #8 — refuse to construct a backend that would route
+        # prompts (and indirectly patient-adjacent data) off-host
+        # unless the operator has explicitly opted in.
+        if transport is None:  # tests use mock transports; don't nag.
+            _assert_local_base_url(self.base_url)
         self.model = model
         self._timeout = timeout or _DEFAULT_TIMEOUT
         self._transport = transport

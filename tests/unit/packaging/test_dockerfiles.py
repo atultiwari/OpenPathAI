@@ -68,8 +68,13 @@ def test_workflow_exists_and_gates_on_secret() -> None:
     workflow = (ROOT / ".github" / "workflows" / "docker.yml").read_text(encoding="utf-8")
     # Workflow must fire on push to main, not every branch.
     assert "branches: [main]" in workflow
-    # Both jobs gate push + login on the GHCR_TOKEN secret so forks build cleanly.
-    assert "${{ secrets.GHCR_TOKEN != '' }}" in workflow
+    # Both jobs gate push + login on the GHCR_TOKEN secret so forks build
+    # cleanly. The secret is evaluated via a prior shell step that writes
+    # a `can_push` output consumed by downstream `if:` expressions — the
+    # older direct ``secrets.GHCR_TOKEN != ''`` in step-level ``if:`` is
+    # rejected by GitHub's workflow validator.
+    assert "GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}" in workflow
+    assert "steps.ghcr.outputs.can_push == 'true'" in workflow
     # Both tags (cpu + gpu) are produced.
     assert "openpathai:cpu-latest" in workflow
     assert "openpathai:gpu-latest" in workflow

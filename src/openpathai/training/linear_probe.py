@@ -33,7 +33,6 @@ __all__ = [
     "LinearProbeConfig",
     "LinearProbeReport",
     "fit_linear_probe",
-    "predict_proba",
 ]
 
 
@@ -47,6 +46,16 @@ class LinearProbeConfig:
     tolerance: float = 1e-6
     random_seed: int = 1234
     calibrate: bool = True
+
+    def __post_init__(self) -> None:
+        if self.max_iter < 1:
+            raise ValueError(f"max_iter must be >= 1; got {self.max_iter}")
+        if self.l2 < 0.0:
+            raise ValueError(f"l2 must be non-negative; got {self.l2}")
+        if self.learning_rate <= 0.0:
+            raise ValueError(f"learning_rate must be > 0; got {self.learning_rate}")
+        if self.tolerance < 0.0:
+            raise ValueError(f"tolerance must be non-negative; got {self.tolerance}")
 
 
 class LinearProbeReport(BaseModel):
@@ -181,13 +190,12 @@ def fit_linear_probe(
     )
 
 
-def predict_proba(
+def _predict_proba(
     features: np.ndarray, weights: np.ndarray, bias: np.ndarray, *, temperature: float = 1.0
 ) -> np.ndarray:
-    """Inference helper shipped for users who cache the fitted weights
-    + bias from a previous :func:`fit_linear_probe` (we don't persist
-    them in the report, but the fitted artifacts are reconstructible
-    from the same seed + features)."""
+    """Internal inference helper. Not part of the public API until
+    :class:`LinearProbeReport` persists the fitted weights + bias — see
+    the module docstring."""
     logits = features @ weights + bias
     return _softmax(logits / max(temperature, 1e-6))
 

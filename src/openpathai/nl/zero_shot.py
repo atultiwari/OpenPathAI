@@ -24,6 +24,7 @@ carries both too.
 from __future__ import annotations
 
 import hashlib
+import logging
 from collections.abc import Sequence
 from typing import Any
 
@@ -34,6 +35,8 @@ __all__ = [
     "ZeroShotResult",
     "classify_zero_shot",
 ]
+
+_log = logging.getLogger(__name__)
 
 
 class ZeroShotResult(BaseModel):
@@ -115,7 +118,15 @@ def _encode_fallback(
             text_matrix = np.asarray(adapter.embed_text(list(prompts)), dtype=np.float32)
             return image_vec, text_matrix, getattr(adapter, "id", backbone_id)
         except Exception:
-            pass
+            # Iron rule #11 — fallback is not silent. We still fall through
+            # to the synthetic encoder, but the failure is logged so the
+            # operator can reconcile it against the run manifest.
+            _log.warning(
+                "CONCH adapter %r failed during zero-shot encode; falling back "
+                "to the synthetic text encoder.",
+                getattr(adapter, "id", backbone_id),
+                exc_info=True,
+            )
     # Synthetic fallback — hash prompts + image summary into 512-D.
     image_vec = _hash_image_vec(image, dim=512)
     text_matrix = np.stack([_hash_text_vec(p, dim=512) for p in prompts], axis=0)

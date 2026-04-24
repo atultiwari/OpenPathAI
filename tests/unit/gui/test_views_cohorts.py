@@ -39,10 +39,33 @@ def test_cohort_rows_roundtrip(tmp_path: Path) -> None:
     assert len(rows) == 2
     assert rows[0]["slide_id"] == "a"
     assert rows[0]["label"] == "normal"
-    assert rows[0]["patient_id"] == "pt-1"
+    # Iron rule #8 — patient_id is hashed, not rendered plaintext.
+    assert rows[0]["patient_id"].startswith("pt-")
+    assert "pt-1" not in rows[0]["patient_id"]
+    assert len(rows[0]["patient_id"]) == len("pt-") + 8
     assert rows[0]["mpp"] == "0.2500"
     assert rows[1]["patient_id"] == ""
     assert rows[1]["magnification"] == ""
+
+
+def test_cohort_rows_hashes_patient_id_deterministically(tmp_path: Path) -> None:
+    """Iron rule #8 — same patient_id across slides hashes the same."""
+    cohort = Cohort(
+        id="phi-pt",
+        slides=(
+            SlideRef(slide_id="s1", path="/tmp/a.svs", patient_id="pt-XYZ"),
+            SlideRef(slide_id="s2", path="/tmp/b.svs", patient_id="pt-XYZ"),
+            SlideRef(slide_id="s3", path="/tmp/c.svs", patient_id="pt-OTHER"),
+        ),
+    )
+    yaml_path = tmp_path / "c.yaml"
+    cohort.to_yaml(yaml_path)
+    rows = cohort_rows(yaml_path)
+    assert rows[0]["patient_id"] == rows[1]["patient_id"]
+    assert rows[0]["patient_id"] != rows[2]["patient_id"]
+    for row in rows:
+        assert "XYZ" not in row["patient_id"]
+        assert "OTHER" not in row["patient_id"]
 
 
 def test_cohort_rows_missing_path_returns_empty() -> None:

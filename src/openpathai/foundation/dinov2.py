@@ -17,6 +17,7 @@ import-safe on a CI cell without the ``[train]`` extra.
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -25,6 +26,8 @@ if TYPE_CHECKING:  # pragma: no cover - type-only
     pass
 
 __all__ = ["DINOv2SmallAdapter"]
+
+_log = logging.getLogger(__name__)
 
 
 class DINOv2SmallAdapter:
@@ -60,9 +63,14 @@ class DINOv2SmallAdapter:
                 pretrained=pretrained,
                 num_classes=0,  # embedding mode: drop the classifier head
             )
-        except Exception:  # pragma: no cover — timm edge cases
+        except (ImportError, RuntimeError) as exc:  # pragma: no cover — timm edge cases
             # Fall back to torch.hub for environments without
-            # timm-pinned DINOv2 weights.
+            # timm-pinned DINOv2 weights. Narrow the catch so that
+            # programming errors (TypeError, etc.) still bubble up.
+            _log.info(
+                "timm DINOv2 build failed (%s); falling back to torch.hub.",
+                exc,
+            )
             hub_module = torch.hub.load(  # type: ignore[no-untyped-call]
                 "facebookresearch/dinov2",
                 "dinov2_vits14",

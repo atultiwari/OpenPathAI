@@ -80,7 +80,7 @@ class UNIAdapter:
             num_classes=0,
             img_size=224,
         )
-        state_dict = torch.load(weights_path, map_location="cpu")
+        state_dict = torch.load(weights_path, map_location="cpu", weights_only=True)
         model.load_state_dict(state_dict, strict=False)
         model.eval()
         self._module = model

@@ -409,10 +409,20 @@ def cohort_rows(yaml_path: str | Path) -> list[dict[str, str]]:
         cohort = Cohort.from_yaml(target)
     except (ValueError, FileNotFoundError):
         return []
+    import hashlib
+
+    def _hash_patient_id(value: str | None) -> str:
+        # Iron rule #8: patient identifiers leak patient context when
+        # rendered in the browser. Use a short stable hash so runs from
+        # the same patient still collate visually without the raw id.
+        if not value:
+            return ""
+        return "pt-" + hashlib.sha256(value.encode("utf-8")).hexdigest()[:8]
+
     return [
         {
             "slide_id": slide.slide_id,
-            "patient_id": slide.patient_id or "",
+            "patient_id": _hash_patient_id(slide.patient_id),
             "label": slide.label or "",
             "path": redact_manifest_path(slide.path),
             "mpp": "" if slide.mpp is None else f"{slide.mpp:.4f}",

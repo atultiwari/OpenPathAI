@@ -17,6 +17,7 @@ document the platform tradeoff in ``docs/diagnostic-mode.md``.
 
 from __future__ import annotations
 
+import logging
 import os
 import stat
 import sys
@@ -24,6 +25,8 @@ from pathlib import Path
 from typing import Any
 
 from openpathai.safety.sigstore.schema import SigstoreError
+
+_log = logging.getLogger(__name__)
 
 __all__ = [
     "default_key_path",
@@ -107,11 +110,21 @@ def load_keypair(path: str | Path | None = None) -> tuple[Any, Any]:
 
 
 def _harden_private_file(path: Path) -> None:
-    """Restrict private-key read access to the owning user."""
+    """Restrict private-key read access to the owning user.
+
+    Failure is logged (never silent) so an operator inspecting the log
+    can see that the key may be world-readable — important on multi-user
+    POSIX hosts where a permissions regression is a security issue.
+    """
     try:
         if sys.platform.startswith("win"):  # pragma: no cover - platform-gated
             os.chmod(path, stat.S_IREAD | stat.S_IWRITE)
         else:
             os.chmod(path, 0o600)
-    except OSError:  # pragma: no cover - best-effort; fail loudly elsewhere
-        pass
+    except OSError as exc:  # pragma: no cover - best-effort, logged
+        _log.warning(
+            "Could not harden permissions on Ed25519 private key %s: %s. "
+            "On multi-user POSIX hosts, verify the file is not world-readable.",
+            path,
+            exc,
+        )

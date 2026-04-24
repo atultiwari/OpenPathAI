@@ -111,7 +111,7 @@ class TinyUNetAdapter:
 
         module = _TinyUNet(self.num_classes)
         if pretrained and self._weight_path.exists():  # pragma: no cover — real-weights path
-            state = torch.load(str(self._weight_path), map_location="cpu")
+            state = torch.load(str(self._weight_path), map_location="cpu", weights_only=True)
             module.load_state_dict(state, strict=False)
         module.eval()
         self._module = module

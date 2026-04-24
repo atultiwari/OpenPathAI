@@ -503,12 +503,19 @@ class Executor:
         produced: dict[str, Artifact],
     ) -> NodeRunRecord:
         """Execute a single step end-to-end; update ``produced`` in place."""
+        from openpathai.safety.audit.phi import strip_phi
+
         definition = self._registry.get(step.op)
         resolved_inputs, upstream_hashes = self._resolve_inputs(step, produced)
         # Hydrate the typed input model so the cache key hashes the
         # canonical, type-coerced representation.
         input_model = definition.input_type.model_validate(resolved_inputs)
         input_config_dict = input_model.model_dump(mode="json")
+        # Iron rule #8: the cache key uses the raw dict (cache stays
+        # local on disk), but the `NodeRunRecord.input_config` that is
+        # persisted into the manifest JSON must have PHI-looking keys
+        # and path-shaped values stripped.
+        safe_input_config = strip_phi(input_config_dict)
 
         cache_key = ContentAddressableCache.key(
             node_id=step.op,
@@ -554,7 +561,7 @@ class Executor:
             code_hash=definition.code_hash,
             started_at=step_started,
             ended_at=step_ended,
-            input_config=input_config_dict,
+            input_config=safe_input_config,
             input_hashes={"__upstream__": _joined(upstream_hashes)},
             output_artifact_type=artifact.artifact_type,
             output_hash=artifact.content_hash(),

@@ -8,8 +8,8 @@ import pytest
 from openpathai.training.linear_probe import (
     LinearProbeConfig,
     LinearProbeReport,
+    _predict_proba,
     fit_linear_probe,
-    predict_proba,
 )
 
 
@@ -126,7 +126,18 @@ def test_predict_proba_matches_softmax() -> None:
     features = rng.standard_normal((5, 4)).astype(np.float32)
     weights = rng.standard_normal((4, 3)).astype(np.float32)
     bias = rng.standard_normal(3).astype(np.float32)
-    probs = predict_proba(features, weights, bias)
+    probs = _predict_proba(features, weights, bias)
     assert probs.shape == (5, 3)
     assert np.allclose(probs.sum(axis=1), 1.0, atol=1e-5)
     assert (probs >= 0).all() and (probs <= 1.0).all()
+
+
+def test_invalid_config_rejected() -> None:
+    with pytest.raises(ValueError, match="max_iter"):
+        LinearProbeConfig(max_iter=0)
+    with pytest.raises(ValueError, match="l2"):
+        LinearProbeConfig(l2=-0.1)
+    with pytest.raises(ValueError, match="learning_rate"):
+        LinearProbeConfig(learning_rate=0.0)
+    with pytest.raises(ValueError, match="tolerance"):
+        LinearProbeConfig(tolerance=-1.0)

@@ -63,7 +63,7 @@ class CTransPathAdapter:
             num_classes=0,
         )
         if pretrained:  # pragma: no cover — requires real weights on disk
-            state = torch.load(str(self._weight_path), map_location="cpu")
+            state = torch.load(str(self._weight_path), map_location="cpu", weights_only=True)
             # CTransPath ships state_dict under a "model" key.
             if isinstance(state, dict) and "model" in state:
                 state = state["model"]

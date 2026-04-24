@@ -7,8 +7,10 @@ import pytest
 from openpathai.foundation import (
     FallbackDecision,
     GatedAccessError,
+    build_resolved_adapter,
     default_foundation_registry,
     resolve_backbone,
+    resolve_backbone_and_build,
 )
 
 
@@ -95,3 +97,24 @@ def test_fallback_decision_schema() -> None:
     # No mutation (pydantic frozen models raise ValidationError on set).
     with pytest.raises(ValidationError):
         dec.resolved_id = "x"  # type: ignore[misc]
+
+
+def test_build_resolved_adapter_returns_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+    """When UNI falls back to DINOv2, the built adapter is DINOv2."""
+    pytest.importorskip("torch")
+    _no_token(monkeypatch)
+    reg = default_foundation_registry()
+    decision = resolve_backbone("uni", registry=reg)
+    assert decision.resolved_id == "dinov2_vits14"
+    adapter = build_resolved_adapter(decision, registry=reg)
+    # The adapter id should match the resolved id, not the requested one.
+    assert adapter.id == "dinov2_vits14"
+
+
+def test_resolve_and_build_single_call(monkeypatch: pytest.MonkeyPatch) -> None:
+    pytest.importorskip("torch")
+    _no_token(monkeypatch)
+    reg = default_foundation_registry()
+    decision, adapter = resolve_backbone_and_build("uni", registry=reg)
+    assert decision.resolved_id == "dinov2_vits14"
+    assert adapter.id == "dinov2_vits14"

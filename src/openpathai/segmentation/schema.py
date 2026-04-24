@@ -8,6 +8,8 @@ consumers can trust it.
 
 from __future__ import annotations
 
+from types import MappingProxyType
+
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -59,7 +61,15 @@ class Mask(BaseModel):
 
 
 class SegmentationResult(BaseModel):
-    """Output of ``.segment()`` / ``.segment_with_prompt()``."""
+    """Output of ``.segment()`` / ``.segment_with_prompt()``.
+
+    ``metadata`` is read-only: ``frozen=True`` blocks re-assignment at
+    the model level, and :meth:`model_post_init` wraps the dict in
+    :class:`types.MappingProxyType` so in-place mutation
+    (``result.metadata["x"] = 1``) raises ``TypeError`` too. Callers
+    that need to carry enriched metadata downstream should ``dict(...)``
+    a copy before mutating.
+    """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -69,3 +79,9 @@ class SegmentationResult(BaseModel):
     model_id: str = Field(min_length=1)
     resolved_model_id: str = Field(min_length=1)
     metadata: dict[str, float | int | str | bool] = Field(default_factory=dict)
+
+    def model_post_init(self, __context: object) -> None:
+        # Swap the mutable dict for a read-only view. We use
+        # ``object.__setattr__`` to bypass the pydantic frozen guard on
+        # our own internal state — same pattern as ``Mask.array``.
+        object.__setattr__(self, "metadata", MappingProxyType(dict(self.metadata)))

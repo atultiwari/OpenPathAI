@@ -13,11 +13,14 @@ unavailable — the contract ("a text prompt yields a
 from __future__ import annotations
 
 import hashlib
+import logging
 from typing import Any
 
 from openpathai.segmentation import SegmentationResult, SyntheticClickSegmenter
 
 __all__ = ["segment_text_prompt"]
+
+_log = logging.getLogger(__name__)
 
 
 def segment_text_prompt(
@@ -46,7 +49,12 @@ def segment_text_prompt(
         try:
             return segmenter.segment_with_text_prompt(image, prompt)
         except Exception:
-            pass
+            # Iron rule #11 — fallback is logged, not silent.
+            _log.warning(
+                "Segmenter %r failed on text prompt; falling back to SyntheticClickSegmenter.",
+                getattr(segmenter, "id", segmenter_id),
+                exc_info=True,
+            )
 
     # Fallback path: synthetic click segmenter with a prompt-biased
     # centre-pixel click. Deterministic under a fixed prompt.
