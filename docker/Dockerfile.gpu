@@ -16,9 +16,12 @@
 #   docker run --rm --gpus all openpathai:gpu-local \
 #       -c "import torch; print(torch.cuda.is_available())"
 
-# Ubuntu 24.04 ships Python 3.12 in its base repos; we pin to this so
-# we don't have to thread a deadsnakes PPA into the build layer.
-FROM nvidia/cuda:12.3.2-runtime-ubuntu24.04
+# Ubuntu 22.04's CUDA image ships python3.10; we pull python3.12 from
+# the deadsnakes PPA (the canonical way to get newer Pythons on 22.04).
+# Using the 22.04 base keeps us on the well-populated CUDA 12.3.2
+# runtime tag that NVIDIA actually publishes — 24.04 + 12.3.2 does not
+# exist on Docker Hub.
+FROM nvidia/cuda:12.3.2-runtime-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -27,17 +30,19 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PIPX_HOME=/opt/pipx \
     PIPX_BIN_DIR=/usr/local/bin
 
-# Ubuntu 24.04's python is externally-managed; pipx bootstrap uses
-# --break-system-packages to land in /usr/local (pipx itself installs
-# apps into isolated venvs, so this is safe).
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
-      python3.12 python3.12-venv python3-pip \
-      git build-essential curl ca-certificates \
+      software-properties-common gnupg ca-certificates \
+ && add-apt-repository -y ppa:deadsnakes/ppa \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends \
+      python3.12 python3.12-venv python3.12-dev \
+      git build-essential curl \
       libgl1 libglib2.0-0 \
  && rm -rf /var/lib/apt/lists/* \
  && ln -sf /usr/bin/python3.12 /usr/local/bin/python \
- && python -m pip install --no-cache-dir --break-system-packages pipx \
+ && curl -sS https://bootstrap.pypa.io/get-pip.py | python - --no-cache-dir \
+ && python -m pip install --no-cache-dir pipx \
  && pipx ensurepath
 
 WORKDIR /src
