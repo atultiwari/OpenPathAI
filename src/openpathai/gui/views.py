@@ -383,8 +383,15 @@ def cohort_rows(yaml_path: str | Path) -> list[dict[str, str]]:
     """Return one row dict per slide in the cohort at ``yaml_path``.
 
     Empty list when the path doesn't exist or can't be parsed.
+
+    PHI guard (iron rule #8): we never render the raw ``slide.path``
+    in the browser — parent directories can encode patient context
+    (``/Users/dr-smith/patient_042/…``). The dataframe shows the
+    basename only plus a short stable hash of the parent so two
+    slides from the same directory still collate visually.
     """
     from openpathai.io import Cohort
+    from openpathai.safety.audit.phi import redact_manifest_path
 
     if not yaml_path:
         return []
@@ -400,7 +407,7 @@ def cohort_rows(yaml_path: str | Path) -> list[dict[str, str]]:
             "slide_id": slide.slide_id,
             "patient_id": slide.patient_id or "",
             "label": slide.label or "",
-            "path": slide.path,
+            "path": redact_manifest_path(slide.path),
             "mpp": "" if slide.mpp is None else f"{slide.mpp:.4f}",
             "magnification": slide.magnification or "",
         }

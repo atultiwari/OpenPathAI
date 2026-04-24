@@ -27,6 +27,7 @@ from typing import Any
 __all__ = [
     "PHI_PARAM_KEYS",
     "hash_filename",
+    "redact_manifest_path",
     "strip_phi",
 ]
 
@@ -76,6 +77,31 @@ def hash_filename(path: str | Path) -> str:
     text = str(path)
     basename = Path(text).name if text else ""
     return hashlib.sha256(basename.encode("utf-8")).hexdigest()
+
+
+def redact_manifest_path(path: str | Path) -> str:
+    """PHI-safe representation of a manifest file path.
+
+    The ``runs.manifest_path`` column in ``audit.db`` is load-bearing
+    for debuggability ("where did this run's manifest land?") but a
+    raw absolute path can encode patient context via parent
+    directories (``/Users/dr-smith/patient_042/runs/…``). We strip the
+    parent and replace it with a stable 8-char hash so two runs from
+    the same directory still collate, without the directory itself
+    landing in plaintext.
+
+    Empty input is passed through unchanged. The output is
+    ``"<basename>#<sha256-of-parent[:8]>"`` for non-empty input and
+    always shorter than 128 chars.
+    """
+    text = str(path)
+    if not text:
+        return ""
+    p = Path(text)
+    basename = p.name or text
+    parent = str(p.parent) if p.parent != p else ""
+    parent_hash = hashlib.sha256(parent.encode("utf-8")).hexdigest()[:8]
+    return f"{basename}#{parent_hash}"
 
 
 def _looks_like_path(value: Any) -> bool:

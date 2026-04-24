@@ -119,3 +119,7 @@ yarn-error.log*
 # ─── Misc ─────────────────────────────────────────────────────────────
 *.log
 .history/
+
+# Claude Code runtime artifacts
+.claude/
+

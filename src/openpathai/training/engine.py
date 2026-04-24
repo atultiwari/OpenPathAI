@@ -376,7 +376,12 @@ class LightningTrainer:
             ece_before_calibration=ece_before,
             ece_after_calibration=ece_after,
             temperature=temperature,
-            class_names=train.class_names,
+            # ``class_names`` is a soft contract: ``InMemoryTileBatch``
+            # exposes it, but a raw ``torch.utils.data.Dataset`` (the
+            # Phase 9 real-cohort path) may not. Fall back to an empty
+            # tuple so a four-hour training run does not crash at the
+            # final artifact-build step.
+            class_names=tuple(getattr(train, "class_names", ())),
             history=tuple(history),
         )
 

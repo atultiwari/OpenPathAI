@@ -47,6 +47,7 @@ from openpathai.pipeline.manifest import (
     NodeRunRecord,
     RunManifest,
     capture_environment,
+    git_working_tree_status,
 )
 from openpathai.pipeline.node import REGISTRY, NodeRegistry
 from openpathai.pipeline.schema import Artifact, canonical_sha256
@@ -56,6 +57,7 @@ if TYPE_CHECKING:  # pragma: no cover - type-only
 
 __all__ = [
     "CohortRunResult",
+    "DiagnosticModeError",
     "Executor",
     "ParallelMode",
     "Pipeline",
@@ -65,6 +67,13 @@ __all__ = [
 
 
 ParallelMode = Literal["sequential", "thread"]
+
+
+class DiagnosticModeError(RuntimeError):
+    """Raised when a pipeline in ``diagnostic`` mode fails reproducibility
+    preconditions (dirty git tree, no git commit, etc.). Enforces iron
+    rule #7 from ``CLAUDE.md``.
+    """
 
 
 _REF_RE = re.compile(r"^@(?P<step>[A-Za-z_][A-Za-z0-9_]*)(?:\.(?P<field>[A-Za-z_][A-Za-z0-9_]*))?$")
@@ -230,6 +239,49 @@ class Executor:
                     if ref_step == step.id:
                         raise ValueError(f"Step {step.id!r} cannot reference itself")
 
+    def _check_diagnostic_preconditions(self, pipeline: Pipeline) -> None:
+        """Enforce iron rule #7 for ``mode == 'diagnostic'`` runs.
+
+        Diagnostic runs must be reproducible from the manifest alone, so
+        we require:
+
+        1. A resolvable git HEAD commit (the manifest pins it). If git is
+           not available or the repo has no commits, the run is rejected.
+        2. A clean working tree — no untracked, unstaged, or staged edits.
+           Otherwise the pinned commit does not describe the code that
+           actually ran.
+
+        The opt-out is the environment variable
+        ``OPENPATHAI_DIAGNOSTIC_SKIP_GIT_CHECK=1`` for niche scenarios
+        (CI pre-push hooks, distroless containers). Using it is logged
+        as a warning on the surrounding :class:`RunManifest` via the
+        caller.
+        """
+        if pipeline.mode != "diagnostic":
+            return
+        import os
+
+        if os.environ.get("OPENPATHAI_DIAGNOSTIC_SKIP_GIT_CHECK") == "1":
+            return
+        from openpathai.pipeline.manifest import _git_commit
+
+        if _git_commit() is None:
+            raise DiagnosticModeError(
+                "Pipeline mode is 'diagnostic' but no git commit could be "
+                "resolved — the manifest needs a pinned HEAD to be "
+                "reproducible. Run from a git checkout, or set "
+                "OPENPATHAI_DIAGNOSTIC_SKIP_GIT_CHECK=1 to bypass."
+            )
+        is_clean, summary = git_working_tree_status()
+        if not is_clean:
+            raise DiagnosticModeError(
+                "Pipeline mode is 'diagnostic' but the git working tree "
+                "is not clean — commit or stash the changes below, or "
+                "switch to mode='exploratory', or set "
+                "OPENPATHAI_DIAGNOSTIC_SKIP_GIT_CHECK=1 to bypass.\n\n"
+                f"git status --porcelain:\n{summary}"
+            )
+
     def _topo_order(self, pipeline: Pipeline) -> list[PipelineStep]:
         """Kahn's algorithm — respects the original order as a tiebreaker."""
         id_to_step = {s.id: s for s in pipeline.steps}
@@ -309,6 +361,7 @@ class Executor:
 
     def run(self, pipeline: Pipeline) -> RunResult:
         self._validate(pipeline)
+        self._check_diagnostic_preconditions(pipeline)
         ordered = self._topo_order(pipeline)
 
         run_id = str(uuid.uuid4())

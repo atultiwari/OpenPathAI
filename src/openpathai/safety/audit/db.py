@@ -26,7 +26,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from openpathai.safety.audit.phi import strip_phi
+from openpathai.safety.audit.phi import redact_manifest_path, strip_phi
 from openpathai.safety.audit.schema import ALL_DDL, SCHEMA_VERSION
 
 __all__ = [
@@ -62,9 +62,14 @@ class AuditEntry(BaseModel):
     """One ``runs`` row — applies to pipeline + training runs alike.
 
     Diff-able (``diff_runs`` reads attributes from this struct).
+
+    ``extra="ignore"`` is deliberate: the DB is read via
+    ``AuditEntry(**dict(sqlite3.Row))`` over ``SELECT *`` so a future
+    migration that adds a column must not brick existing reader code.
+    ``frozen=True`` still guarantees immutability.
     """
 
-    model_config = ConfigDict(frozen=True, extra="forbid")
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     run_id: str = Field(min_length=1)
     kind: RunKind
@@ -97,9 +102,11 @@ class AnalysisEntry(BaseModel):
 
     ``filename_hash`` is the SHA-256 of the input file basename; the
     original path is **never** persisted (master-plan §17 PHI rule).
+
+    ``extra="ignore"`` — see :class:`AuditEntry` docstring for rationale.
     """
 
-    model_config = ConfigDict(frozen=True, extra="forbid")
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     analysis_id: str = Field(min_length=1)
     run_id: str | None = None
@@ -214,6 +221,12 @@ class AuditDB:
         metrics_blob = (
             json.dumps(strip_phi(metrics), sort_keys=True) if metrics is not None else None
         )
+        # PHI guard (iron rule #8): never persist raw filesystem paths
+        # in ``runs.manifest_path``. Parent directories can encode
+        # patient context (``/Users/dr-smith/patient_042/…``), so we
+        # redact to ``<basename>#<sha256-of-parent[:8]>`` before the
+        # column ever touches SQLite.
+        safe_manifest_path = redact_manifest_path(manifest_path)
         entry = AuditEntry(
             run_id=run_id,
             kind=kind,
@@ -226,7 +239,7 @@ class AuditDB:
             tier=tier,
             status=status,
             metrics_json=metrics_blob,
-            manifest_path=manifest_path,
+            manifest_path=safe_manifest_path,
         )
         with self._connect() as conn:
             conn.execute(

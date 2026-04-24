@@ -199,10 +199,6 @@ class ActiveLearningLoop:
             raise ValueError("seed_examples must be non-empty")
         if not self._holdout:
             raise ValueError("holdout_examples must be non-empty")
-        if config.scorer == "mc_dropout":
-            # MC-dropout requires the trainer to expose variance forward.
-            # We handle it separately in _score_pool.
-            pass
         if config.scorer not in {"max_softmax", "entropy", "mc_dropout"}:
             raise ValueError(f"unknown scorer {config.scorer!r}")
 
@@ -234,7 +230,7 @@ class ActiveLearningLoop:
         initial_ece = initial_metrics["ece"]
         running_ece = initial_ece
         running_acc = initial_metrics["accuracy"]
-        running_loss = fit_result.train_loss
+        del fit_result  # train_loss is recorded per-iteration on AcquisitionResult
 
         for it in range(self._config.iterations):
             if not available:
@@ -276,7 +272,6 @@ class ActiveLearningLoop:
             acquisitions.append(result)
             running_ece = metrics["ece"]
             running_acc = metrics["accuracy"]
-            running_loss = fit_result.train_loss
             self._record_audit(result)
 
         finished = _utcnow_iso()
@@ -292,9 +287,6 @@ class ActiveLearningLoop:
             acquired_tile_ids=tuple(sorted(acquired_ids)),
         )
         (out / "manifest.json").write_text(run.model_dump_json(indent=2), encoding="utf-8")
-        # running_loss is surfaced on each AcquisitionResult; kept here
-        # as a sanity anchor for debugging inspection.
-        del running_loss
         return run
 
     # ─── Internals ─────────────────────────────────────────────────
@@ -322,7 +314,7 @@ class ActiveLearningLoop:
         if sampler == "hybrid":
             # Pool the top-`shortlist` uncertain, then diversify via
             # k-center inside that shortlist.
-            shortlist_size = min(len(available), max(budget * 3, budget))
+            shortlist_size = min(len(available), budget * 3)
             order = np.argsort(-scores, kind="stable")
             shortlist_idx = order[:shortlist_size]
             shortlist_ids = [available[int(i)] for i in shortlist_idx]

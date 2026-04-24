@@ -81,6 +81,32 @@ def _git_commit() -> str | None:
     return commit or None
 
 
+def git_working_tree_status() -> tuple[bool, str]:
+    """Return ``(is_clean, diagnostic_summary)`` for the current working tree.
+
+    ``is_clean`` is ``True`` when ``git status --porcelain`` emits no rows.
+    ``diagnostic_summary`` is the raw porcelain output when dirty (for
+    error messages), or an empty string when clean or when no git tree
+    could be found (e.g. the code is running outside a git checkout — in
+    which case ``is_clean`` is ``False`` because diagnostic-mode runs
+    require a pinned commit).
+    """
+    try:
+        result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=2.0,
+        )
+    except (OSError, subprocess.SubprocessError):  # pragma: no cover — no git
+        return False, "git not available on PATH"
+    if result.returncode != 0:
+        return False, (result.stderr or "git status failed").strip()
+    summary = result.stdout.strip()
+    return (summary == ""), summary
+
+
 def capture_environment() -> Environment:
     """Snapshot the current execution environment."""
     return Environment(

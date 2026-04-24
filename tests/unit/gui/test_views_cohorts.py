@@ -49,6 +49,37 @@ def test_cohort_rows_missing_path_returns_empty() -> None:
     assert cohort_rows("/tmp/does-not-exist.yaml") == []
 
 
+def test_cohort_rows_redacts_slide_paths(tmp_path: Path) -> None:
+    """Iron rule #8 — raw slide paths must not leak through the Cohorts tab."""
+    cohort = Cohort(
+        id="phi-test",
+        slides=(
+            SlideRef(
+                slide_id="s1",
+                path="/Users/dr-smith/patient_042/CaseA.svs",
+                label="normal",
+            ),
+            SlideRef(
+                slide_id="s2",
+                path="/Users/dr-smith/patient_042/CaseB.svs",
+                label="tumour",
+            ),
+        ),
+    )
+    yaml_path = tmp_path / "c.yaml"
+    cohort.to_yaml(yaml_path)
+    rows = cohort_rows(yaml_path)
+    for row in rows:
+        assert "dr-smith" not in row["path"]
+        assert "patient_042" not in row["path"]
+        # Basename survives + short hash appended.
+        assert row["path"].startswith(("CaseA.svs#", "CaseB.svs#"))
+    # Same parent directory → same hash suffix → collates cleanly.
+    suffix_a = rows[0]["path"].split("#", 1)[1]
+    suffix_b = rows[1]["path"].split("#", 1)[1]
+    assert suffix_a == suffix_b
+
+
 def test_cohort_qc_summary_counts() -> None:
     cohort = _sample_cohort()
 
