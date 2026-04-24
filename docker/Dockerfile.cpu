@@ -1,0 +1,51 @@
+# OpenPathAI — CPU image (Phase 18).
+#
+# Minimal Debian-slim base + pipx install of the library with the
+# [gui] extra. No torch wheels → small image (~ 350 MB).
+#
+# Build:
+#   docker build -f docker/Dockerfile.cpu -t openpathai:cpu-local .
+#
+# Run:
+#   docker run --rm -p 7860:7860 \
+#       -v "$HOME/.openpathai:/home/openpathai/.openpathai" \
+#       openpathai:cpu-local gui --host 0.0.0.0
+
+FROM python:3.12-slim-bookworm
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIPX_HOME=/opt/pipx \
+    PIPX_BIN_DIR=/usr/local/bin
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      git \
+      build-essential \
+      curl \
+      ca-certificates \
+ && rm -rf /var/lib/apt/lists/* \
+ && python -m pip install --no-cache-dir pipx \
+ && pipx ensurepath
+
+# Copy the project source (pipx will install from a local path so
+# we can build this image without a published wheel).
+WORKDIR /src
+COPY pyproject.toml README.md LICENSE NOTICE ./
+COPY src ./src
+COPY data ./data
+COPY models ./models
+COPY pipelines ./pipelines
+
+RUN pipx install --force ".[gui,safety,audit]"
+
+# Create a non-root user so the container writes to the mounted
+# volume with predictable permissions.
+RUN useradd --create-home --uid 1000 openpathai
+USER openpathai
+WORKDIR /home/openpathai
+
+ENV OPENPATHAI_HOME=/home/openpathai/.openpathai
+ENTRYPOINT ["openpathai"]
+CMD ["--help"]

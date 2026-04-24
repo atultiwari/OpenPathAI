@@ -1,151 +1,175 @@
 # OpenPathAI
 
-> **Status:** pre-alpha · Phase 0 (foundation scaffolding) in progress · no releases yet.
-> **License:** MIT
+> **Status:** v1.0 feature set complete (Phases 0–17) · v1.1
+> packaging polish in flight (Phase 18) · MIT licensed.
 
 An open-source, reproducible, compute-tier-aware workflow environment for
-**computational pathology** — covering classification, detection, segmentation,
-zero-shot annotation, training, and research-grade reproducibility — usable by
-pathologists without programming skills through a GUI, and by ML engineers
-through a Python library, CLI, Jupyter notebooks, or Google Colab.
+**computational pathology** — classification, detection, segmentation,
+zero-shot annotation, training, and research-grade reproducibility —
+usable by pathologists without programming skills through a Gradio GUI,
+and by ML engineers through a Python library, CLI, Jupyter notebooks,
+or Google Colab.
 
-> **Not a medical device.** OpenPathAI is research and educational software.
-> It does not provide medical advice and must not be used for clinical
-> diagnosis without qualified medical review.
-
----
-
-## The short version
-
-- Analyse **tiles and whole-slide images** — classify, detect, segment, get a
-  Grad-CAM / attention heatmap, export a PDF report.
-- Train your own models — pick a dataset, pick a model, pick a difficulty
-  tier, click Train. Works on a MacBook (MPS), Windows / Linux (CUDA or
-  CPU), and Google Colab from a single configuration file.
-- Use **natural-language** — "highlight tumor nests" (CONCH zero-shot) or
-  "segment every gland" (MedSAM2) without training, orchestrated by a local
-  **MedGemma 1.5** LLM via Ollama or LM Studio.
-- Every run is hashable, every cache is content-addressable, every pipeline
-  can be **exported as a Colab notebook**, and every Methods paragraph can
-  be auto-generated.
+> **Not a medical device.** OpenPathAI is research and educational
+> software. It does not provide medical advice and must not be used
+> for clinical diagnosis without qualified medical review.
 
 ---
 
-## Planned capabilities
-
-| | |
-|---|---|
-| **Tile classification** | ResNet, EfficientNet, MobileNetV3, ViT, Swin, ConvNeXt |
-| **WSI classification** | CLAM-SB/MB, TransMIL, DSMIL, ABMIL |
-| **Detection** | YOLOv8 / v11 / **v26**, RT-DETRv2, DETR |
-| **Segmentation (closed)** | U-Net, Attention U-Net, nnU-Net v2, SegFormer, HoVer-Net |
-| **Segmentation (promptable)** | SAM2, MedSAM, **MedSAM2** |
-| **Foundation models (general)** | UNI, UNI2-h, CONCH, Virchow2, Prov-GigaPath, CTransPath, DINOv2, Hibou-b, Hibou-L |
-| **Foundation models (organ-specific)** | Histai SPIDER-breast, Histai SPIDER-colorectal (model + paired dataset) |
-| **Datasets (tile)** | LC25000, PCam, BreakHis, NCT-CRC-HE-100K, MHIST, SPIDER-breast, SPIDER-colorectal |
-| **Datasets (WSI)** | Camelyon16/17, TCGA, PANDA, BACH |
-| **Datasets (detection/seg)** | MoNuSeg, PanNuke, MoNuSAC, GlaS, MIDOG, HuBMAP |
-| **Explainability** | Grad-CAM, Grad-CAM++, EigenCAM, Integrated Gradients, attention rollout |
-| **Reproducibility** | content-addressable cache, signed run manifests, patient-level CV, auto Methods |
-| **GUI** | Gradio 5 (v0.1–v1.1), FastAPI + React + React Flow canvas (v2.0) |
-| **Orchestration** | Snakemake + MLflow (v0.5+) |
-| **Packaging** | `pipx install openpathai`, Docker (CPU + GPU) |
-
----
-
-## Project structure
-
-```
-OpenPathAI/
-├── CLAUDE.md                            ← working spec for Claude Code
-├── README.md                            ← this file
-├── LICENSE                              ← MIT
-├── CHANGELOG.md
-│
-├── src/openpathai/                      ← the Python library
-│
-├── docs/
-│   ├── planning/
-│   │   ├── master-plan.md               ← authoritative plan
-│   │   ├── archive/                     ← earlier drafts (preserved)
-│   │   └── phases/
-│   │       ├── README.md                ← phase dashboard ⭐
-│   │       ├── PHASE_TEMPLATE.md
-│   │       └── phase-00-foundation.md
-│   └── setup/
-│       ├── huggingface.md               ← gated-model access
-│       └── llm-backend.md               ← MedGemma via Ollama / LM Studio
-│
-├── data/datasets/                       ← YAML dataset cards (populated Phase 2+)
-├── models/zoo/                          ← YAML model cards   (populated Phase 3+)
-├── pipelines/                           ← YAML pipeline recipes (Phase 5+)
-├── notebooks/                           ← walkthroughs (Phase 5+)
-├── tests/
-└── docker/                              ← Dockerfiles (Phase 18)
-```
-
----
-
-## Development roadmap at a glance
-
-| Version | Ships | Duration |
-|---|---|---|
-| v0.1 | Library + CLI + minimal Gradio GUI | ~5–7 weeks |
-| v0.2 | Safety layer, PDF reports, audit DB, run diff | ~2 weeks |
-| v0.5 | Cohorts, WSI, Snakemake, MLflow, Colab export, active-learning CLI | ~4–5 weeks |
-| v1.0 | Foundation models + MIL + Detection/Segmentation + NL + Diagnostic mode | ~7–9 weeks |
-| v1.1 | Packaging, Docker, docs site | ~1 week |
-| v2.0 | Visual pipeline builder (React + React Flow) | ~6–8 weeks |
-| v2.5+ | Conditional: scale-out, marketplace, regulatory | trigger-driven |
-
-Full plan: [`docs/planning/master-plan.md`](docs/planning/master-plan.md)
-Phase dashboard: [`docs/planning/phases/README.md`](docs/planning/phases/README.md)
-
----
-
-## Getting started (once v0.1 ships — not yet)
+## Install (30 seconds)
 
 ```bash
-# Install the GUI
+# Laptop / workstation (no GPU required):
 pipx install "openpathai[gui]"
 
-# Launch on localhost:7860
-openpathai gui
+# With PyTorch + CUDA wheels + explainability:
+pipx install "openpathai[gui,train,explain,safety,audit]"
 ```
 
-Before the GUI exists, see [`docs/planning/phases/phase-00-foundation.md`](docs/planning/phases/phase-00-foundation.md).
+Works on macOS (MPS), Linux (CUDA / CPU), Windows (best-effort),
+and Google Colab. Python ≥ 3.11.
+
+See [`docs/install.md`](docs/install.md) for the full matrix +
+the `docker run` path.
 
 ---
 
-## User actions needed outside this repo
+## 30 minutes to your first trained model
 
-1. **Hugging Face access** for gated foundation models (UNI, UNI2-h, CONCH,
-   Virchow2, Prov-GigaPath, Hibou-b / Hibou-L, SPIDER models + datasets,
-   MedGemma 1.5). Step-by-step:
-   [`docs/setup/huggingface.md`](docs/setup/huggingface.md).
-2. **Local LLM backend** for natural-language features (MedGemma 1.5 via
-   Ollama or LM Studio):
-   [`docs/setup/llm-backend.md`](docs/setup/llm-backend.md).
+```bash
+# 1. Install. (~2 min on a fast connection.)
+pipx install "openpathai[gui,train]"
 
-Both take days to set up (mostly waiting for HF approval). Start them now,
-in parallel with early-phase work.
+# 2. Download a smoke dataset. LC25000 is a 5-class colorectal
+#    tile dataset — ~140 MB.
+openpathai download lc25000 --yes
 
-## Docs site
+# 3. Train a ResNet-18 for 2 epochs. Takes ~5 min on a laptop.
+openpathai train --dataset lc25000 --model resnet18 --epochs 2
 
-Once Phase 0 ships, the rendered docs live at
-**https://atultiwari.github.io/OpenPathAI/** (auto-deployed from `main`
-via GitHub Actions).
+# 4. Analyse a tile with a Grad-CAM heatmap + a PDF report.
+openpathai analyse path/to/tile.png \
+    --model resnet18 \
+    --explainer gradcam \
+    --pdf /tmp/report.pdf
+
+# 5. Launch the GUI. Click through Analyse, Train, Models,
+#    Datasets, Cohorts, Runs, Annotate, Settings.
+openpathai gui
+# → http://127.0.0.1:7860
+```
+
+That's the whole loop. Everything else — foundation backbones,
+active learning, NL prompts, MedGemma-drafted pipelines, signed
+manifests, auto-written Methods paragraphs — layers on top of
+the same CLI + GUI.
+
+---
+
+## What's in the box
+
+| Subsystem | What it gives you | CLI verb |
+| --- | --- | --- |
+| **Tile classification** | ResNet, EfficientNet, MobileNetV3, ViT, Swin, ConvNeXt, with calibrated probabilities + borderline band. | `train`, `analyse` |
+| **Foundation models** | DINOv2 (open) + UNI / UNI2-h / CONCH / Virchow2 / Prov-GigaPath / Hibou / CTransPath (gated, with silent DINOv2 fallback). | `foundation list / resolve` |
+| **MIL aggregators** | ABMIL + CLAM-SB; stubs for CLAM-MB / TransMIL / DSMIL. | `mil list` |
+| **Linear probe** | Pure-numpy logistic regression on frozen features. | `linear-probe` |
+| **Detection** | YOLOv8 via Ultralytics (AGPL runtime import), plus YOLOv11 / YOLOv26 / RT-DETRv2 stubs with synthetic fallback. | `detection list / resolve` |
+| **Segmentation** | Pure-torch U-Net + nnU-Net / SegFormer / HoVer-Net / SAM2 / MedSAM2 stubs with synthetic fallback. | `segmentation list / resolve` |
+| **Active learning** | Uncertainty + diversity sampling + CSV oracle + one-click retrain — CLI (Phase 12) + GUI Annotate tab (Phase 16). | `active-learn` |
+| **Natural language + zero-shot** | CONCH text prompts, MedSAM2 text-prompt segmentation, MedGemma pipeline drafting (local Ollama / LM Studio — no data leaves the laptop). | `nl classify / segment / draft` |
+| **Reproducibility** | Content-addressable cache, run manifests, patient-level CV, audit DB, diagnostic-mode pin + clean-tree checks, Ed25519-signed manifests, fact-checked Methods paragraphs. | `manifest sign / verify`, `methods write` |
+| **Explainability** | Grad-CAM, Grad-CAM++, EigenCAM, Integrated Gradients, attention rollout. | built into `analyse` |
+| **Orchestration** | Snakemake export, MLflow sink, cohort fan-out with a thread pool. | `run --workers N`, `mlflow-ui` |
+| **Colab export** | One-click `manifest.json` round-trip so a Colab run lands in your local audit DB. | `export-colab`, `sync` |
+| **GUI** | Gradio 5 — Analyse / Pipelines / Datasets / Train / Models / Runs / Cohorts / Annotate / Settings. | `gui` |
+| **Packaging** | `pipx install`, Docker (CPU + GPU), mkdocs docs site. | *(Phase 18)* |
+
+---
+
+## What isn't in the box yet
+
+| | Lands in |
+| --- | --- |
+| FastAPI backend + React + React Flow canvas (visual pipeline builder) | Phase 19–20 |
+| OpenSeadragon WSI viewer with DZI heatmap overlay | Phase 21 |
+| Cloud / hosted LLM backends (OpenAI, Anthropic, …) | Opt-in Phase 17+ |
+| Real cosign / Rekor / Fulcio signing | Future phase |
+| Regulatory / marketplace / scale-out tiers | v2.5+ (conditional) |
+
+The full [`master-plan.md`](docs/planning/master-plan.md) is the
+authoritative source of truth.
+
+---
+
+## Docker
+
+Two Dockerfiles ship under `docker/`:
+
+```bash
+docker build -f docker/Dockerfile.cpu -t openpathai:cpu .
+docker run --rm -p 7860:7860 openpathai:cpu gui --host 0.0.0.0
+
+# GPU path (requires nvidia-container-toolkit):
+docker build -f docker/Dockerfile.gpu -t openpathai:gpu .
+docker run --rm --gpus all -p 7860:7860 openpathai:gpu gui --host 0.0.0.0
+```
+
+Full guide: [`docker/README.md`](docker/README.md).
+
+CI builds both images on every push to `main` and pushes to
+GHCR when a `GHCR_TOKEN` secret is configured.
+
+---
+
+## Docs
+
+User guide + reference lives at
+**https://atultiwari.github.io/OpenPathAI/** (auto-deployed
+from `main`).
+
+- [Install matrix](docs/install.md)
+- [Getting started](docs/getting-started.md) — the 30-min tour above, in more depth
+- [User guide](docs/user-guide.md) — CLI commands, GUI tabs, common workflows
+- [FAQ](docs/faq.md)
+- [Safety (Phase 7)](docs/safety.md)
+- [Diagnostic mode (Phase 17)](docs/diagnostic-mode.md)
+- Phase-by-phase deep dives under the **Deep Dives** nav section
+
+Full plan: [`docs/planning/master-plan.md`](docs/planning/master-plan.md).
+Phase dashboard: [`docs/planning/phases/README.md`](docs/planning/phases/README.md).
+
+---
+
+## User actions needed outside this repo (optional)
+
+1. **Hugging Face access** for gated foundation models (UNI,
+   CONCH, Virchow2, MedSAM2, …). Without it, the fallback
+   resolvers substitute open alternatives (DINOv2 for
+   foundation, SyntheticClickSegmenter for promptable).
+   Step-by-step: [`docs/setup/huggingface.md`](docs/setup/huggingface.md).
+2. **Local LLM backend** for natural-language features
+   (MedGemma via Ollama or LM Studio). Without it, `openpathai
+   nl draft` + `openpathai methods write` exit with an
+   actionable install message; everything else still works.
+   Step-by-step: [`docs/setup/llm-backend.md`](docs/setup/llm-backend.md).
+
+Both take ~a day of wait (mostly HF approval). OpenPathAI is
+fully functional without either — the library takes fallback
+as a first-class concept.
 
 ---
 
 ## Contributing
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`CLAUDE.md`](CLAUDE.md) for
-the coding standards and phase-by-phase workflow.
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`CLAUDE.md`](CLAUDE.md)
+for the coding standards and phase-by-phase workflow.
 
 ---
 
 ## Licence
 
-MIT. See [`LICENSE`](LICENSE). Third-party model licences vary — see
-[`NOTICE`](NOTICE) and each model's card under `models/zoo/`.
+MIT. See [`LICENSE`](LICENSE). Third-party model / data licences
+vary — [`NOTICE`](NOTICE) and each model's card under
+`models/zoo/` list every non-MIT runtime dependency (notably
+the Ultralytics YOLO AGPL runtime import).

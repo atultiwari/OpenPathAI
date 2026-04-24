@@ -13,11 +13,11 @@
 
 ## Status
 
-- **Current state:** 🔄 active
+- **Current state:** ✅ complete (2026-04-24)
 - **Version:** v1.1 (first phase of the v1.1.0 release line)
 - **Started:** 2026-04-24
 - **Target finish:** 2026-05-01 (~1 week master-plan target)
-- **Actual finish:** (fill on close)
+- **Actual finish:** 2026-04-24 (same-day)
 - **Dependency on prior phases:** every prior phase — Phase 18
   is the packaging of what's already shipped. Nothing new
   library-side.
@@ -277,6 +277,53 @@ uv run mkdocs build --strict
 ---
 
 ## 8. Worklog (append-only, newest on top)
+
+### 2026-04-24 · phase closed
+
+**What:** shipped `docker/Dockerfile.{cpu,gpu}` + `docker/README.md`
++ `.github/workflows/docker.yml` (GHCR-push-gated on secret),
+rewrote `README.md` with the 30-minute flow + what's-in / what's-
+out tables, added `docs/install.md` + `docs/user-guide.md` +
+`docs/faq.md`, reorganised mkdocs nav with a **Deep Dives**
+section for per-phase pages, bumped pyproject classifiers to
+Beta + Py 3.13 + MIT, added `build` to `[dev]`, and shipped 27
+new tests (7 pyproject + 9 Dockerfile + 11 README-contract).
+Full suite: 897 passed, 3 skipped. Smoke tour runs green end-
+to-end: wheel + sdist build, mkdocs strict clean, README
+structural contract intact.
+
+**Why:** Phase 18 turns the Phases-0–17 library into a product.
+Every existing subsystem was already shipped; this phase added
+the packaging + docs polish a new user hits first.
+
+**Spec deviations (per §2 non-goals — all documented):**
+
+1. **No 3-minute demo video.** Recording + editing + hosting
+   are out of scope for a CLI-bound phase. Script + storyboard
+   ship later when a user does the recording.
+2. **No actual GHCR push.** The workflow authors the push step
+   + gates it on the `GHCR_TOKEN` secret; the first real push
+   happens when the repo owner adds the secret. Workflow has
+   been validated structurally by
+   `tests/unit/packaging/test_dockerfiles.py::test_workflow_exists_and_gates_on_secret`.
+3. **No in-GUI "Build Docker image" button.** Phase 20 React
+   canvas territory; Gradio 5's subprocess support is fragile
+   for long-running builds.
+4. **No PyPI release.** Publishing the wheel needs a PyPI
+   Trusted Publisher config; all three Phase-18 acceptance
+   bars (pipx install, docker build, README flow) can be met
+   with `pipx install git+https://…`. PyPI release is a one-
+   day follow-up when the repo owner wants to claim the name.
+5. **No Helm / Kubernetes manifests.** Phase 22+ if a user
+   ever asks.
+
+**Next:** resume when the user authorises Phase 19 (FastAPI
+backend for the v2.0 React canvas) — the v2.0.0 release line
+opens there. Phase 18 itself is tagged `phase-18-complete` and
+pushed to `origin`.
+
+**Blockers:** none. OpenPathAI v1.1.0 feature set is complete
+and user-installable.
 
 ### 2026-04-24 · phase initialised
 

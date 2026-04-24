@@ -9,6 +9,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Phase 18 (v1.1.0 line) — Packaging + Docker + docs site (2026-04-24)
+
+Added
+- `docker/Dockerfile.cpu` (python:3.12-slim base, ~350 MB) +
+  `docker/Dockerfile.gpu` (nvidia/cuda:12.3.2 runtime, ~6-8 GB).
+  Both use pipx + a non-root user (uid 1000) + volume-friendly
+  `$OPENPATHAI_HOME`.
+- `docker/README.md` — build + run + size-cutting knobs.
+- `.github/workflows/docker.yml` — build both images on push to
+  `main`; push to GHCR when `secrets.GHCR_TOKEN` is configured
+  (gated login + push so forks + PRs build cleanly without
+  credentials).
+- `README.md` rewrite — replaced the pre-alpha banner with a
+  product-shaped intro, a 30-minute-to-first-trained-model
+  flow, and What's-in-the-box / What-isn't-in-the-box tables.
+- `docs/install.md` — tier matrix + `pipx` + Docker + source
+  install paths + verify steps.
+- `docs/user-guide.md` — top-level CLI + GUI tour with
+  commonly-asked workflows.
+- `docs/faq.md` — install + gated access + reproducibility +
+  PHI + contributing sections.
+- `mkdocs.yml` reorg — top-level Install / Getting Started /
+  User Guide / FAQ / CLI / GUI surface for newcomers; per-
+  phase pages tucked under a **Deep Dives** section.
+- `pyproject.toml` classifier bump — Development Status :: 4 -
+  Beta, Python :: 3.13, MIT SPDX, plus Bio-Informatics +
+  Image-Recognition topics for PyPI discoverability.
+- `[dev]` extra gains `build>=1.2,<2` for the packaging smoke +
+  release rehearsal.
+
+Quality
+- 27 new tests (7 pyproject contract + 9 Dockerfile /
+  workflow lint + 11 README-structural-contract). Full suite:
+  897 passed, 3 skipped.
+- ruff + ruff format + pyright + pytest + mkdocs --strict all
+  clean.
+- `scripts/try-phase-18.sh` smoke tour green end-to-end:
+  wheel + sdist build via `python -m build`; mkdocs renders
+  without warnings; packaging tests green; README contract
+  intact.
+
+Spec deviations (phase-18 §2 + §8)
+- No 3-minute demo video — script + storyboard deferred to
+  the user doing the recording.
+- No actual GHCR push — the workflow is authored + gates on
+  `secrets.GHCR_TOKEN` so the first real push needs the repo
+  owner to add the secret once.
+- No "Build Docker image" GUI button (Phase 20 React territory).
+- No FastAPI / React surface (Phase 19+).
+- No Helm / Kubernetes manifests (Phase 22+ if anyone asks).
+- No PyPI release — `pipx install git+https://…` works today;
+  claiming the PyPI name is a one-day follow-up.
+
 ### Phase 17 (v1.0.0 line) — Diagnostic mode + signed manifests + Methods writer (Bet 3 complete) (2026-04-24)
 
 Added

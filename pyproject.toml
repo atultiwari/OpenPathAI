@@ -27,17 +27,33 @@ keywords = [
     "computer-vision",
 ]
 classifiers = [
-    "Development Status :: 2 - Pre-Alpha",
+    # Phase 18 bump — v1.0.0 feature set complete; v1.1.0
+    # packaging polish in flight. Still pre-1.0 version pin so
+    # the semver promise doesn't kick in until the PyPI release.
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Environment :: Web Environment",
+    "Framework :: Pytest",
     "Intended Audience :: Science/Research",
     "Intended Audience :: Healthcare Industry",
+    "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
     "Operating System :: OS Independent",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: Implementation :: CPython",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Scientific/Engineering :: Image Processing",
+    "Topic :: Scientific/Engineering :: Image Recognition",
     "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Software Development :: Libraries :: Python Modules",
     "Typing :: Typed",
 ]
 
@@ -193,6 +209,9 @@ dev = [
     "mkdocstrings[python]>=0.27,<1",
     # Git hooks
     "pre-commit>=4.0,<5",
+    # Phase 18 — `python -m build` for the packaging smoke + release
+    # rehearsal. Kept out of core deps because end users never need it.
+    "build>=1.2,<2",
 ]
 
 # ─── Hatch build configuration ─────────────────────────────────────────────

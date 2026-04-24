@@ -1,0 +1,56 @@
+# OpenPathAI — GPU image (Phase 18).
+#
+# Based on the NVIDIA CUDA runtime image + Python 3.12 + the full
+# training / GUI / safety / audit stack. Large (~ 6-8 GB) but you
+# actually need it for torch CUDA wheels.
+#
+# Build:
+#   docker build -f docker/Dockerfile.gpu -t openpathai:gpu-local .
+#
+# Run (requires nvidia-container-toolkit on the host):
+#   docker run --rm --gpus all -p 7860:7860 \
+#       -v "$HOME/.openpathai:/home/openpathai/.openpathai" \
+#       openpathai:gpu-local gui --host 0.0.0.0
+#
+# Smoke-test GPU visibility inside the container:
+#   docker run --rm --gpus all openpathai:gpu-local \
+#       -c "import torch; print(torch.cuda.is_available())"
+
+FROM nvidia/cuda:12.3.2-runtime-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIPX_HOME=/opt/pipx \
+    PIPX_BIN_DIR=/usr/local/bin
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      python3.12 python3.12-venv python3-pip \
+      git build-essential curl ca-certificates \
+      libgl1 libglib2.0-0 \
+ && rm -rf /var/lib/apt/lists/* \
+ && ln -sf /usr/bin/python3.12 /usr/local/bin/python \
+ && python -m pip install --no-cache-dir pipx \
+ && pipx ensurepath
+
+WORKDIR /src
+COPY pyproject.toml README.md LICENSE NOTICE ./
+COPY src ./src
+COPY data ./data
+COPY models ./models
+COPY pipelines ./pipelines
+
+# Install the full feature set. `[train]` pulls torch (CUDA
+# wheel on this base); `[gui]` pulls gradio; `[safety]` /
+# `[audit]` pull the Phase 7/8/17 extras.
+RUN pipx install --force ".[train,gui,safety,audit,explain,mlflow]"
+
+RUN useradd --create-home --uid 1000 openpathai
+USER openpathai
+WORKDIR /home/openpathai
+
+ENV OPENPATHAI_HOME=/home/openpathai/.openpathai
+ENTRYPOINT ["openpathai"]
+CMD ["--help"]
