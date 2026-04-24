@@ -58,6 +58,12 @@ dependencies = [
     # h11 + certifi + idna + sniffio + anyio) — smaller than pulling
     # the full `openai` SDK.
     "httpx>=0.27,<1",
+    # Phase 17 — CLI main.py registers `openpathai manifest` unconditionally,
+    # which chains through openpathai.safety.sigstore and lands on the
+    # cryptography package at module load (Ed25519 key generation).
+    # Previously assumed transitive via `keyring` in the [audit] extra,
+    # but CI matrix runs --extra dev only.
+    "cryptography>=42,<47",
 ]
 
 [project.urls]

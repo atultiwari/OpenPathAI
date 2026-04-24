@@ -2658,6 +2658,7 @@ name = "openpathai"
 version = "0.0.1.dev0"
 source = { editable = "." }
 dependencies = [
+    { name = "cryptography" },
     { name = "httpx" },
     { name = "numpy" },
     { name = "pillow" },
@@ -2818,6 +2819,7 @@ wsi = [
 [package.metadata]
 requires-dist = [
     { name = "captum", marker = "extra == 'explain'", specifier = ">=0.7,<1" },
+    { name = "cryptography", specifier = ">=42,<47" },
     { name = "grad-cam", marker = "extra == 'explain'", specifier = ">=1.5,<2" },
     { name = "gradio", marker = "extra == 'gui'", specifier = ">=5.20,<6" },
     { name = "gradio-client", marker = "extra == 'gui'", specifier = ">=1.7,<2" },
