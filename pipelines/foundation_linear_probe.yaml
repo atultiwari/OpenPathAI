@@ -1,0 +1,55 @@
+# Reference pipeline — foundation backbone → linear probe on a
+# registered dataset.
+#
+# Phase 13 ships the `openpathai.foundation` adapters and the
+# `openpathai.training.linear_probe` function, but the pipeline
+# node set that wires them through the cache + audit hasn't
+# landed yet (that's Phase 14 territory — the backbone becomes a
+# standard `node` once its forward pass needs a DAG edge).
+#
+# Today, use this YAML as a reproducibility recipe: the fields
+# below fully describe the experiment. A short Python script
+# + `openpathai linear-probe` can execute it end-to-end; see
+# `docs/foundation-models.md` for the exact commands.
+
+id: foundation_linear_probe_demo
+description: "DINOv2-small features → linear probe on LC25000"
+
+backbone:
+  # Any id from `openpathai foundation list`. If gated and no
+  # HF token is set, the fallback resolver substitutes
+  # dinov2_vits14 and records the decision in the audit row.
+  id: dinov2_vits14
+  # Optional: set to `true` to hard-fail instead of falling back.
+  strict: false
+
+dataset:
+  # Any card from `openpathai datasets list` with
+  # `download.method == "local"` (Phase 7 local cards work out of
+  # the box once registered via `openpathai datasets register`).
+  id: lc25000
+
+split:
+  strategy: patient_level_kfold
+  folds: 5
+  test_fold: 0
+  random_seed: 1234
+
+linear_probe:
+  l2: 1.0e-4
+  learning_rate: 0.1
+  max_iter: 500
+  calibrate: true
+  random_seed: 1234
+
+audit:
+  mode: exploratory
+  # Set to `diagnostic` for reproducibility-critical runs; requires
+  # a clean git tree + resolvable HEAD (iron rule #7 fix landed in
+  # commit 2ba2f61).
+
+# Expected outputs on the user's disk after a successful run:
+#
+#   $OPENPATHAI_HOME/runs/<run_id>/manifest.json
+#   $OPENPATHAI_HOME/runs/<run_id>/probe_report.json
+#   $OPENPATHAI_HOME/audit.db                          (one training row)

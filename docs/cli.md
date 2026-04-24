@@ -130,6 +130,38 @@ uv run openpathai active-learn \\
     --sampler hybrid
 ```
 
+### `openpathai foundation list | resolve <id>` (Phase 13)
+
+List registered foundation backbones or ask the fallback resolver
+what would actually load for a given id. See
+[Foundation models](foundation-models.md) for the full surface.
+
+```bash
+uv run openpathai foundation list
+uv run openpathai foundation resolve uni          # JSON FallbackDecision
+uv run openpathai foundation resolve uni --strict # hard-fail mode
+```
+
+### `openpathai mil list` (Phase 13)
+
+Prints shipped vs stub MIL aggregators
+([ABMIL, CLAM-SB, stubs: CLAM-MB / TransMIL / DSMIL]). See
+[MIL](mil.md) for the library surface.
+
+### `openpathai linear-probe --features <npz> --backbone <id>` (Phase 13)
+
+Fits a linear probe on a pre-extracted feature bundle (`.npz` with
+`features_train` + `labels_train` + `class_names`). Writes a
+`LinearProbeReport` JSON and inserts one audit row carrying
+`backbone_id` / `resolved_backbone_id` / `fallback_reason`.
+
+```bash
+uv run openpathai linear-probe \\
+    --features /tmp/features.npz \\
+    --backbone dinov2_vits14 \\
+    --out      /tmp/probe.json
+```
+
 ## Pipeline YAML format
 
 See [`pipelines/README.md`](https://github.com/atultiwari/OpenPathAI/blob/main/pipelines/README.md)

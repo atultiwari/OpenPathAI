@@ -68,6 +68,8 @@ nav:
   - Audit (Phase 8): audit.md
   - Colab export + sync (Phase 11): colab.md
   - Active learning (Phase 12): active-learning.md
+  - Foundation models (Phase 13): foundation-models.md
+  - MIL (Phase 13): mil.md
   - Developer guide: developer-guide.md
 
 markdown_extensions:

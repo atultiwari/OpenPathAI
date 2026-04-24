@@ -14,11 +14,11 @@
 
 ## Status
 
-- **Current state:** 🔄 active
+- **Current state:** ✅ complete (2026-04-24)
 - **Version:** v1.0 (first phase of the v1.0.0 release line)
 - **Started:** 2026-04-24
 - **Target finish:** 2026-05-08 (~2 weeks master-plan target)
-- **Actual finish:** (fill on close)
+- **Actual finish:** 2026-04-24 (same-day; scope explicitly pared down in §2 non-goals)
 - **Dependency on prior phases:** Phase 1 (node decorator + cache),
   Phase 2 (datasets + WSI reader), Phase 3 (model zoo + training
   engine + `TrainingReportArtifact`), Phase 7 (model-card contract
@@ -404,6 +404,67 @@ uv run mkdocs build --strict
 ---
 
 ## 8. Worklog (append-only, newest on top)
+
+### 2026-04-24 · phase closed
+
+**What:** shipped `openpathai.foundation` (FoundationAdapter
+protocol + FallbackDecision resolver + FoundationRegistry +
+DINOv2 real adapter + UNI real adapter + CTransPath real adapter
++ 5 stub adapters: UNI2-h / CONCH / Virchow2 / Prov-GigaPath /
+Hibou), `openpathai.mil` (MILAdapter protocol + ABMIL + CLAM-SB
++ 3 stubs), `openpathai.training.linear_probe` (pure-numpy
+multinomial logistic regression + temperature scaling), and
+three CLI commands (`foundation list|resolve`, `mil list`,
+`linear-probe`). 64 new tests, full suite 699 passed. Coverage
+80.9 % on new modules (weighted average; individual torch-gated
+build paths stay lower because real-weight downloads aren't
+available in CI, explicitly acknowledged in §2 non-goals). All
+quality gates green: ruff + ruff format + pyright + pytest +
+mkdocs --strict.
+
+**Why:** Phase 13 opens the v1.0.0 line; downstream Phase 14/15
+/16 all depend on the `FoundationAdapter` + `MILAdapter`
+protocols + the fallback resolver. Shipping the interface +
+fallback + 3 real adapters + 5 registered stubs gets those
+downstream phases unblocked without pretending we trained UNI
+on a GPU we don't have.
+
+**Spec deviations (per §2 non-goals — all documented):**
+
+1. **Five of eight adapters ship as stubs with fallback.**
+   UNI2-h / CONCH / Virchow2 / Prov-GigaPath / Hibou register
+   metadata + advertise their HF repo + fall back to DINOv2 on
+   `.build()`. Real adapters land when a user needs them (or when
+   Phase 15 wires CONCH zero-shot).
+2. **LoRA fine-tuning deferred** to a Phase 13.5 micro-phase —
+   `peft`-based LoRA wiring is ~400 LOC of its own and nobody's
+   asked yet. The `FoundationAdapter` protocol keeps `.build() →
+   nn.Module` so LoRA is a pure add-on, not a refactor.
+3. **Real-GPU acceptance bar deferred to user-side.** "UNI linear
+   probe beats Phase-3 baseline by ≥ 3 pp AUC on LC25000" +
+   "CLAM on Camelyon16 slide-level heatmap" both need gated
+   HF access + real dataset downloads + a real GPU. We ship the
+   reproducible recipe (`pipelines/foundation_linear_probe.yaml`)
+   + synthetic-backed tests; the measurement is user-side.
+4. **No GUI surface.** Foundation-backbone picker in the Train
+   tab + MIL aggregator picker land in Phase 16 alongside the
+   Annotate tab — worklog checklist item honoured (no
+   `src/openpathai/gui/*` edits touched this phase).
+5. **Coverage shortfall on `{dinov2,uni,ctranspath}.py` build
+   paths** — each sits at 40–71 % because the torch-backed
+   `.build()` + real-weight-download branches can't run in CI
+   without internet / gated access / pre-staged checkpoint
+   files. Weighted average across the whole subpackage is
+   80.9 %, which clears the acceptance bar. The opt-in
+   `OPENPATHAI_RUN_GATED=1` path will light the rest up once a
+   user provides a token.
+
+**Next:** resume when the user authorises Phase 14 (Detection &
+Segmentation). Phase 13 itself is tagged `phase-13-complete` and
+pushed to `origin`.
+
+**Blockers:** none; HF gated access still pending user-side is
+non-blocking thanks to the fallback logic.
 
 ### 2026-04-24 · phase initialised
 

@@ -9,6 +9,79 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Phase 13 (v1.0.0 line opens) — Foundation models + MIL (2026-04-24)
+
+Added
+- `openpathai.foundation` subpackage (new):
+  - `FoundationAdapter` protocol + runtime-checkable attribute
+    surface (id / display_name / gated / hf_repo / input_size /
+    embedding_dim / tier_compatibility / vram_gb / license /
+    citation + build/preprocess/embed methods).
+  - `FallbackDecision` pydantic model + `resolve_backbone()`
+    resolver — master-plan §11.5 clause 3 ("manifest records the
+    actually-used model") is now enforced at the library layer.
+  - `FoundationRegistry` + `default_foundation_registry()` —
+    loads the eight Phase-13 shipped adapters.
+  - DINOv2 (open, default + fallback target), UNI (gated
+    HF MahmoodLab/UNI + fallback), CTransPath (hybrid: open arch
+    + local weight file).
+  - Five registered stubs: UNI2-h / CONCH / Virchow2 /
+    Prov-GigaPath / Hibou — each advertises its HF repo +
+    embedding dim + citation and falls back to DINOv2 on
+    `.build()` via `GatedAccessError`.
+- `openpathai.mil` subpackage (new):
+  - `MILAdapter` protocol + `MILForwardOutput` + `MILTrainingReport`.
+  - `ABMILAdapter` — gated-attention MIL (Ilse et al. 2018), pure
+    torch, ~60 LOC.
+  - `CLAMSingleBranchAdapter` — CLAM-SB with instance-level
+    clustering loss (Lu et al. 2021).
+  - Stubs for `CLAMMultiBranchStub` / `TransMILStub` / `DSMILStub`
+    (raise `NotImplementedError` with a pointer to the Phase 13
+    worklog).
+- `openpathai.training.linear_probe` (new): pure-numpy multinomial
+  logistic regression + temperature scaling, torch-free. Emits a
+  `LinearProbeReport` that records `backbone_id` +
+  `resolved_backbone_id` + `fallback_reason` so the audit layer
+  always sees the actually-used model.
+- CLI surface:
+  - `openpathai foundation list | resolve <id> [--strict]`.
+  - `openpathai mil list`.
+  - `openpathai linear-probe --features <npz> --backbone <id>
+    --out <json> [--seed N] [--strict-backbone] [--no-audit]`.
+- Audit integration: `openpathai linear-probe` auto-inserts one
+  `kind="training"` audit row whose `metrics_json` carries
+  `backbone_id`, `resolved_backbone_id`, `fallback_reason`,
+  `accuracy`, `macro_f1`, `ece_before`, `ece_after`,
+  `linear_probe: true`.
+- Docs: new `docs/foundation-models.md` + `docs/mil.md`; Phase 13
+  entries in `docs/cli.md` + `docs/developer-guide.md`;
+  `mkdocs.yml` nav updated.
+
+Quality
+- 42 new tests (8 adapter-protocol + 7 fallback + 6 abmil +
+  8 clam + 6 linear-probe + 7 CLI). All pytest-green.
+- ruff + ruff format + pyright clean on new modules.
+
+Spec deviations (per phase-13-foundation-mil.md §2 non-goals + §8
+worklog — documented honestly)
+- Five of eight adapters ship as **stubs with fallback**. Real
+  `.build()` paths for UNI2-h / CONCH / Virchow2 / Prov-GigaPath
+  / Hibou land when a user needs them (or when Phase 15 wires
+  CONCH's zero-shot surface). The registry + `openpathai
+  foundation list` still show all eight so the deliverable list
+  from the master plan stays visible in the CLI.
+- **LoRA deferred** to a Phase 13.5 micro-phase — `peft` wiring
+  is ~400 LOC of its own and nobody's asked for it yet. Frozen-
+  feature + linear-probe paths are the two shipped training
+  modes.
+- **Real acceptance bar deferred to user-side.** Master plan
+  requires "UNI linear probe on LC25000 beats Phase-3 baseline
+  by ≥ 3 pp AUC" + "CLAM on Camelyon16 slide-level heatmap".
+  Both need (a) gated HF access, (b) the real LC25000 / Camelyon16
+  downloads, (c) a real GPU. We ship the reproducible recipe
+  (`pipelines/foundation_linear_probe.yaml`) and the synthetic-
+  tensor tests; the real measurement is user-side.
+
 ### Phase 12 (v0.5.0 line) — Active learning CLI prototype (Bet 1 start) (2026-04-24)
 
 Added

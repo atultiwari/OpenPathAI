@@ -645,6 +645,18 @@ Active learning (Phase 12)
      swaps in a real timm-backed trainer + Gradio-backed oracle. See
      [Active learning](active-learning.md).
 
+Foundation models + MIL (Phase 13)
+:    `openpathai.foundation` is the adapter layer for pathology
+     foundation backbones (DINOv2 / UNI / CTransPath + 5 stubs).
+     Gated-access fallback is centralised in `fallback.py` —
+     `resolve_backbone(id)` returns a frozen `FallbackDecision` that
+     every downstream run (linear probe, Phase 8 audit) consumes.
+     `openpathai.mil` ships ABMIL + CLAM-SB as pure-torch aggregators
+     and registers CLAM-MB / TransMIL / DSMIL as stubs. Linear-probe
+     training (`openpathai.training.linear_probe`) is pure-numpy so
+     it runs on any CI cell without `[train]`. See
+     [Foundation models](foundation-models.md) + [MIL](mil.md).
+
 ## License
 
 By contributing, you agree your contribution is licensed under the
