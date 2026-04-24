@@ -1,0 +1,17 @@
+name: he_lung
+display_name: "H&E lung (LC25000-derived)"
+stain_kind: "H&E"
+tissue: [lung]
+# Lung H&E in LC25000 shows pinker eosin than colon due to alveolar
+# air-space backgrounds; haematoxylin basis close to default.
+stain_matrix:
+  - [0.5600, 0.7250, 0.4000]  # Haematoxylin
+  - [0.2250, 0.7850, 0.5700]  # Eosin
+max_concentrations: [1.9400, 1.0200]
+source_card: lc25000
+license: "derived from CC-BY-4.0 (LC25000)"
+citation:
+  text: "Borkowski AA, Bui MM, Thomas LB, et al. Lung and colon cancer histopathological image dataset (LC25000). arXiv:1912.12142 (2019)."
+  arxiv: "1912.12142"
+notes: |
+  Approximate stain basis for lung H&E tiles in LC25000.

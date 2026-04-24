@@ -9,6 +9,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Phase 9 (v0.5.0 line) — Cohorts + QC + stain refs + real-cohort training (2026-04-24)
+
+Added
+- `openpathai.preprocessing.qc` package: four pure-numpy QC checks
+  (`blur`, `pen_marks`, `folds`, `focus`), `QCFinding` / `QCSeverity`
+  typed row, `SlideQCReport` + `CohortQCReport` pydantic aggregators,
+  `render_html` (self-contained inline CSS) + `render_pdf`
+  (ReportLab `invariant=True`, byte-deterministic).
+- `openpathai.data.stain_refs`: `StainReference` pydantic card +
+  `StainReferenceRegistry` paralleling the dataset / model registries.
+- `data/stain_references/*.yaml` — four shipped cards (`he_default`,
+  `he_colon`, `he_breast`, `he_lung`) with licence lineage recorded.
+- `MacenkoNormalizer.from_reference(name)` factory wired to the new
+  registry.
+- `Cohort.from_directory` / `from_yaml` / `to_yaml` / `run_qc`
+  helpers in `openpathai.io.cohort`.
+- `openpathai cohort build <path> --id <id> --output <yaml>` and
+  `openpathai cohort qc <cohort.yaml> [--pdf]` CLI.
+- `LocalDatasetTileDataset` + `CohortTileDataset` +
+  `build_torch_dataset_from_card` / `build_torch_dataset_from_cohort`
+  factories.
+- `LightningTrainer.fit` now accepts either an `InMemoryTileBatch`
+  (Phase 3 synthetic) **or** any `torch.utils.data.Dataset` (Phase 9).
+- `openpathai train --dataset <card>` / `--cohort <yaml>` CLI paths.
+  Exactly one of `--synthetic` / `--dataset` / `--cohort` required.
+- GUI **Train** tab: **Dataset source** radio
+  (Synthetic / Dataset card / Cohort YAML).
+- GUI new **Cohorts** tab (7th overall): load / build-from-directory /
+  run QC with HTML + optional PDF.
+- Tab reorder: `Analyse → Datasets → Train → Models → Runs →
+  Cohorts → Settings` — Datasets now precedes Train because the
+  Train tab finally binds to a real dataset.
+- Docs: new `docs/cohorts.md`, new `docs/preprocessing.md`; extended
+  `docs/datasets.md` + `docs/gui.md` + `docs/developer-guide.md`;
+  `mkdocs.yml` nav updated.
+- `scripts/try-phase-9.sh` — guided smoke tour.
+
+Quality
+- 71 new unit + integration tests under `tests/unit/preprocessing/qc/`,
+  `tests/unit/data/test_stain_refs.py`, `tests/unit/io/`,
+  `tests/unit/training/`, `tests/unit/cli/`, `tests/unit/gui/`, and
+  `tests/integration/test_cohort_qc_e2e.py`.
+- Total: 506 passed / 2 skipped.
+
 ### Phase 8 (v0.2.0 line) — Audit + SQLite history + run diff (2026-04-24)
 
 Added

@@ -14,7 +14,7 @@ Public API:
 
 from __future__ import annotations
 
-from openpathai.io.cohort import Cohort, SlideRef
+from openpathai.io.cohort import COHORT_SLIDE_EXTENSIONS, Cohort, SlideRef
 from openpathai.io.wsi import (
     PillowSlideReader,
     SlideBackend,
@@ -23,6 +23,7 @@ from openpathai.io.wsi import (
 )
 
 __all__ = [
+    "COHORT_SLIDE_EXTENSIONS",
     "Cohort",
     "PillowSlideReader",
     "SlideBackend",

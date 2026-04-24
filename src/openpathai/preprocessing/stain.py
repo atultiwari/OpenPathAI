@@ -20,6 +20,8 @@ instance so users can fit to a template slide.
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -86,6 +88,30 @@ class MacenkoNormalizer(BaseModel):
     beta: float = Field(default=0.15, ge=0.0, le=1.0)
     intensity_norm: float = Field(default=240.0, gt=0.0)
     target: MacenkoStainMatrix | None = None
+
+    # ------------------------------------------------------------------
+    # Factories
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def from_reference(cls, name: str, **overrides: Any) -> MacenkoNormalizer:
+        """Build a normaliser bound to a :class:`StainReference` by name.
+
+        Looks the name up in :func:`openpathai.data.default_stain_registry`
+        and attaches the resulting basis as ``target``. Extra keyword
+        arguments override the ``alpha`` / ``beta`` / ``intensity_norm``
+        constants.
+        """
+        from openpathai.data.stain_refs import default_stain_registry
+
+        reg = default_stain_registry()
+        if not reg.has(name):
+            raise KeyError(f"Stain reference {name!r} is not registered")
+        ref = reg.get(name)
+        stain = np.asarray(ref.stain_matrix, dtype=np.float64)
+        max_c = np.asarray(ref.max_concentrations, dtype=np.float64)
+        target = MacenkoStainMatrix.from_arrays(stain, max_c)
+        return cls(target=target, **overrides)
 
     # ------------------------------------------------------------------
     # Public API

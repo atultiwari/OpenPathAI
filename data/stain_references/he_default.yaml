@@ -1,0 +1,17 @@
+name: he_default
+display_name: "H&E default (Macenko 2009 reference)"
+stain_kind: "H&E"
+tissue: [any]
+# Rows: (H, E); columns: (R, G, B).
+stain_matrix:
+  - [0.5626, 0.7201, 0.4062]  # Haematoxylin
+  - [0.2159, 0.8012, 0.5581]  # Eosin
+max_concentrations: [1.9705, 1.0308]
+source_card: null
+license: "public domain (paper reference)"
+citation:
+  text: "Macenko M, et al. 'A method for normalizing histology slides for quantitative analysis.' ISBI 2009."
+  doi: "10.1109/ISBI.2009.5193250"
+notes: |
+  Stock reference matrix taken verbatim from the Macenko 2009 paper.
+  Serves as the fallback when no tissue-specific reference is selected.

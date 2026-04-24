@@ -247,9 +247,18 @@ class LightningTrainer:
     def fit(  # pragma: no cover
         self,
         *,
-        train: InMemoryTileBatch,
-        val: InMemoryTileBatch | None = None,
+        train: InMemoryTileBatch | Any,
+        val: InMemoryTileBatch | Any | None = None,
     ) -> TrainingReportArtifact:
+        """Train + validate.
+
+        ``train`` / ``val`` accept either a Phase 3
+        :class:`InMemoryTileBatch` (auto-wrapped in a torch
+        ``TensorDataset``) or any pre-built
+        ``torch.utils.data.Dataset`` (used as-is). Phase 9
+        ``LocalDatasetTileDataset`` / ``CohortTileDataset`` return the
+        latter.
+        """
         try:
             import torch
             from torch.utils.data import DataLoader
@@ -276,24 +285,28 @@ class LightningTrainer:
         optimizer = _build_optimizer(self.config, backbone.parameters())
         scheduler = _build_scheduler(self.config, optimizer)
 
+        train_dataset = (
+            build_torch_dataset(train) if isinstance(train, InMemoryTileBatch) else train
+        )
         train_loader = DataLoader(
-            build_torch_dataset(train),
+            train_dataset,
             batch_size=self.config.batch_size,
             shuffle=True,
             num_workers=self.config.num_workers,
             drop_last=False,
         )
-        val_loader = (
-            DataLoader(
-                build_torch_dataset(val),
+        val_loader: DataLoader | None
+        if val is None:
+            val_loader = None
+        else:
+            val_dataset = build_torch_dataset(val) if isinstance(val, InMemoryTileBatch) else val
+            val_loader = DataLoader(
+                val_dataset,
                 batch_size=self.config.batch_size,
                 shuffle=False,
                 num_workers=self.config.num_workers,
                 drop_last=False,
             )
-            if val is not None
-            else None
-        )
 
         history: list[EpochRecord] = []
         final_val_logits: np.ndarray | None = None

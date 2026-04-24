@@ -1,8 +1,14 @@
 # Gradio GUI
 
-Phase 6 adds a five-tab Gradio 5 app so a pathologist without a
+Phase 6 shipped a five-tab Gradio 5 app so a pathologist without a
 terminal can pick a dataset, train a model, generate a heatmap on a
-tile, and manage the cache — all without writing Python.
+tile, and manage the cache. Phase 8 added the **Runs** tab; Phase 9
+added the **Cohorts** tab and reordered the tabs so the natural
+"pick a dataset → train → inspect runs" flow reads left-to-right:
+
+```
+Analyse · Datasets · Train · Models · Runs · Cohorts · Settings
+```
 
 ```bash
 uv sync --extra gui
@@ -38,11 +44,23 @@ Returns a heatmap plus a tile overlay. Requires the `[train]` extra
 
 ### Train
 
-Drives the Phase 3 synthetic training path in-browser — pick a model,
-set epochs / loss / learning rate, click **Start training**. The
-per-epoch table streams `train_loss`, `val_loss`, `val_accuracy`,
-`val_macro_f1`, and `val_ece` as the run progresses. Real-cohort
-training plugs in with the Phase 9 cohort driver.
+Phase 9 lands the **Dataset source** selector — three options:
+
+- **Synthetic** — Phase 3 smoke path (random tiles). Useful for a
+  sanity check without any data.
+- **Dataset card (local)** — any registered dataset card with
+  `download.method == "local"` (Phase 7 `register_folder` output or
+  `kather_crc_5k` once downloaded). `num_classes` is read off the
+  card automatically.
+- **Cohort YAML** — iterate the slides in a cohort file. Labels come
+  from each `SlideRef.label`; paste a comma-separated class list to
+  pin an explicit label set when labels are sparse.
+
+The per-epoch table (`train_loss`, `val_loss`, `val_accuracy`,
+`val_macro_f1`, `val_ece`) renders the same way regardless of source.
+Every successful run lands in `audit.db` unless you disable audit
+logging (per-run `--no-audit` via CLI, per-session toggle in the
+**Settings** tab).
 
 ### Datasets
 
@@ -77,6 +95,19 @@ Filter by kind / status / date range, open a run's JSON detail,
 diff two runs side-by-side, or prune history (keyring-gated). See
 [Audit (Phase 8)](audit.md) for the full schema + PHI-protection
 contract.
+
+### Cohorts
+
+**Phase 9** — authoring + QC for slide cohorts. Three sections:
+
+- **Load** — point at a cohort YAML; the slide table populates.
+- **Build cohort from directory** (accordion) — scan a folder of
+  WSI files into a fresh YAML in one click.
+- **Run QC** (accordion) — runs every QC check on every slide's
+  thumbnail, renders a green/yellow/red `pass / warn / fail` summary,
+  offers HTML + PDF report downloads.
+
+See [Cohorts (Phase 9)](cohorts.md) for the full flow and YAML shape.
 
 ### Settings
 

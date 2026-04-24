@@ -27,10 +27,11 @@ gradio_missing = not _gradio_is_usable()
 def test_tab_order_matches_docs() -> None:
     assert TAB_ORDER == (
         "Analyse",
-        "Train",
         "Datasets",
+        "Train",
         "Models",
         "Runs",
+        "Cohorts",
         "Settings",
     )
 

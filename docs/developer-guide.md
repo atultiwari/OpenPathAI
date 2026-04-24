@@ -531,6 +531,54 @@ Delete-token store
      chmod-0600 file at `$OPENPATHAI_HOME/audit.token` when keyring is
      unavailable. Constant-time compare via `hmac.compare_digest`.
 
+## Cohorts + QC (Phase 9)
+
+Phase 9 introduces the **cohort-first** training + QC surface.
+Complete user-facing docs: [Cohorts (Phase 9)](cohorts.md) +
+[Preprocessing + QC](preprocessing.md). Library-side entry points:
+
+```python
+from openpathai.io import Cohort, SlideRef
+from openpathai.preprocessing.qc import run_all_checks, render_html, render_pdf
+from openpathai.data import default_stain_registry
+from openpathai.preprocessing import MacenkoNormalizer
+from openpathai.training import (
+    CohortTileDataset,
+    LocalDatasetTileDataset,
+    build_torch_dataset_from_card,
+    build_torch_dataset_from_cohort,
+)
+```
+
+QC contract
+:    Each check is a pure function with signature
+     `(image: np.ndarray, **kwargs) -> QCFinding`. Operates on a
+     thumbnail (≤ ~2048 px long edge) — never a full WSI. Thresholds
+     are overridable per-call so callers can re-tune without forking.
+
+Stain reference registry
+:    `data/stain_references/*.yaml` ships four H&E bases
+     (default / colon / breast / lung). User cards at
+     `~/.openpathai/stain_references/*.yaml` override shipped names
+     first-to-last. `MacenkoNormalizer.from_reference(name)` is the
+     lookup helper.
+
+Training driver
+:    `LightningTrainer.fit` now accepts either an `InMemoryTileBatch`
+     (Phase 3 synthetic) **or** any `torch.utils.data.Dataset`
+     (Phase 9 real). Phase 9's `LocalDatasetTileDataset` +
+     `CohortTileDataset` + the `build_torch_dataset_from_card` /
+     `build_torch_dataset_from_cohort` factories return the latter so
+     the engine never has to materialise a full dataset into a numpy
+     batch.
+
+Cohort helpers
+:    `Cohort.from_directory(path, cohort_id)` scans a folder;
+     `Cohort.from_yaml` / `Cohort.to_yaml` round-trip;
+     `Cohort.run_qc(extractor)` produces a `CohortQCReport`.
+     Content-hash is deterministic, so the Phase 1 executor's
+     cache works at cohort scope for free.
+
 ## License
 
 By contributing, you agree your contribution is licensed under the

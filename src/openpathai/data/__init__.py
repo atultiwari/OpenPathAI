@@ -31,6 +31,12 @@ from openpathai.data.splits import (
     patient_level_kfold,
     patient_level_split,
 )
+from openpathai.data.stain_refs import (
+    StainReference,
+    StainReferenceCitation,
+    StainReferenceRegistry,
+    default_stain_registry,
+)
 
 __all__ = [
     "LOCAL_DATASET_EXTENSIONS",
@@ -41,8 +47,12 @@ __all__ = [
     "DatasetSplits",
     "KaggleDownloader",
     "PatientFold",
+    "StainReference",
+    "StainReferenceCitation",
+    "StainReferenceRegistry",
     "TierCompatibility",
     "default_registry",
+    "default_stain_registry",
     "deregister_folder",
     "kaggle_credentials_path",
     "list_local",

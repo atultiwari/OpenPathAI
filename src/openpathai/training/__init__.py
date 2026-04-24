@@ -23,8 +23,12 @@ from openpathai.training.config import (
     TrainingConfig,
 )
 from openpathai.training.datasets import (
+    CohortTileDataset,
     InMemoryTileBatch,
+    LocalDatasetTileDataset,
     build_torch_dataset,
+    build_torch_dataset_from_card,
+    build_torch_dataset_from_cohort,
     synthetic_tile_batch,
 )
 from openpathai.training.engine import (
@@ -56,9 +60,11 @@ from openpathai.training.node import (
 )
 
 __all__ = [
+    "CohortTileDataset",
     "EpochRecord",
     "InMemoryTileBatch",
     "LightningTrainer",
+    "LocalDatasetTileDataset",
     "LossConfig",
     "OptimizerConfig",
     "SchedulerConfig",
@@ -70,6 +76,8 @@ __all__ = [
     "accuracy",
     "apply_temperature",
     "build_torch_dataset",
+    "build_torch_dataset_from_card",
+    "build_torch_dataset_from_cohort",
     "clear_batches",
     "confusion_matrix",
     "cross_entropy_loss",

@@ -13,7 +13,7 @@ from __future__ import annotations
 import contextlib
 from pathlib import Path
 
-from openpathai.data import DatasetCard, DatasetRegistry, list_local
+from openpathai.data import DatasetCard, DatasetRegistry, default_registry, list_local
 from openpathai.models import ModelCard, ModelRegistry, default_model_registry
 from openpathai.safety import CardIssue, validate_card
 
@@ -25,6 +25,9 @@ __all__ = [
     "audit_summary",
     "borderline_badge",
     "cache_summary",
+    "cohort_qc_summary",
+    "cohort_rows",
+    "dataset_train_choices",
     "datasets_rows",
     "device_choices",
     "explainer_choices",
@@ -368,3 +371,48 @@ def run_diff_rows(run_id_a: str, run_id_b: str) -> list[list[str]]:
         ]
         for d in diff.deltas
     ]
+
+
+# --------------------------------------------------------------------------- #
+# Cohort view-model helpers (Phase 9)
+# --------------------------------------------------------------------------- #
+
+
+def cohort_rows(yaml_path: str | Path) -> list[dict[str, str]]:
+    """Return one row dict per slide in the cohort at ``yaml_path``.
+
+    Empty list when the path doesn't exist or can't be parsed.
+    """
+    from openpathai.io import Cohort
+
+    if not yaml_path:
+        return []
+    target = Path(yaml_path).expanduser()
+    if not target.is_file():
+        return []
+    try:
+        cohort = Cohort.from_yaml(target)
+    except (ValueError, FileNotFoundError):
+        return []
+    return [
+        {
+            "slide_id": slide.slide_id,
+            "patient_id": slide.patient_id or "",
+            "label": slide.label or "",
+            "path": slide.path,
+            "mpp": "" if slide.mpp is None else f"{slide.mpp:.4f}",
+            "magnification": slide.magnification or "",
+        }
+        for slide in cohort.slides
+    ]
+
+
+def cohort_qc_summary(report) -> dict[str, int]:
+    """Passthrough for the Cohorts-tab summary panel."""
+    return report.summary() if report is not None else {"pass": 0, "warn": 0, "fail": 0}
+
+
+def dataset_train_choices() -> list[str]:
+    """Return registered dataset names suitable for the Train tab picker."""
+    reg = default_registry()
+    return list(reg.names())

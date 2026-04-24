@@ -1,0 +1,18 @@
+name: he_colon
+display_name: "H&E colon (LC25000-derived)"
+stain_kind: "H&E"
+tissue: [colon]
+# Adjusted to slightly cooler haematoxylin typical of colon tissue in
+# LC25000; eosin component close to the Macenko default.
+stain_matrix:
+  - [0.5300, 0.7400, 0.4100]  # Haematoxylin
+  - [0.2300, 0.7900, 0.5650]  # Eosin
+max_concentrations: [2.0100, 1.0500]
+source_card: lc25000
+license: "derived from CC-BY-4.0 (LC25000)"
+citation:
+  text: "Borkowski AA, Bui MM, Thomas LB, et al. Lung and colon cancer histopathological image dataset (LC25000). arXiv:1912.12142 (2019)."
+  arxiv: "1912.12142"
+notes: |
+  Approximate stain basis for colon H&E. Use when normalising colon
+  tiles for training / inference alongside the ``lc25000`` dataset.

@@ -104,6 +104,27 @@ openpathai datasets deregister my_demo
 
 ---
 
+## Training directly from a card (Phase 9)
+
+Local-method cards (anything written by `register_folder`, plus
+`kather_crc_5k` once the Zenodo archive is unzipped under
+`~/.openpathai/datasets/kather_crc_5k/<class>/*.png`) are trainable
+directly:
+
+```bash
+openpathai train --dataset kather_crc_5k --model resnet18 --epochs 1 --device cpu
+```
+
+The Train tab in the GUI has the same capability — pick **Dataset
+card (local)** on the **Dataset source** radio.
+
+Non-local methods (`kaggle`, `zenodo`, `http`, `huggingface`) will
+land alongside the Phase 10 orchestration work; for now
+`build_torch_dataset_from_card` raises a `NotImplementedError` with a
+Phase-10 pointer.
+
+---
+
 ## Downloading shipped cards
 
 The Phase 5 `openpathai download` command handles Kaggle-hosted

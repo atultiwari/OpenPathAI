@@ -28,10 +28,11 @@ __all__ = [
 
 TAB_ORDER: tuple[str, ...] = (
     "Analyse",
-    "Train",
     "Datasets",
+    "Train",
     "Models",
     "Runs",
+    "Cohorts",
     "Settings",
 )
 
@@ -56,6 +57,7 @@ def build_app(state: AppState | None = None) -> gr.Blocks:  # pragma: no cover -
 
     from openpathai.gui import (
         analyse_tab,
+        cohorts_tab,
         datasets_tab,
         models_tab,
         runs_tab,
@@ -75,14 +77,16 @@ def build_app(state: AppState | None = None) -> gr.Blocks:  # pragma: no cover -
         with gr.Tabs():
             with gr.Tab("Analyse"):
                 analyse_tab.build(state)
-            with gr.Tab("Train"):
-                train_tab.build(state)
             with gr.Tab("Datasets"):
                 datasets_tab.build(state)
+            with gr.Tab("Train"):
+                train_tab.build(state)
             with gr.Tab("Models"):
                 models_tab.build(state)
             with gr.Tab("Runs"):
                 runs_tab.build(state)
+            with gr.Tab("Cohorts"):
+                cohorts_tab.build(state)
             with gr.Tab("Settings"):
                 settings_tab.build(state)
     return app

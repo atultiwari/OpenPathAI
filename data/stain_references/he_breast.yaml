@@ -1,0 +1,18 @@
+name: he_breast
+display_name: "H&E breast (PatchCamelyon-derived)"
+stain_kind: "H&E"
+tissue: [breast, lymph_node]
+# Breast / lymph-node H&E from the PCam cohort runs slightly warmer in
+# the eosin channel; haematoxylin close to default.
+stain_matrix:
+  - [0.5650, 0.7150, 0.4100]  # Haematoxylin
+  - [0.2050, 0.8200, 0.5400]  # Eosin
+max_concentrations: [1.9600, 1.1000]
+source_card: pcam
+license: "derived from CC0-1.0 (PatchCamelyon)"
+citation:
+  text: "Veeling BS, Linmans J, Winkens J, Cohen T, Welling M. Rotation Equivariant CNNs for Digital Pathology. MICCAI 2018."
+  arxiv: "1806.03962"
+notes: |
+  Breast-tissue H&E reference. Pair with the ``pcam`` dataset card or
+  other metastasis-detection cohorts.

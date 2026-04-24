@@ -52,7 +52,8 @@ def test_models_list_family_filter() -> None:
 
 
 @pytest.mark.unit
-def test_train_without_synthetic_flag_exits_with_guidance() -> None:
+def test_train_without_data_source_exits_with_guidance() -> None:
     result = runner.invoke(app, ["train", "--model", "resnet18", "--num-classes", "4"])
     assert result.exit_code == 2
-    assert "Phase 5" in result.stdout
+    # Phase 9: train requires exactly one of --synthetic / --dataset / --cohort.
+    assert "exactly one" in result.stdout.lower() or "--synthetic" in result.stdout
