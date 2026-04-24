@@ -72,6 +72,7 @@ nav:
   - MIL (Phase 13): mil.md
   - Detection (Phase 14): detection.md
   - Segmentation (Phase 14): segmentation.md
+  - NL + zero-shot (Phase 15): nl-features.md
   - Developer guide: developer-guide.md
 
 markdown_extensions:

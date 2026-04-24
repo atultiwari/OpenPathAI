@@ -671,6 +671,22 @@ Detection + Segmentation (Phase 14)
      cards ship: MoNuSeg / PanNuke / MoNuSAC / GlaS / MIDOG.
      See [Detection](detection.md) + [Segmentation](segmentation.md).
 
+NL + zero-shot + MedGemma (Phase 15, Bet 2)
+:    `openpathai.nl.llm_backends` ships the `LLMBackend` protocol +
+     `OpenAICompatibleBackend` HTTP base + Ollama/LM Studio
+     subclasses + `detect_default_backend()` probe chain. Local-only
+     by default (iron rule — no pathology data leaves the laptop).
+     `openpathai.nl.zero_shot` does CONCH text-prompted classification
+     with a deterministic hash-based fallback text encoder.
+     `openpathai.nl.text_prompt_seg` routes MedSAM2 text prompts
+     through the Phase-14 promptable segmenter interface, falling
+     back to `SyntheticClickSegmenter` when weights are absent.
+     `openpathai.nl.pipeline_gen` asks MedGemma to draft a
+     `Pipeline` YAML and retries on pydantic-validation failure up
+     to 3 times; the drafted pipeline is **never auto-executed**
+     (iron rule #9). Audit rows carry `nl_prompt_hash` — PHI-safe;
+     raw prompts never persisted. See [NL + zero-shot](nl-features.md).
+
 ## License
 
 By contributing, you agree your contribution is licensed under the

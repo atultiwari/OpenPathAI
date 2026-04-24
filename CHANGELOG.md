@@ -9,6 +9,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Phase 15 (v1.0.0 line) — NL + zero-shot + MedGemma (Bet 2 live) (2026-04-24)
+
+Added
+- `openpathai.nl.llm_backends` subpackage:
+  - `LLMBackend` protocol + frozen `ChatMessage` / `ChatResponse` /
+    `BackendCapabilities` pydantic models.
+  - `OpenAICompatibleBackend` shared HTTP adapter (httpx-based);
+    `OllamaBackend` (default; probes `/api/tags`), `LMStudioBackend`
+    (probes `/v1/models`).
+  - `LLMBackendRegistry` + `detect_default_backend()` probe chain
+    raising `LLMUnavailableError` with an actionable install
+    message when nothing is reachable.
+- `openpathai.nl.zero_shot.classify_zero_shot(image, prompts)` —
+  CONCH text-prompted tile classification with a deterministic
+  hash-based fallback text encoder. Returns a frozen
+  `ZeroShotResult` recording requested vs resolved backbone ids.
+- `openpathai.nl.text_prompt_seg.segment_text_prompt(image, prompt)`
+  — MedSAM2 text-prompted segmentation. Falls back to the Phase-14
+  `SyntheticClickSegmenter` with a deterministic prompt-biased
+  centre click; metadata carries `prompt_hash` + resolved segmenter
+  id.
+- `openpathai.nl.pipeline_gen.draft_pipeline_from_prompt(prompt,
+  backend)` — MedGemma-driven `Pipeline` YAML drafting with a
+  3-attempt pydantic-validation retry loop. Iron rule #9: the
+  returned `PipelineDraft` is **never** auto-executed; the YAML
+  must be run explicitly via `openpathai run`.
+- CLI: `openpathai llm status | pull <model>`, `openpathai nl
+  classify | segment | draft`.
+
+Quality
+- 41 new tests (12 LLM backend probe/chat/registry + 7 zero-shot +
+  5 text-prompt seg + 7 pipeline-gen retry + 4 CLI llm + 6 CLI nl).
+  Full suite: 816 passed, 3 skipped (one new `ollama-installed`
+  skip variant).
+- ruff + ruff format + pyright + pytest + mkdocs --strict all clean.
+
+PHI safety
+- Audit rows for every NL-initiated run store `nl_prompt_hash`
+  (SHA-256, 16 hex chars) — **never** the raw prompt text. Iron
+  rule #8 preserved end-to-end.
+
+Spec deviations (documented in phase-15 §2 non-goals + §8 worklog)
+- No cloud / hosted LLM backends — local-only by default (iron
+  rule; opt-in hosted backends can land in a future phase).
+- Real CONCH zero-shot accuracy + MedSAM2 mask demo acceptance
+  bars deferred to user-side validation (need gated HF access +
+  real GPU; Ollama + medgemma:1.5 already installed on the
+  user's laptop per their earlier setup).
+- No GUI surface — Phase 16 (Analyse-tab NL prompt box +
+  Pipelines chat panel).
+- No function calling / agentic refinement — single-turn only.
+- No CONCH fine-tuning — zero-shot only; linear-probe on CONCH
+  features uses Phase 13 `linear_probe` unchanged.
+
 ### Phase 14 (v1.0.0 line) — Detection + Segmentation (2026-04-24)
 
 Added

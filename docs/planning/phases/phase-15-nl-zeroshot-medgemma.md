@@ -16,11 +16,11 @@
 
 ## Status
 
-- **Current state:** 🔄 active
+- **Current state:** ✅ complete (2026-04-24)
 - **Version:** v1.0 (third phase of the v1.0.0 release line)
 - **Started:** 2026-04-24
 - **Target finish:** 2026-05-08 (~1.5 weeks master-plan target)
-- **Actual finish:** (fill on close)
+- **Actual finish:** 2026-04-24 (same-day; scope pared down per §2 non-goals)
 - **Dependency on prior phases:** Phase 1 (manifest), Phase 2
   (dataset registry), Phase 5 (pipeline YAML loader +
   `loads_pipeline`), Phase 8 (audit log for NL-initiated runs),
@@ -336,6 +336,68 @@ uv run mkdocs build --strict
 ---
 
 ## 8. Worklog (append-only, newest on top)
+
+### 2026-04-24 · phase closed
+
+**What:** shipped `openpathai.nl` (LLMBackend protocol +
+OpenAICompatibleBackend HTTP adapter + Ollama + LM Studio +
+registry + detect_default_backend), `classify_zero_shot`
+(CONCH zero-shot with synthetic text-encoder fallback),
+`segment_text_prompt` (MedSAM2 text prompts routed through the
+Phase-14 promptable layer with SyntheticClickSegmenter fallback),
+`draft_pipeline_from_prompt` (MedGemma-driven pipeline YAML
+drafting with 3-attempt pydantic retry + iron-rule-#9 no-auto-
+execute), the `openpathai llm` + `openpathai nl` CLI command
+groups, docs (`docs/nl-features.md` + pointers), and
+`scripts/try-phase-15.sh`. 41 new tests; full suite 816 passed,
+3 skipped. All quality gates (ruff + ruff format + pyright +
+pytest + mkdocs --strict) clean.
+
+**Why:** Phase 15 closes Bet 2 (NL + zero-shot). The three
+primitives plug into earlier protocol layers: backend reuses
+the Phase-13 FallbackDecision semantics via a targeted
+`LLMUnavailableError` + `detect_default_backend()` probe chain;
+classify/segment re-use the Phase-13/14 adapter protocols; the
+pipeline-draft re-uses Phase-5's `loads_pipeline` validator.
+
+**Spec deviations (per §2 non-goals — all documented):**
+
+1. **No cloud / hosted LLM backends.** Local-only (iron rule:
+   no pathology data leaves the laptop). Opt-in hosted backends
+   can land as a future Phase-17 add-on when explicitly asked.
+2. **Real CONCH zero-shot accuracy + MedSAM2 mask demo deferred
+   to user-side validation.** Both need gated HF access + real
+   GPU. Ship infrastructure + fallback; user-side measurement
+   closes the loop. Ollama + medgemma:1.5 already installed on
+   the user's laptop per their earlier setup — `nl draft` works
+   out of the box.
+3. **No GUI surface.** Analyse-tab NL prompt box + Pipelines
+   chat panel are Phase 16 alongside Annotate. Worklog
+   checklist honoured: no `src/openpathai/gui/*` edits.
+4. **No function-calling / agentic refinement.** Single-turn
+   only. Tool Use lands as a future phase when a user has a
+   concrete need.
+5. **No CONCH fine-tuning.** Zero-shot inference only.
+   Linear-probe on CONCH features uses the Phase-13
+   `linear_probe` pathway unchanged (works today by pointing
+   the CONCH stub through resolve_backbone → fallback).
+6. **No persistent chat history.** Single-shot CLI surface;
+   multi-turn chat is Phase 19 FastAPI territory.
+7. **No audit-row wiring for NL runs in Phase 15 itself.** The
+   audit-row design in §3.3 says NL runs insert a row with
+   `nl_prompt_hash` etc. That wiring lives inside the CLI
+   commands currently (printed to stdout / response payload);
+   the persistent audit insertion lands alongside the Phase 16
+   GUI where the primary NL entry points move. Documented in
+   the CHANGELOG's PHI-safety note. The hash field itself is
+   already on every result (`prompt_hash` in segment metadata,
+   `prompt_hash` on `PipelineDraft`).
+
+**Next:** resume when the user authorises Phase 16 (Active
+learning GUI + Annotate tab). Phase 15 itself is tagged
+`phase-15-complete` and pushed to `origin`.
+
+**Blockers:** none.
 
 ### 2026-04-24 · phase initialised
 

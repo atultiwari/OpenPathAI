@@ -185,6 +185,28 @@ uv run openpathai segmentation resolve medsam2
 uv run openpathai segmentation resolve nnunet_v2
 ```
 
+### `openpathai llm status | pull <model>` (Phase 15)
+
+Probe local LLM backends (Ollama + LM Studio) + pull models.
+Exits 3 + prints an actionable install message when nothing is
+reachable. See [NL + zero-shot](nl-features.md).
+
+```bash
+uv run openpathai llm status
+uv run openpathai llm pull medgemma:1.5
+```
+
+### `openpathai nl {classify,segment,draft}` (Phase 15)
+
+Three NL surfaces. All three record `nl_prompt_hash` in the
+audit row (PHI-safe; raw prompt text never persisted).
+
+```bash
+uv run openpathai nl classify tile.png --prompt "tumor" --prompt "normal"
+uv run openpathai nl segment  tile.png --prompt "gland" --out mask.png
+uv run openpathai nl draft    "fine-tune resnet18 on lc25000 for 2 epochs"
+```
+
 ## Pipeline YAML format
 
 See [`pipelines/README.md`](https://github.com/atultiwari/OpenPathAI/blob/main/pipelines/README.md)
