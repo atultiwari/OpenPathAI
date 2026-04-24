@@ -20,9 +20,9 @@
 
 | | |
 |---|---|
-| Active phase | **Phase 18 — Packaging + Docker + docs site** (pending spec; Phase 17 closed 2026-04-24) |
+| Active phase | **Phase 18 — Packaging + Docker + docs site** (🔄 spec authored + implementation in flight, 2026-04-24) |
 | Latest Git tag | `phase-17-complete` (pushed to `origin`) |
-| Latest released version | v0.1.0 feature set landed; v0.2.0 complete; v0.5.0 fully landed; v1.0.0 line complete (Phases 13–17 ✅). **All three bets live**: Bet 1 ✅ (active learning), Bet 2 ✅ (NL + zero-shot), Bet 3 ✅ (reproducibility). 🎯 |
+| Latest released version | v1.0.0 line complete (Phases 13–17 ✅). **All three bets live** 🎯. v1.1.0 opens with Phase 18 — ship-it polish. |
 | Blocked on user | (a) HISTAI-breast gated-access still pending on the main HF account (non-blocking); (b) Ollama + MedGemma 1.5 **already installed** ✅. |
 
 ---
@@ -49,7 +49,7 @@
 | 15 | CONCH zero-shot + NL pipelines + **MedGemma 1.5** backend (Bet 2 live) | v1.0 | ✅ complete (2026-04-24, tag `phase-15-complete`) | [phase-15-nl-zeroshot-medgemma.md](phase-15-nl-zeroshot-medgemma.md) | 1.5 w target / same-day actual |
 | 16 | Active learning GUI + Annotate tab (MedSAM2-assisted) (Bet 1 complete) | v1.0 | ✅ complete (2026-04-24, tag `phase-16-complete`) | [phase-16-annotate-gui.md](phase-16-annotate-gui.md) | 1.5 w target / same-day actual |
 | 17 | Diagnostic mode + signed manifests + auto-Methods (Bet 3 complete) | v1.0 | ✅ complete (2026-04-24, tag `phase-17-complete`) | [phase-17-diagnostic-mode-sigstore.md](phase-17-diagnostic-mode-sigstore.md) | 1 w target / same-day actual |
-| 18 | Packaging + Docker + docs site | v1.1 | ⏳ pending | — | 1 w |
+| 18 | Packaging + Docker + docs site | v1.1 | 🔄 active (2026-04-24) | [phase-18-packaging-docker-docs.md](phase-18-packaging-docker-docs.md) | 1 w |
 | 19 | FastAPI backend for canvas | v2.0 | ⏳ pending | — | 2–3 w |
 | 20 | React + React Flow canvas (visual pipeline builder) | v2.0 | ⏳ pending | — | 3–4 w |
 | 21 | OpenSeadragon viewer + run-audit modal + tier badges | v2.0 | ⏳ pending | — | 1–2 w |
