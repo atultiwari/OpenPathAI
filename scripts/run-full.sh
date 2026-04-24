@@ -21,7 +21,7 @@
 # Environment overrides:
 #   OPA_API_PORT        (default: 7870)
 #   OPA_GUI_PORT        (default: 7860)
-#   OPA_MLFLOW_PORT     (default: 5000)
+#   OPA_MLFLOW_PORT     (default: 5001 — macOS AirPlay Receiver grabs 5000)
 #   OPA_API_TOKEN       (default: auto-generated + printed)
 #   OPA_SKIP_SYNC=1     skip the uv sync step (reuse your .venv as-is)
 #   OPA_HOME            override OPENPATHAI_HOME (default: ~/.openpathai)
@@ -45,7 +45,9 @@ mkdir -p "$LOG_DIR"
 
 API_PORT="${OPA_API_PORT:-7870}"
 GUI_PORT="${OPA_GUI_PORT:-7860}"
-MLFLOW_PORT="${OPA_MLFLOW_PORT:-5000}"
+# macOS's AirPlay Receiver has grabbed :5000 since Monterey, so we
+# default to :5001. Override with OPA_MLFLOW_PORT when you want :5000.
+MLFLOW_PORT="${OPA_MLFLOW_PORT:-5001}"
 OPA_HOME_DIR="${OPA_HOME:-$HOME/.openpathai}"
 
 # Auto-generate a token if the user didn't supply one.
