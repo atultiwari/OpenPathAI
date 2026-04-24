@@ -6,6 +6,7 @@ import pytest
 from typer.testing import CliRunner
 
 from openpathai.cli.main import app
+from tests.conftest import strip_ansi
 
 runner = CliRunner()
 
@@ -13,9 +14,9 @@ runner = CliRunner()
 def test_mlflow_ui_help_exits_zero() -> None:
     result = runner.invoke(app, ["mlflow-ui", "--help"])
     assert result.exit_code == 0, result.stdout
-    assert "--host" in result.stdout
-    assert "--port" in result.stdout
-    assert "--tracking-uri" in result.stdout
+    out = strip_ansi(result.stdout)
+    for token in ("--host", "--port", "--tracking-uri"):
+        assert token in out, f"{token!r} missing from help output:\n{out}"
 
 
 def test_mlflow_ui_without_extra_exits_3(monkeypatch: pytest.MonkeyPatch) -> None:
