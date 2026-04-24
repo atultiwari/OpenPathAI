@@ -9,6 +9,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Phase 11 (v0.5.0 line) — Colab exporter + manifest sync (2026-04-24)
+
+Added
+- `openpathai.export.render_notebook` — pure-function Colab notebook
+  generator. Produces a 7-cell `.ipynb` that pins the OpenPathAI
+  version, embeds the exact pipeline YAML, runs `openpathai run
+  --no-audit` inside Colab, and offers the resulting
+  `manifest.json` for download.
+- `openpathai.export.write_notebook` — JSON-dumps an ipynb dict.
+- `openpathai.safety.audit.sync.import_manifest` + `preview_manifest`
+  — round-trip a downloaded Colab manifest back into the local audit
+  DB, preserving the original `run_id`; re-import is idempotent and
+  logs a warning.
+- `openpathai export-colab --out PATH [--pipeline YAML] [--run-id ID]
+  [--openpathai-version X.Y.Z]` CLI command.
+- `openpathai sync MANIFEST_PATH [--show]` CLI command.
+- Symmetric `openpathai.cli.pipeline_yaml.loads_pipeline(text)` helper
+  (complements `dump_pipeline`).
+- GUI: new **Export a run for Colab** accordion on the Runs tab,
+  wired through `openpathai.gui.views.colab_export_for_run`.
+- Docs: new `docs/colab.md`; Phase 11 entries in `docs/cli.md` +
+  `docs/gui.md` + `docs/developer-guide.md`; `mkdocs.yml` nav updated.
+- `scripts/try-phase-11.sh` — guided smoke tour.
+
+Quality
+- 25 new tests (10 sync + 6 export CLI + 6 sync CLI + 2 colab-audit +
+  1 round-trip integration), plus the existing 10 colab render tests.
+
+Spec deviations (worklog §8)
+- **Dict-level notebook construction, no Jinja2** — the initial
+  `.ipynb.j2` template hit a JSON-in-JSON quoting puzzle (``|tojson``
+  output collided with the outer JSON string literal). Building cells
+  as a plain Python dict drops the template file + Jinja2 dependency.
+- **`--run-id` alone is rejected** — the audit row stores only the
+  pipeline graph hash (Phase 8 PHI rule), so `--pipeline PATH` is
+  required even when `--run-id` is supplied.
+
 ### Phase 10 (v0.5.0 line) — Snakemake + MLflow + parallel slide execution (2026-04-24)
 
 Added

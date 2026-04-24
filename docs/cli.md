@@ -79,6 +79,34 @@ uv run openpathai analyse \\
     --explainer gradcam --target-layer layer4
 ```
 
+### `openpathai export-colab --out PATH [--pipeline YAML] [--run-id ID]` (Phase 11)
+
+Render a self-contained Colab reproduction notebook for a pipeline.
+See [Colab export + sync](colab.md) for the round-trip.
+
+```bash
+uv run openpathai export-colab \\
+    --pipeline pipelines/supervised_synthetic.yaml \\
+    --out /tmp/demo.ipynb
+
+# With lineage back to a specific local audit row:
+uv run openpathai export-colab \\
+    --pipeline pipelines/supervised_synthetic.yaml \\
+    --run-id run-abcdef012345 \\
+    --out /tmp/demo.ipynb
+```
+
+### `openpathai sync MANIFEST_PATH [--show]` (Phase 11)
+
+Import a `RunManifest` JSON (usually downloaded from Colab) into the
+local audit DB. `--show` prints the audit-row shape without writing.
+Idempotent on re-import.
+
+```bash
+uv run openpathai sync ~/Downloads/manifest.json --show
+uv run openpathai sync ~/Downloads/manifest.json
+```
+
 ## Pipeline YAML format
 
 See [`pipelines/README.md`](https://github.com/atultiwari/OpenPathAI/blob/main/pipelines/README.md)

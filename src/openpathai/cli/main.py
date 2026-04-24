@@ -10,6 +10,7 @@ root Typer app so ``openpathai`` exposes a single, coherent surface.
 * Phase 8 — ``audit``, ``diff``.
 * Phase 9 — ``cohort``, ``train --dataset``/``--cohort``.
 * Phase 10 — ``run --workers / --parallel-mode / --snakefile``, ``mlflow-ui``.
+* Phase 11 — ``export-colab``, ``sync``.
 """
 
 from __future__ import annotations
@@ -22,6 +23,7 @@ from openpathai.cli.cohort_cmd import cohort_app
 from openpathai.cli.datasets_cmd import datasets_app
 from openpathai.cli.diff_cmd import register as _register_diff
 from openpathai.cli.download_cmd import register as _register_download
+from openpathai.cli.export_cmd import register as _register_export
 from openpathai.cli.gui_cmd import register as _register_gui
 from openpathai.cli.mlflow_cmd import register as _register_mlflow
 from openpathai.cli.models_cmd import models_app
@@ -40,6 +42,7 @@ _register_train(app)
 _register_gui(app)
 _register_diff(app)
 _register_mlflow(app)
+_register_export(app)
 
 __all__ = ["app"]
 

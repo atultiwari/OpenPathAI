@@ -21,11 +21,23 @@ __all__ = [
     "PipelineYamlError",
     "dump_pipeline",
     "load_pipeline",
+    "loads_pipeline",
 ]
 
 
 class PipelineYamlError(ValueError):
     """Raised when a pipeline YAML can't be parsed or validated."""
+
+
+def _validate_payload(payload: Any, *, source: str) -> Pipeline:
+    if not isinstance(payload, dict):
+        raise PipelineYamlError(
+            f"Pipeline YAML at {source} must be a mapping (got {type(payload).__name__})"
+        )
+    try:
+        return Pipeline.model_validate(payload)
+    except ValidationError as exc:
+        raise PipelineYamlError(f"Invalid pipeline YAML at {source}: {exc}") from exc
 
 
 def load_pipeline(path: str | Path) -> Pipeline:
@@ -37,21 +49,29 @@ def load_pipeline(path: str | Path) -> Pipeline:
         payload = yaml.safe_load(p.read_text(encoding="utf-8"))
     except yaml.YAMLError as exc:
         raise PipelineYamlError(f"Could not parse YAML at {p}: {exc}") from exc
-    if not isinstance(payload, dict):
-        raise PipelineYamlError(
-            f"Pipeline YAML at {p} must be a mapping (got {type(payload).__name__})"
-        )
+    return _validate_payload(payload, source=str(p))
+
+
+def loads_pipeline(text: str) -> Pipeline:
+    """Parse a YAML string into a :class:`Pipeline`.
+
+    Symmetric companion to :func:`dump_pipeline`. Used by the Phase 11
+    Colab exporter so the embedded pipeline YAML can be fed straight
+    back through the loader during notebook rendering.
+    """
     try:
-        return Pipeline.model_validate(payload)
-    except ValidationError as exc:
-        raise PipelineYamlError(f"Invalid pipeline YAML at {p}: {exc}") from exc
+        payload = yaml.safe_load(text)
+    except yaml.YAMLError as exc:
+        raise PipelineYamlError(f"Could not parse pipeline YAML: {exc}") from exc
+    return _validate_payload(payload, source="<string>")
 
 
 def dump_pipeline(pipeline: Pipeline) -> str:
     """Serialise a :class:`Pipeline` to a YAML string.
 
-    Round-trips with :func:`load_pipeline` modulo key ordering. Useful
-    for the auto-generated Methods sections in Phase 17.
+    Round-trips with :func:`load_pipeline` / :func:`loads_pipeline`
+    modulo key ordering. Useful for the auto-generated Methods
+    sections in Phase 17 and the Phase 11 Colab exporter.
     """
     payload: dict[str, Any] = pipeline.model_dump(mode="json")
     return yaml.safe_dump(payload, sort_keys=False)

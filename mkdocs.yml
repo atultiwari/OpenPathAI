@@ -66,6 +66,7 @@ nav:
   - Orchestration (Phase 10): orchestration.md
   - Safety (v1): safety.md
   - Audit (Phase 8): audit.md
+  - Colab export + sync (Phase 11): colab.md
   - Developer guide: developer-guide.md
 
 markdown_extensions:

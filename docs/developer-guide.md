@@ -626,6 +626,14 @@ MLflow sink
      audit DB write is unaffected — the DB remains the single
      source of truth.
 
+Colab exporter + manifest sync (Phase 11)
+:    `openpathai.export.render_notebook` is a **pure function** — it
+     returns an ipynb-compliant dict, no Jinja2, no file I/O.
+     `openpathai.safety.audit.sync.import_manifest` round-trips a
+     downloaded Colab manifest back into the local audit DB,
+     preserving the original `run_id` and short-circuiting on
+     idempotent re-import. See [Colab export + sync](colab.md).
+
 ## License
 
 By contributing, you agree your contribution is licensed under the

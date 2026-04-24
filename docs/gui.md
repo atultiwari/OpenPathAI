@@ -156,3 +156,11 @@ checks `sys.modules` after a fresh import).
 | `[safety]` | `[audit]` + `reportlab>=4,<5` | PDF reports + audit DB (no Gradio). CI, headless servers. |
 | `[audit]` | `keyring>=24,<26` | Audit layer only — delete-token storage via OS keyring. |
 | `[local]` | `[data,kaggle,wsi,train,explain,gui,safety,audit]` | Full laptop setup — everything you need. |
+
+## Export a run for Colab (Phase 11)
+
+The **Runs** tab includes an "Export a run for Colab" accordion that
+wraps `openpathai.export.render_notebook`. Paste a pipeline YAML path
+(optionally with a run id for lineage), click **Export for Colab**, and
+Gradio offers a self-contained `.ipynb` for download. See the
+[Colab export + sync](colab.md) guide for the round-trip details.

@@ -45,6 +45,11 @@ from openpathai.safety.audit.hooks import (
 )
 from openpathai.safety.audit.phi import hash_filename, strip_phi
 from openpathai.safety.audit.schema import SCHEMA_VERSION
+from openpathai.safety.audit.sync import (
+    ManifestImportError,
+    import_manifest,
+    preview_manifest,
+)
 from openpathai.safety.audit.token import KeyringTokenStore
 
 __all__ = [
@@ -53,6 +58,7 @@ __all__ = [
     "AuditDB",
     "AuditEntry",
     "KeyringTokenStore",
+    "ManifestImportError",
     "PipelineEntry",
     "RunDiff",
     "TrainingEntry",
@@ -60,9 +66,11 @@ __all__ = [
     "default_audit_db_path",
     "diff_runs",
     "hash_filename",
+    "import_manifest",
     "log_analysis",
     "log_pipeline",
     "log_training",
+    "preview_manifest",
     "strip_phi",
 ]
 

@@ -206,7 +206,39 @@ def build(state: Any) -> Any:  # pragma: no cover - gradio-gated renderer
                 inputs=[del_before, del_token, del_confirm],
                 outputs=[table, del_status],
             )
+
+        # --- Phase 11: export a run as a Colab notebook ---------------------
+        with gr.Accordion("Export a run for Colab", open=False):
+            gr.Markdown(
+                "Write a self-contained `.ipynb` that reproduces a run on "
+                "Google Colab. Paste the pipeline YAML path the run used "
+                "(the audit row stores the manifest hash, not the YAML)."
+            )
+            with gr.Row():
+                export_run_id = gr.Textbox(
+                    label="Run id (optional — embeds lineage)",
+                    value="",
+                )
+                export_yaml = gr.Textbox(
+                    label="Pipeline YAML path",
+                    value="",
+                )
+            export_btn = gr.Button("Export for Colab")
+            export_status = gr.Markdown("")
+            export_file = gr.File(label=".ipynb output", interactive=False)
+            export_btn.click(
+                _export_colab,
+                inputs=[export_run_id, export_yaml],
+                outputs=[export_file, export_status],
+            )
     return tab
+
+
+def _export_colab(run_id: str, yaml_path: str):  # pragma: no cover - gradio
+    from openpathai.gui.views import colab_export_for_run
+
+    out_path, status = colab_export_for_run(run_id, yaml_path)
+    return out_path, status
 
 
 __all__ = ["DIFF_HEADERS", "RUNS_HEADERS", "build"]

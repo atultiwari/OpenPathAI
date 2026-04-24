@@ -27,6 +27,7 @@ __all__ = [
     "cache_summary",
     "cohort_qc_summary",
     "cohort_rows",
+    "colab_export_for_run",
     "dataset_train_choices",
     "datasets_rows",
     "device_choices",
@@ -416,3 +417,57 @@ def dataset_train_choices() -> list[str]:
     """Return registered dataset names suitable for the Train tab picker."""
     reg = default_registry()
     return list(reg.names())
+
+
+def colab_export_for_run(
+    run_id: str,
+    pipeline_yaml_path: str,
+    *,
+    out_dir: str | Path | None = None,
+) -> tuple[str | None, str]:
+    """Render a Colab notebook for ``run_id`` + a pipeline YAML.
+
+    Returns ``(output_path_or_None, status_message)``. Used by the
+    Phase 11 **Export for Colab** accordion on the Runs tab. Keeps
+    the GUI module gradio-agnostic.
+    """
+    import tempfile
+
+    from openpathai.cli.pipeline_yaml import PipelineYamlError, load_pipeline
+    from openpathai.export import ColabExportError, render_notebook, write_notebook
+    from openpathai.safety.audit import AuditDB
+
+    run_id = (run_id or "").strip()
+    yaml_text = (pipeline_yaml_path or "").strip()
+    if not yaml_text:
+        return None, "Enter the pipeline YAML path used for this run."
+
+    yaml_path = Path(yaml_text).expanduser()
+    if not yaml_path.is_file():
+        return None, f"Pipeline YAML not found at {yaml_path}."
+
+    try:
+        pipeline = load_pipeline(yaml_path)
+    except PipelineYamlError as exc:
+        return None, f"Pipeline YAML rejected: {exc}"
+
+    audit_entry = None
+    if run_id:
+        db = AuditDB.open_default()
+        audit_entry = db.get_run(run_id)
+        if audit_entry is None:
+            return None, (
+                f"No audit run {run_id!r} — proceeding without lineage. "
+                "Clear the run-id field to silence this warning."
+            )
+
+    try:
+        notebook = render_notebook(pipeline=pipeline, audit_entry=audit_entry)
+    except ColabExportError as exc:
+        return None, f"Export failed: {exc}"
+
+    target_dir = Path(out_dir) if out_dir else Path(tempfile.mkdtemp(prefix="openpathai_colab_"))
+    target_dir.mkdir(parents=True, exist_ok=True)
+    suffix = f"_{run_id}" if run_id else ""
+    out_path = write_notebook(notebook, target_dir / f"{pipeline.id}{suffix}.ipynb")
+    return str(out_path), f"Wrote notebook → {out_path}"
