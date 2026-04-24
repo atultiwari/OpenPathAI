@@ -9,6 +9,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Phase 16 (v1.0.0 line) — Active learning GUI + Annotate tab (Bet 1 complete) (2026-04-24)
+
+Added
+- New Gradio tabs:
+  - **Annotate** — pool-CSV picker + annotator-id textbox + "Start
+    session" button, tile queue with per-class prediction JSON,
+    record/skip/retrain buttons, click-to-segment mask preview.
+    Wraps the Phase-12 `ActiveLearningLoop` one iteration at a
+    time (iron rule #9 — user stays in control).
+  - **Pipelines** — shipped-YAML listing + "Describe what you
+    want" accordion that calls
+    `openpathai.nl.draft_pipeline_from_prompt` with the Phase-15
+    LLM backend chain. When no backend is reachable the accordion
+    surfaces the install message instead of silently failing.
+- `openpathai.gui.views` — seven new view-model helpers (library-
+  first, gradio-agnostic): `annotate_session_init`,
+  `annotate_next_tile`, `annotate_record_correction`,
+  `annotate_click_to_segment`, `annotate_retrain`,
+  `nl_classify_for_gui`, `nl_draft_pipeline_for_gui`. All
+  testable without importing Gradio.
+- Analyse tab grows a **Zero-shot classify** accordion that calls
+  `classify_zero_shot` on the currently-loaded tile; the
+  probability table is sorted descending.
+- Tab order update: `Analyse → Pipelines → Datasets → Train →
+  Models → Runs → Cohorts → Annotate → Settings`.
+- `docs/annotate-workflow.md` — Phase 16 user guide (quick start,
+  keyboard shortcuts, click-to-segment fallback, multi-annotator
+  CSV merge, PHI safety).
+- `scripts/try-phase-16.sh` — headless smoke tour + optional
+  `--with-gui` flag to launch Gradio.
+
+Quality
+- 16 new tests (8 annotate view helpers + 4 NL view helpers + 3
+  Gradio-build smokes + 1 tab-order contract). Full suite: 832
+  passed, 3 skipped.
+- ruff + ruff format + pyright + pytest + mkdocs --strict all
+  clean.
+
+Library-first discipline
+- **Zero new library logic shipped in this phase.** Every
+  primitive (`ActiveLearningLoop`, `CorrectionLogger`,
+  `resolve_segmenter`, `classify_zero_shot`,
+  `draft_pipeline_from_prompt`) is from an earlier phase; this
+  phase is a pure view layer composing them.
+
+PHI safety
+- `CorrectionLogger` CSV stores `tile_id` + `annotator_id` only
+  (Phase 12 schema, unchanged).
+- NL accordions carry `prompt_hash` (SHA-256, 16 hex chars);
+  raw prompts never persisted to `audit.db` (Phase 15 PHI rule,
+  preserved).
+
+Spec deviations (documented in phase-16 §2 non-goals + §8 worklog)
+- No polygon / brush tools — Phase 20 React canvas.
+- No undo / redo stack — Gradio 5 limitation; skip + retrain
+  cover the acceptance bar.
+- No pixel-level WSI overlay — Phase 21 OpenSeadragon viewer.
+- No multi-user auth — single-user workstation assumption.
+- Real MedSAM2 weights not bundled — fallback to
+  SyntheticClickSegmenter (Phase 14 contract).
+
 ### Phase 15 (v1.0.0 line) — NL + zero-shot + MedGemma (Bet 2 live) (2026-04-24)
 
 Added

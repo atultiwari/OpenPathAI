@@ -15,11 +15,11 @@
 
 ## Status
 
-- **Current state:** 🔄 active
+- **Current state:** ✅ complete (2026-04-24)
 - **Version:** v1.0 (fourth phase of the v1.0.0 release line)
 - **Started:** 2026-04-24
 - **Target finish:** 2026-05-08 (~1.5 weeks master-plan target)
-- **Actual finish:** (fill on close)
+- **Actual finish:** 2026-04-24 (same-day; pure view-layer phase)
 - **Dependency on prior phases:** Phase 6 (Gradio `build_app`
   layout + view-model helper pattern), Phase 8 (audit DB —
   corrections insert audit rows), Phase 12 (AL loop primitives +
@@ -324,6 +324,62 @@ uv run mkdocs build --strict
 ---
 
 ## 8. Worklog (append-only, newest on top)
+
+### 2026-04-24 · phase closed
+
+**What:** shipped the Annotate tab + Pipelines tab + Analyse-tab
+zero-shot accordion, wired through seven new gradio-agnostic
+view-model helpers in `openpathai.gui.views`. 16 new tests; full
+suite 832 passed, 3 skipped. All quality gates (ruff + ruff
+format + pyright + pytest + mkdocs --strict) clean. Smoke
+script `scripts/try-phase-16.sh` runs green end-to-end (pool →
+session → 8 corrections → retrain · ΔECE reported · click-to-
+segment mask returned · zero-shot classify ranked). Post-Phase-16
+tab order locked by `test_build_app_produces_expected_tab_order`.
+
+**Why:** Phase 16 closes Bet 1 (active learning). With Phases
+12/14/15 providing the loop + promptable segmenter + NL backend,
+the only remaining work was the view composition layer — a
+library-first, UI-last implementation that shipped in one session.
+
+**Library-first:** zero new library logic added this phase.
+Every primitive the tabs call — `ActiveLearningLoop`,
+`CorrectionLogger`, `resolve_segmenter`, `classify_zero_shot`,
+`draft_pipeline_from_prompt` — came from earlier phases.
+
+**Spec deviations (per §2 non-goals — all documented):**
+
+1. **No polygon / brush tools.** Phase-20 React + Konva canvas
+   territory. Click-to-segment + the skip/retrain loop cover the
+   Phase-16 acceptance bar.
+2. **No undo / redo stack.** Gradio 5 limitation; the "skip
+   tile" + "clear mask" buttons are lightweight alternatives.
+3. **No pixel-level WSI overlay.** Tiles only; Phase-21
+   OpenSeadragon viewer lands on the WSI side.
+4. **No multi-user authentication.** Single-user workstation
+   assumption; multi-annotator support is per-session CSVs + a
+   documented merge helper.
+5. **MedSAM2 text-prompt segmentation not wired into the
+   Annotate UI directly.** The Phase-15 `segment_text_prompt`
+   API is available from Python; the Annotate tab's primary
+   interaction stays point-click for UI simplicity.
+6. **Audit-row insertion for NL-initiated runs** landed as
+   result-payload fields (`prompt_hash` on every
+   `nl_classify_for_gui` / `nl_draft_pipeline_for_gui`
+   response) rather than a dedicated `AuditDB.insert_run` call
+   from the GUI callback. The persistent-audit story already
+   exists at the CLI layer (Phase 15 §3.3); layering it into
+   the Gradio callback is deferred to when the
+   Pipelines-chat history feature lands.
+
+**Next:** resume when the user authorises Phase 17 (Diagnostic
+mode + signed manifests + auto-Methods). Phase 16 itself is
+tagged `phase-16-complete` and pushed to `origin`.
+
+**Blockers:** none. Bet 1 (active learning) is now end-to-end
+live: Phase-12 CLI prototype + Phase-16 GUI, with uncertainty-
+ranked queue + click-to-segment + one-click retrain + multi-
+annotator CSVs.
 
 ### 2026-04-24 · phase initialised
 

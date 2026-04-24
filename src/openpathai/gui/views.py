@@ -20,6 +20,11 @@ from openpathai.safety import CardIssue, validate_card
 __all__ = [
     "DatasetsTable",
     "ModelsTable",
+    "annotate_click_to_segment",
+    "annotate_next_tile",
+    "annotate_record_correction",
+    "annotate_retrain",
+    "annotate_session_init",
     "audit_detail",
     "audit_rows",
     "audit_summary",
@@ -36,6 +41,8 @@ __all__ = [
     "model_card_snippet",
     "model_issue_summary",
     "models_rows",
+    "nl_classify_for_gui",
+    "nl_draft_pipeline_for_gui",
     "probability_rows",
     "run_diff_rows",
     "target_layer_hint",
@@ -424,6 +431,350 @@ def dataset_train_choices() -> list[str]:
     """Return registered dataset names suitable for the Train tab picker."""
     reg = default_registry()
     return list(reg.names())
+
+
+# ─── Phase 16 — Annotate + NL + Pipelines view helpers ─────────────
+
+
+def annotate_session_init(
+    *,
+    pool_csv: str | Path,
+    out_dir: str | Path,
+    annotator_id: str = "dr-a",
+    seed_size: int = 12,
+    holdout_fraction: float = 0.25,
+    random_seed: int = 1234,
+) -> dict[str, object]:
+    """Set up a new Annotate-tab session from a pool CSV.
+
+    The session state is a plain dict (pydantic-frozen pydantic
+    models and Gradio state don't get along) — it carries the
+    tile queue, the accumulating correction log, and a resolved
+    CSV path for the underlying :class:`CorrectionLogger`.
+
+    No Gradio imports here — the Annotate tab wires Gradio
+    widgets around the returned state.
+    """
+    import csv
+    import random
+
+    from openpathai.active_learning import CorrectionLogger, LabelledExample
+    from openpathai.active_learning.synthetic import PrototypeTrainer
+
+    pool_path = Path(pool_csv).expanduser()
+    if not pool_path.is_file():
+        raise FileNotFoundError(f"pool CSV not found at {pool_path}")
+    out = Path(out_dir).expanduser()
+    out.mkdir(parents=True, exist_ok=True)
+
+    rows: list[tuple[str, str]] = []
+    with pool_path.open("r", encoding="utf-8", newline="") as fh:
+        reader = csv.DictReader(fh)
+        if not reader.fieldnames or "tile_id" not in reader.fieldnames:
+            raise ValueError(f"pool CSV must have a 'tile_id' column; got {reader.fieldnames!r}")
+        if "label" not in reader.fieldnames:
+            raise ValueError("pool CSV must have a 'label' column")
+        for row in reader:
+            tid = (row.get("tile_id") or "").strip()
+            lbl = (row.get("label") or "").strip()
+            if tid and lbl:
+                rows.append((tid, lbl))
+    if len(rows) < 4:
+        raise ValueError(f"pool CSV {pool_path} has only {len(rows)} usable rows; need >= 4")
+
+    classes = tuple(sorted({r[1] for r in rows}))
+    rng = random.Random(random_seed)
+    shuffled = list(rows)
+    rng.shuffle(shuffled)
+    n_holdout = max(1, round(len(shuffled) * holdout_fraction))
+    holdout_rows = shuffled[:n_holdout]
+    remainder = shuffled[n_holdout:]
+    if seed_size >= len(remainder):
+        raise ValueError(
+            f"seed_size {seed_size} leaves no unlabeled tiles; remainder={len(remainder)}"
+        )
+    seed_rows = remainder[:seed_size]
+    unlabeled_ids = [tid for tid, _ in remainder[seed_size:]]
+
+    # Build a prototype trainer + initial predictions so the UI has
+    # something to show on tile 1. This path mirrors the Phase 12
+    # CLI exactly.
+    from openpathai.cli.active_learn_cmd import _label_signal  # reuse
+
+    signal = _label_signal(rows, classes, dim=16, seed=random_seed)
+    trainer = PrototypeTrainer(
+        classes=classes,
+        embedding_dim=16,
+        feature_seed=random_seed,
+        label_signal=signal,
+    )
+    seed_examples = [LabelledExample(tile_id=t, label=lbl) for t, lbl in seed_rows]
+    trainer.fit(seed_examples, max_epochs=1, seed=random_seed)
+
+    logger = CorrectionLogger(out / "corrections.csv")
+    return {
+        "pool_csv": str(pool_path),
+        "out_dir": str(out),
+        "annotator_id": annotator_id,
+        "classes": list(classes),
+        "queue": list(unlabeled_ids),
+        "cursor": 0,
+        "holdout": [{"tile_id": t, "label": lbl} for t, lbl in holdout_rows],
+        "seed": [{"tile_id": t, "label": lbl} for t, lbl in seed_rows],
+        "oracle_truth": dict(rows),
+        "iteration": 0,
+        "random_seed": random_seed,
+        "log_path": str(logger.path),
+        "n_corrections": 0,
+    }
+
+
+def annotate_next_tile(session: dict[str, object]) -> dict[str, object]:
+    """Return the current tile id + predicted class for the UI."""
+    queue = list(session.get("queue", []))  # type: ignore[arg-type]
+    cursor = int(session.get("cursor", 0))  # type: ignore[arg-type]
+    if cursor >= len(queue):
+        return {
+            "tile_id": "",
+            "predicted_label": "",
+            "class_names": list(session.get("classes", [])),  # type: ignore[arg-type]
+            "remaining": 0,
+        }
+    tile_id = queue[cursor]
+
+    classes = list(session.get("classes", []))  # type: ignore[arg-type]
+    trainer = _rehydrate_trainer(session)
+    probs = trainer.predict_proba([tile_id])[0]
+    predicted = classes[int(probs.argmax())] if classes else ""
+    return {
+        "tile_id": tile_id,
+        "predicted_label": predicted,
+        "class_names": classes,
+        "remaining": len(queue) - cursor,
+    }
+
+
+def annotate_record_correction(
+    session: dict[str, object],
+    *,
+    tile_id: str,
+    corrected_label: str,
+) -> dict[str, object]:
+    """Append one correction to the CSV log + advance the cursor."""
+    from datetime import UTC, datetime
+
+    from openpathai.active_learning import CorrectionLogger, LabelCorrection
+
+    queue = list(session.get("queue", []))  # type: ignore[arg-type]
+    cursor = int(session.get("cursor", 0))  # type: ignore[arg-type]
+    classes = list(session.get("classes", []))  # type: ignore[arg-type]
+    if corrected_label not in classes:
+        raise ValueError(f"corrected_label {corrected_label!r} not in classes {classes!r}")
+    if cursor >= len(queue):
+        return {**session, "status": "queue exhausted"}
+    expected = queue[cursor]
+    if expected != tile_id:
+        raise ValueError(f"tile_id mismatch: queue head is {expected!r}, got {tile_id!r}")
+
+    # Predicted label at the current trainer snapshot.
+    trainer = _rehydrate_trainer(session)
+    probs = trainer.predict_proba([tile_id])[0]
+    predicted_label = classes[int(probs.argmax())] if classes else ""
+
+    correction = LabelCorrection(
+        tile_id=tile_id,
+        predicted_label=predicted_label or corrected_label,
+        corrected_label=corrected_label,
+        annotator_id=str(session.get("annotator_id", "dr-a")),
+        iteration=int(session.get("iteration", 0)),  # type: ignore[arg-type]
+        timestamp=datetime.now(UTC).replace(microsecond=0).isoformat(),
+    )
+    logger = CorrectionLogger(str(session.get("log_path")))
+    logger.log([correction])
+
+    new_session = dict(session)
+    new_session["cursor"] = cursor + 1
+    new_session["n_corrections"] = int(session.get("n_corrections", 0)) + 1  # type: ignore[arg-type]
+    return new_session
+
+
+def annotate_click_to_segment(image: object, *, point: tuple[int, int]) -> object:
+    """MedSAM2 click-to-segment with the Phase-14 fallback."""
+    from openpathai.segmentation import (
+        default_segmentation_registry,
+        resolve_segmenter,
+    )
+
+    reg = default_segmentation_registry()
+    decision = resolve_segmenter("medsam2", registry=reg)
+    adapter = reg.get(decision.resolved_id)
+    result = adapter.segment_with_prompt(image, point=point)
+    return result.mask.array
+
+
+def annotate_retrain(session: dict[str, object]) -> dict[str, object]:
+    """Run one AL iteration on the accumulated corrections.
+
+    Returns ``{"iteration", "ece_before", "ece_after", "accuracy_after",
+    "train_loss"}``. The trainer is rebuilt from session state so each
+    retrain is reproducible.
+    """
+    import csv
+
+    import numpy as np
+
+    from openpathai.active_learning.loop import LabelledExample
+    from openpathai.training.metrics import (
+        accuracy,
+        expected_calibration_error,
+    )
+
+    classes = list(session.get("classes", []))  # type: ignore[arg-type]
+    class_to_idx = {c: i for i, c in enumerate(classes)}
+    seed_rows = list(session.get("seed", []))  # type: ignore[arg-type]
+    holdout_rows = list(session.get("holdout", []))  # type: ignore[arg-type]
+
+    labelled: list[LabelledExample] = [
+        LabelledExample(tile_id=r["tile_id"], label=r["label"]) for r in seed_rows
+    ]
+    log_path = Path(str(session.get("log_path")))
+    if log_path.exists():
+        with log_path.open("r", encoding="utf-8", newline="") as fh:
+            for row in csv.DictReader(fh):
+                labelled.append(
+                    LabelledExample(
+                        tile_id=row["tile_id"],
+                        label=row["corrected_label"],
+                    )
+                )
+
+    trainer = _rehydrate_trainer(session)
+    # "Before" metrics on the holdout with the seed-only fit.
+    ho_ids = [r["tile_id"] for r in holdout_rows]
+    ho_labels = np.asarray([class_to_idx[r["label"]] for r in holdout_rows], dtype=np.int64)
+    probs_before = trainer.predict_proba(ho_ids)
+    ece_before = float(expected_calibration_error(probs_before, ho_labels))
+
+    # Retrain on seed + corrections.
+    seed_int = int(session.get("random_seed", 1234))  # type: ignore[arg-type]
+    iteration = int(session.get("iteration", 0)) + 1  # type: ignore[arg-type]
+    trainer.fit(labelled, max_epochs=1, seed=seed_int + iteration)
+    probs_after = trainer.predict_proba(ho_ids)
+    ece_after = float(expected_calibration_error(probs_after, ho_labels))
+    acc_after = float(accuracy(ho_labels, probs_after.argmax(axis=1)))
+
+    new_session = dict(session)
+    new_session["iteration"] = iteration
+    return {
+        "session": new_session,
+        "iteration": iteration,
+        "ece_before": ece_before,
+        "ece_after": ece_after,
+        "accuracy_after": acc_after,
+        "n_labelled": len(labelled),
+    }
+
+
+def nl_classify_for_gui(
+    image: object, prompt_csv: str, *, backbone: str = "conch"
+) -> list[tuple[str, float]]:
+    """Thin wrapper around :func:`openpathai.nl.classify_zero_shot`
+    for the Analyse-tab accordion. Returns ``[(prompt, prob), …]``
+    ordered by probability for the Gradio bar chart."""
+    import numpy as np
+
+    from openpathai.nl import classify_zero_shot
+
+    prompts = [p.strip() for p in prompt_csv.split(",") if p.strip()]
+    if len(prompts) < 2:
+        raise ValueError(
+            "enter at least two comma-separated prompts (zero-shot softmax needs a partition)"
+        )
+    result = classify_zero_shot(np.asarray(image), prompts=prompts, backbone_id=backbone)
+    return sorted(
+        zip(result.prompts, result.probs, strict=True),
+        key=lambda row: -row[1],
+    )
+
+
+def nl_draft_pipeline_for_gui(prompt: str) -> dict[str, object]:
+    """Wrapper for the Pipelines-tab chat accordion.
+
+    Returns a dict carrying either the drafted YAML text + pipeline
+    id or an ``error`` key with the actionable message (LLM
+    unavailable / parse failure). Never raises — the GUI callback
+    is expected to render either shape.
+    """
+    from openpathai.cli.pipeline_yaml import dump_pipeline
+    from openpathai.nl import (
+        LLMUnavailableError,
+        default_llm_backend_registry,
+        detect_default_backend,
+        draft_pipeline_from_prompt,
+    )
+    from openpathai.nl.pipeline_gen import PipelineDraftError
+
+    if not prompt.strip():
+        return {"error": "prompt must be non-empty"}
+    try:
+        backend = detect_default_backend(registry=default_llm_backend_registry())
+    except LLMUnavailableError as exc:
+        return {"error": str(exc)}
+    try:
+        draft = draft_pipeline_from_prompt(prompt, backend=backend)
+    except PipelineDraftError as exc:
+        return {
+            "error": (
+                f"LLM produced invalid YAML after 3 attempts: {exc!s}\n"
+                "Last output:\n" + (exc.last_output or "(empty)")
+            )
+        }
+    return {
+        "pipeline_id": draft.pipeline.id,
+        "backend_id": draft.backend_id,
+        "model_id": draft.model_id,
+        "attempts": draft.attempts,
+        "yaml_text": dump_pipeline(draft.pipeline),
+    }
+
+
+def _rehydrate_trainer(session: dict[str, object]):
+    """Build a fresh :class:`PrototypeTrainer` from session state."""
+    from openpathai.active_learning.synthetic import PrototypeTrainer
+    from openpathai.cli.active_learn_cmd import _label_signal
+
+    classes = tuple(session.get("classes", []))  # type: ignore[arg-type]
+    rows = [(tid, lbl) for tid, lbl in session.get("oracle_truth", {}).items()]  # type: ignore[union-attr]
+    seed = int(session.get("random_seed", 1234))  # type: ignore[arg-type]
+    signal = _label_signal(rows, classes, dim=16, seed=seed)
+    trainer = PrototypeTrainer(
+        classes=classes,
+        embedding_dim=16,
+        feature_seed=seed,
+        label_signal=signal,
+    )
+    # Refit on the current labelled set so predictions reflect the
+    # latest state. Labelled = seed + every correction logged so far.
+    from openpathai.active_learning.loop import LabelledExample
+
+    labelled = [
+        LabelledExample(tile_id=r["tile_id"], label=r["label"])
+        for r in session.get("seed", [])  # type: ignore[arg-type]
+    ]
+    log_path = Path(str(session.get("log_path", "")))
+    if log_path.exists():
+        import csv
+
+        with log_path.open("r", encoding="utf-8", newline="") as fh:
+            for row in csv.DictReader(fh):
+                labelled.append(
+                    LabelledExample(
+                        tile_id=row["tile_id"],
+                        label=row["corrected_label"],
+                    )
+                )
+    trainer.fit(labelled, max_epochs=1, seed=seed)
+    return trainer
 
 
 def colab_export_for_run(

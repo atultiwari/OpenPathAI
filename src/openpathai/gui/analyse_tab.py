@@ -363,6 +363,47 @@ def build(state: AppState) -> Any:  # pragma: no cover - gradio-gated renderer
             inputs=[run_state, caption],
             outputs=[pdf_file, pdf_status],
         )
+
+        with gr.Accordion(
+            "Zero-shot classify with a natural-language prompt (Phase 15)",
+            open=False,
+        ):
+            gr.Markdown(
+                "Provide comma-separated prompts — the tile is "
+                "classified via CONCH (with a synthetic text-encoder "
+                "fallback when gated access is missing)."
+            )
+            nl_prompts = gr.Textbox(
+                label="Prompts (comma-separated)",
+                placeholder="tumor, normal, stroma",
+            )
+            nl_btn = gr.Button("Classify (zero-shot)")
+            nl_table = gr.Dataframe(
+                headers=["prompt", "probability"],
+                interactive=False,
+                label="Zero-shot probabilities",
+            )
+            nl_status = gr.Markdown("")
+
+            def _nl_classify(img, prompts):
+                from openpathai.gui.views import nl_classify_for_gui
+
+                if img is None:
+                    return [], "Load an image above first."
+                try:
+                    rows = nl_classify_for_gui(img, prompts)
+                except ValueError as exc:
+                    return [], f"**Reject:** {exc}"
+                return (
+                    [[p, round(pr, 6)] for p, pr in rows],
+                    "",
+                )
+
+            nl_btn.click(
+                _nl_classify,
+                inputs=[image, nl_prompts],
+                outputs=[nl_table, nl_status],
+            )
     return tab
 
 

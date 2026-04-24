@@ -57,9 +57,11 @@ def build_app(state: AppState | None = None) -> gr.Blocks:  # pragma: no cover -
 
     from openpathai.gui import (
         analyse_tab,
+        annotate_tab,
         cohorts_tab,
         datasets_tab,
         models_tab,
+        pipelines_tab,
         runs_tab,
         settings_tab,
         train_tab,
@@ -77,6 +79,8 @@ def build_app(state: AppState | None = None) -> gr.Blocks:  # pragma: no cover -
         with gr.Tabs():
             with gr.Tab("Analyse"):
                 analyse_tab.build(state)
+            with gr.Tab("Pipelines"):
+                pipelines_tab.build(state)
             with gr.Tab("Datasets"):
                 datasets_tab.build(state)
             with gr.Tab("Train"):
@@ -87,6 +91,8 @@ def build_app(state: AppState | None = None) -> gr.Blocks:  # pragma: no cover -
                 runs_tab.build(state)
             with gr.Tab("Cohorts"):
                 cohorts_tab.build(state)
+            with gr.Tab("Annotate"):
+                annotate_tab.build(state)
             with gr.Tab("Settings"):
                 settings_tab.build(state)
     return app
