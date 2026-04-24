@@ -34,6 +34,7 @@ def test_uni_build_without_token_raises(monkeypatch: pytest.MonkeyPatch) -> None
 
 
 def test_uni_preprocess_delegates_to_dinov2() -> None:
+    pytest.importorskip("torch")
     adapter = UNIAdapter()
     image = (np.random.default_rng(0).random((224, 224, 3)) * 255).astype(np.uint8)
     tensor = adapter.preprocess(image)
@@ -52,6 +53,7 @@ def test_ctranspath_build_without_weights_raises(
 
 
 def test_ctranspath_preprocess_delegates_to_dinov2() -> None:
+    pytest.importorskip("torch")
     adapter = CTransPathAdapter()
     image = (np.random.default_rng(0).random((224, 224, 3)) * 255).astype(np.uint8)
     tensor = adapter.preprocess(image)
@@ -79,6 +81,7 @@ def test_stub_embed_raises_gated_access(stub_cls) -> None:
 def test_stub_preprocess_delegates_to_dinov2() -> None:
     """Stubs still need a working preprocess for Phase 16 GUI picker
     parity — they inherit from the same DINOv2 path."""
+    pytest.importorskip("torch")
     image = (np.random.default_rng(0).random((224, 224, 3)) * 255).astype(np.uint8)
     tensor = CONCHStub().preprocess(image)
     assert tensor.shape == (1, 3, 224, 224)
