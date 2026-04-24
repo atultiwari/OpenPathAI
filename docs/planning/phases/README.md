@@ -20,9 +20,9 @@
 
 | | |
 |---|---|
-| Active phase | **Phase 16 — Active learning GUI + Annotate tab** (pending spec; Phase 15 closed 2026-04-24) |
+| Active phase | **Phase 16 — Active learning GUI + Annotate tab** (🔄 spec authored + implementation in flight, 2026-04-24) |
 | Latest Git tag | `phase-15-complete` (pushed to `origin`) |
-| Latest released version | v0.1.0 feature set landed (Phase 6 close); v0.2.0 feature set complete (Phase 7 ✅, Phase 8 ✅); v0.5.0 feature set fully landed (Phase 9 ✅, Phase 10 ✅, Phase 11 ✅, Phase 12 ✅ — Bet 1 opened); v1.0.0 line advancing (Phase 13 ✅ foundation+MIL, Phase 14 ✅ detection+seg, Phase 15 ✅ NL+zero-shot — Bet 2 live). |
+| Latest released version | v0.1.0 feature set landed (Phase 6 close); v0.2.0 feature set complete (Phase 7 ✅, Phase 8 ✅); v0.5.0 feature set fully landed (Phase 9 ✅, Phase 10 ✅, Phase 11 ✅, Phase 12 ✅ — Bet 1 opened); v1.0.0 line advancing (Phase 13 ✅, Phase 14 ✅, Phase 15 ✅ — Bet 2 live, Phase 16 in flight — Bet 1 closing). |
 | Blocked on user | (a) HISTAI-breast gated-access still pending on the main HF account (non-blocking); (b) Ollama + MedGemma 1.5 **already installed** ✅. |
 
 ---
@@ -47,7 +47,7 @@
 | 13 | Foundation models (UNI / CONCH / Virchow / DINOv2 …) + MIL (CLAM / TransMIL) | v1.0 | ✅ complete (2026-04-24, tag `phase-13-complete`) | [phase-13-foundation-mil.md](phase-13-foundation-mil.md) | 2 w target / same-day actual |
 | 14 | **Detection & Segmentation** (YOLOv8/11/26, RT-DETR, nnU-Net, MedSAM2) | v1.0 | ✅ complete (2026-04-24, tag `phase-14-complete`) | [phase-14-detection-segmentation.md](phase-14-detection-segmentation.md) | 2 w target / same-day actual |
 | 15 | CONCH zero-shot + NL pipelines + **MedGemma 1.5** backend (Bet 2 live) | v1.0 | ✅ complete (2026-04-24, tag `phase-15-complete`) | [phase-15-nl-zeroshot-medgemma.md](phase-15-nl-zeroshot-medgemma.md) | 1.5 w target / same-day actual |
-| 16 | Active learning GUI + Annotate tab (MedSAM2-assisted) (Bet 1 complete) | v1.0 | ⏳ pending | — | 1.5 w |
+| 16 | Active learning GUI + Annotate tab (MedSAM2-assisted) (Bet 1 complete) | v1.0 | 🔄 active (2026-04-24) | [phase-16-annotate-gui.md](phase-16-annotate-gui.md) | 1.5 w |
 | 17 | Diagnostic mode + signed manifests + auto-Methods (Bet 3 complete) | v1.0 | ⏳ pending | — | 1 w |
 | 18 | Packaging + Docker + docs site | v1.1 | ⏳ pending | — | 1 w |
 | 19 | FastAPI backend for canvas | v2.0 | ⏳ pending | — | 2–3 w |
