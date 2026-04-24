@@ -11,11 +11,13 @@ root Typer app so ``openpathai`` exposes a single, coherent surface.
 * Phase 9 — ``cohort``, ``train --dataset``/``--cohort``.
 * Phase 10 — ``run --workers / --parallel-mode / --snakefile``, ``mlflow-ui``.
 * Phase 11 — ``export-colab``, ``sync``.
+* Phase 12 — ``active-learn``.
 """
 
 from __future__ import annotations
 
 from openpathai.cli._app import app
+from openpathai.cli.active_learn_cmd import register as _register_active_learn
 from openpathai.cli.analyse_cmd import register as _register_analyse
 from openpathai.cli.audit_cmd import audit_app
 from openpathai.cli.cache_cmd import cache_app
@@ -43,6 +45,7 @@ _register_gui(app)
 _register_diff(app)
 _register_mlflow(app)
 _register_export(app)
+_register_active_learn(app)
 
 __all__ = ["app"]
 

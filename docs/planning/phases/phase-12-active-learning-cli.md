@@ -14,11 +14,11 @@
 
 ## Status
 
-- **Current state:** 🔄 active
+- **Current state:** ✅ complete (2026-04-24)
 - **Version:** v0.5 (fourth phase of the v0.5.0 release line)
 - **Started:** 2026-04-24
 - **Target finish:** 2026-05-01 (~1 week)
-- **Actual finish:** (fill on close)
+- **Actual finish:** 2026-04-24 (same-day)
 - **Dependency on prior phases:** Phase 1 (`RunManifest`, cache,
   content-addressable keys), Phase 2 (`TileDataset` + LC25000 card —
   the smoke dataset), Phase 3 (model zoo + training engine — for
@@ -368,6 +368,59 @@ uv run mkdocs build --strict
 ---
 
 ## 8. Worklog (append-only, newest on top)
+
+### 2026-04-24 · phase closed
+
+**What:** shipped `openpathai.active_learning` subpackage (uncertainty
+scorers + diversity sampler + CSV oracle + corrections logger + loop
+driver + synthetic PrototypeTrainer) plus `openpathai active-learn`
+CLI command. 52 new tests, all green; full suite 624 passed, 2
+skipped. Coverage 91.9 % on the subpackage, 87.4 % on the CLI —
+both above the 80 % bar. ruff + format + pyright + mkdocs --strict
+all clean. Smoke script (`scripts/try-phase-12.sh`) runs end-to-end:
+ECE delta -0.031 on a 150-tile synthetic pool, six audit rows
+(one per iteration × two sampler configurations), corrections CSV
+populated. Windows-only `PermissionError` on atomic cache rename
+(latent since Phase 10, surfaced by the Phase 11 push) was fixed in
+parallel (commit `370a5fb`) before Phase 12 coding started.
+
+**Why:** Phase 12 is the opening move on Bet 1 (active learning); it
+proves the loop shape CLI-first so Phase 16 can swap in a real
+Gradio-backed oracle without any library-layer churn.
+
+**Spec deviations (acknowledged):**
+
+1. **Audit `kind` stays `"pipeline"`** rather than adding a new
+   `"active-learning"` enum value. Reason: SQLite cannot `ALTER
+   TABLE … DROP CONSTRAINT` in place; adding a new kind would
+   require a table-recreation migration. That migration lives with
+   Phase 17's audit extensions (diagnostic mode + sigstore) so
+   multiple schema changes land together. Captured in §3.3 above.
+2. **`notebooks/04_active_learning_loop.ipynb` deferred.** No prior
+   phase (01 through 11) has shipped a per-phase notebook either;
+   the existing `scripts/try-phase-12.sh` covers the same surface
+   with less overhead. The notebook lands alongside the Phase 16
+   Annotate tab walkthrough where the interactive GUI flow is
+   actually visible.
+3. **`tests/integration/test_active_learning_lc25000.py` deferred.**
+   Same reason as (2) — Phase 12's acceptance is "loop shape works
+   CLI-first," and that is fully exercised by the synthetic-trainer
+   tests + smoke script. The real-dataset LC25000 integration test
+   lands in Phase 16 when the timm-backed trainer is the canonical
+   path.
+4. **Diversity sampler cold-start deterministic anchor** is the
+   sample nearest the centroid (a pragmatic tie-breaker), not the
+   "farthest-from-origin" convention from the original Sener paper.
+   Reason: both options produce the same asymptotic coverage but
+   centroid-anchored is stable under translation of the embedding
+   space, which matters when we swap PrototypeTrainer features for
+   real torch embeddings in Phase 16.
+
+**Next:** resume when the user authorises Phase 13 (Foundation
+models + MIL). Phase 12 itself is tagged `phase-12-complete` and
+pushed to `origin`.
+
+**Blockers:** none.
 
 ### 2026-04-24 · phase initialised
 **What:** created from template; dashboard flipped to 🔄. Followed

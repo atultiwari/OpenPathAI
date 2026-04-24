@@ -107,6 +107,29 @@ uv run openpathai sync ~/Downloads/manifest.json --show
 uv run openpathai sync ~/Downloads/manifest.json
 ```
 
+### `openpathai active-learn --pool CSV --out DIR […]` (Phase 12)
+
+Run a simulated-oracle active-learning loop on a two-column
+`tile_id,label` CSV. See [Active learning](active-learning.md) for
+the full walkthrough; core flags:
+
+| Flag | Default | Meaning |
+| --- | --- | --- |
+| `--pool` | *(required)* | Pool CSV (also serves as the oracle). |
+| `--out` | *(required)* | Output dir for `manifest.json` + `corrections.csv`. |
+| `--scorer` | `max_softmax` | `max_softmax` \| `entropy` \| `mc_dropout`. |
+| `--sampler` | `uncertainty` | `uncertainty` \| `diversity` \| `hybrid`. |
+| `--iterations`, `--budget`, `--seed-size` | `3, 8, 12` | Loop sizing. |
+| `--annotator-id`, `--seed` | `simulated-oracle, 1234` | Logged on every correction. |
+
+```bash
+uv run openpathai active-learn \\
+    --pool   /tmp/pool.csv \\
+    --out    /tmp/al-run \\
+    --iterations 3 --budget 8 --seed-size 12 \\
+    --sampler hybrid
+```
+
 ## Pipeline YAML format
 
 See [`pipelines/README.md`](https://github.com/atultiwari/OpenPathAI/blob/main/pipelines/README.md)

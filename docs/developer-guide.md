@@ -634,6 +634,17 @@ Colab exporter + manifest sync (Phase 11)
      preserving the original `run_id` and short-circuiting on
      idempotent re-import. See [Colab export + sync](colab.md).
 
+Active learning (Phase 12)
+:    `openpathai.active_learning` is a torch-free kit:
+     `uncertainty.py` (pure-numpy scorers), `diversity.py` (k-center
+     greedy), `oracle.py` (CSV-backed simulated oracle + `Oracle`
+     protocol), `corrections.py` (append-only CSV logger), and
+     `loop.py` (`ActiveLearningLoop` driver). A synthetic
+     `PrototypeTrainer` in `synthetic.py` implements the `Trainer`
+     protocol so the CLI runs end-to-end without torch. Phase 16
+     swaps in a real timm-backed trainer + Gradio-backed oracle. See
+     [Active learning](active-learning.md).
+
 ## License
 
 By contributing, you agree your contribution is licensed under the

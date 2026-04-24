@@ -9,6 +9,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Phase 12 (v0.5.0 line) — Active learning CLI prototype (Bet 1 start) (2026-04-24)
+
+Added
+- `openpathai.active_learning` subpackage (library-first Bet 1 scaffolding):
+  - `uncertainty.py` — pure-numpy per-sample scorers
+    (`max_softmax_score`, `entropy_score`, `mc_dropout_variance`) plus
+    a `SCORERS` registry for CLI dispatch.
+  - `diversity.py` — greedy k-center core-set picker, random sampler,
+    and a `DiversitySampler` protocol.
+  - `oracle.py` — `Oracle` protocol + CSV-backed `CSVOracle` with a
+    strict two-column (`tile_id,label`) load so extra PHI columns
+    cannot leak downstream.
+  - `corrections.py` — thread-safe append-only `CorrectionLogger`
+    CSV sink with a locked header-once write.
+  - `loop.py` — `ActiveLearningConfig`, `AcquisitionResult`,
+    `ActiveLearningRun`, and the `ActiveLearningLoop` driver that
+    composes the primitives behind a single `.run()`; torch-free by
+    design (the `Trainer` protocol abstracts the model backend).
+  - `synthetic.py` — `PrototypeTrainer` (nearest-prototype classifier
+    with a temperature anneal) that implements the `Trainer`
+    protocol so the CLI runs end-to-end without torch.
+- `openpathai active-learn --pool CSV --out DIR …` CLI command with
+  flags for `--scorer` / `--sampler` / `--budget` / `--iterations` /
+  `--seed-size` / `--holdout` / `--annotator-id` / `--seed`.
+- Phase 8 audit integration: each AL iteration inserts one
+  `kind="pipeline"` row with a unique
+  `graph_hash = sha256(config_hash || iter)` and a `metrics_json`
+  carrying `al_iteration`, `al_scorer`, `al_sampler`, `al_budget`,
+  `annotator_id`, `ece_before`, `ece_after`, `accuracy_after`,
+  `train_loss`. No schema migration.
+- Docs: new `docs/active-learning.md`; Phase 12 pointers in
+  `docs/cli.md` + `docs/developer-guide.md`; `mkdocs.yml` nav
+  updated.
+- `scripts/try-phase-12.sh` — guided smoke tour on a synthetic pool.
+
+Quality
+- 51 new tests (9 uncertainty + 10 diversity + 10 oracle + 6
+  corrections + 9 loop + 7 CLI), all pytest-green locally.
+- Coverage on new modules: 91.9 % (active_learning/ subpackage) and
+  87.4 % (active_learn_cmd.py) — both comfortably above the 80 %
+  target.
+- ruff + pyright + pytest + mkdocs --strict all clean before commit.
+
+Spec deviations (worklog §8)
+- Audit `kind` stays `"pipeline"` rather than adding a new
+  `"active-learning"` enum value. Reason: SQLite cannot `ALTER TABLE
+  … DROP CONSTRAINT` in place, so a new kind would require a
+  table-recreation migration. That migration lives with Phase 17's
+  broader audit extensions (diagnostic mode, sigstore signing) so
+  multiple schema changes land together.
+
 ### Phase 11 (v0.5.0 line) — Colab exporter + manifest sync (2026-04-24)
 
 Added

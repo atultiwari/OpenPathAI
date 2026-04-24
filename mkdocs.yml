@@ -67,6 +67,7 @@ nav:
   - Safety (v1): safety.md
   - Audit (Phase 8): audit.md
   - Colab export + sync (Phase 11): colab.md
+  - Active learning (Phase 12): active-learning.md
   - Developer guide: developer-guide.md
 
 markdown_extensions:
