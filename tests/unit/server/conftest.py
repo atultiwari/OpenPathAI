@@ -1,4 +1,10 @@
-"""Shared fixtures for the Phase-19 FastAPI tests."""
+"""Shared fixtures for the Phase-19 FastAPI tests.
+
+The CI matrix runs ``uv sync --extra dev`` only, so ``fastapi`` is not
+installed there. Skip the entire server-test tree gracefully when the
+``[server]`` extra is absent — the gui / train suites follow the same
+pattern for ``gradio`` / ``torch``.
+"""
 
 from __future__ import annotations
 
@@ -6,6 +12,12 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
+
+pytest.importorskip(
+    "fastapi",
+    reason="server tests require the [server] extra (fastapi + uvicorn).",
+)
+
 from fastapi.testclient import TestClient
 
 from openpathai.server.app import create_app
