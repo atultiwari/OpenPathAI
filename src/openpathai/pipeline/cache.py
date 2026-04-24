@@ -23,6 +23,7 @@ without changing the public API.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import os
 import shutil
@@ -44,6 +45,40 @@ __all__ = [
 ]
 
 A = TypeVar("A", bound=Artifact)
+
+
+def _atomic_rename(src: Path, dst: Path) -> None:
+    """Rename ``src`` → ``dst`` atomically.
+
+    On POSIX ``os.replace`` is a single syscall and handles concurrent
+    writers to the same key silently (last rename wins, both copies are
+    byte-identical in a content-addressable cache). On Windows
+    ``MoveFileExW`` raises ``ERROR_ACCESS_DENIED`` whenever another
+    handle holds ``dst`` — a second writer racing on the same key, or
+    Windows Defender briefly scanning the freshly-written file. Retry
+    with exponential backoff, and treat "``dst`` is already populated
+    by another writer" as success (first-writer-wins).
+    """
+    backoff = 0.05
+    last_err: OSError | None = None
+    for _ in range(10):
+        try:
+            os.replace(src, dst)
+            return
+        except PermissionError as exc:
+            last_err = exc
+            if dst.exists() and dst.stat().st_size > 0:
+                with contextlib.suppress(OSError):
+                    src.unlink(missing_ok=True)
+                return
+            time.sleep(backoff)
+            backoff = min(backoff * 2, 0.5)
+    if dst.exists() and dst.stat().st_size > 0:
+        with contextlib.suppress(OSError):
+            src.unlink(missing_ok=True)
+        return
+    assert last_err is not None
+    raise last_err
 
 
 def default_cache_root() -> Path:
@@ -186,8 +221,8 @@ class ContentAddressableCache:
         meta_tmp = paths.meta.with_suffix(suffix)
         artifact_tmp.write_text(artifact.model_dump_json(), encoding="utf-8")
         meta_tmp.write_text(meta.model_dump_json(), encoding="utf-8")
-        artifact_tmp.replace(paths.artifact)
-        meta_tmp.replace(paths.meta)
+        _atomic_rename(artifact_tmp, paths.artifact)
+        _atomic_rename(meta_tmp, paths.meta)
 
     # ─── Deletion ───────────────────────────────────────────────────────
 
