@@ -20,10 +20,10 @@
 
 | | |
 |---|---|
-| Active phase | **Phase 12 — Active learning CLI prototype** (spec not yet authored; Phase 11 closed 2026-04-24) |
+| Active phase | **Phase 12 — Active learning CLI prototype** (🔄 authored + implementation in flight, 2026-04-24) |
 | Latest Git tag | `phase-11-complete` (pushed to `origin`) |
-| Latest released version | v0.1.0 feature set landed (Phase 6 close); v0.2.0 feature set complete (Phase 7 ✅, Phase 8 ✅); v0.5.0 feature set advancing (Phase 9 ✅, Phase 10 ✅, Phase 11 ✅). |
-| Blocked on user | (a) go-ahead to author + begin Phase 12; (b) HISTAI-breast gated-access still pending on the main HF account (non-blocking); (c) Ollama + MedGemma 1.5 **already installed** ✅. |
+| Latest released version | v0.1.0 feature set landed (Phase 6 close); v0.2.0 feature set complete (Phase 7 ✅, Phase 8 ✅); v0.5.0 feature set advancing (Phase 9 ✅, Phase 10 ✅, Phase 11 ✅; Phase 12 in flight). |
+| Blocked on user | (a) HISTAI-breast gated-access still pending on the main HF account (non-blocking); (b) Ollama + MedGemma 1.5 **already installed** ✅. |
 
 ---
 
@@ -43,7 +43,7 @@
 | 9 | Cohorts + QC + stain refs + Train cohort driver (Cohorts tab, `openpathai cohort qc`, `CohortTileDataset`, `train --dataset`/`--cohort`, tab reorder) | v0.5 | ✅ complete (2026-04-24, tag `phase-09-complete`) | [phase-09-cohorts-qc-train-driver.md](phase-09-cohorts-qc-train-driver.md) | 1 w target / same-day actual |
 | 10 | Snakemake + MLflow + parallel slide execution (thread-pool fan-out, Snakefile exporter, opt-in MLflow sink, `supervised_tile_classification.yaml`) | v0.5 | ✅ complete (2026-04-24, tag `phase-10-complete`) | [phase-10-snakemake-mlflow-parallel.md](phase-10-snakemake-mlflow-parallel.md) | 1.5 w target / same-day actual |
 | 11 | Colab exporter + manifest sync (`openpathai.export.colab`, GUI Export button, `openpathai sync` round-trip) | v0.5 | ✅ complete (2026-04-24, tag `phase-11-complete`) | [phase-11-colab-exporter.md](phase-11-colab-exporter.md) | 3–5 d target / same-day actual |
-| 12 | Active learning CLI prototype (Bet 1 start) | v0.5 | ⏳ pending | — | 1 w |
+| 12 | Active learning CLI prototype (Bet 1 start) | v0.5 | 🔄 active (2026-04-24) | [phase-12-active-learning-cli.md](phase-12-active-learning-cli.md) | 1 w |
 | 13 | Foundation models (UNI / CONCH / Virchow / DINOv2 …) + MIL (CLAM / TransMIL) | v1.0 | ⏳ pending | — | 2 w |
 | 14 | **Detection & Segmentation** (YOLOv8/11/26, RT-DETR, nnU-Net, MedSAM2) | v1.0 | ⏳ pending | — | 2 w |
 | 15 | CONCH zero-shot + NL pipelines + **MedGemma 1.5** backend (Bet 2 live) | v1.0 | ⏳ pending | — | 1.5 w |
