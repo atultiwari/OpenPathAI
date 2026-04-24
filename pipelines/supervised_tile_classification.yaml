@@ -1,0 +1,52 @@
+id: supervised-tile-classification
+mode: exploratory
+cohort_fanout: load_slide_index
+max_workers: 4
+
+# Reference pipeline for Phase 10 — demonstrates the orchestration
+# primitives end-to-end:
+#
+# * ``cohort_fanout: load_slide_index`` — ``Executor.run_cohort`` loops
+#   this pipeline once per slide in the cohort. Each per-slide run
+#   lands under its own ``run_id`` in the audit log (Phase 8) and
+#   (when ``OPENPATHAI_MLFLOW_ENABLED=1``) its own MLflow run.
+# * ``max_workers: 4`` — suggested thread-pool size when the caller
+#   passes ``--parallel-mode thread`` on the CLI. The CLI's
+#   ``--workers`` flag overrides this.
+# * ``openpathai run --snakefile supervised.smk`` — the Snakefile
+#   exporter (``openpathai.pipeline.snakemake``) lowers this file to
+#   one rule per step plus an ``expand()`` over the slide ids.
+#
+# Deliberate Phase 10 narrowing (documented in the worklog): real
+# ``preprocessing.qc`` / ``tiling.plan`` / ``training.train`` nodes
+# are library functions today, not ``@node``-decorated pipeline ops.
+# Wrapping them belongs to Phase 11 / 12 where the active-learning
+# loop needs them as named nodes. The reference pipeline therefore
+# composes existing ``demo.*`` ops to exercise the Phase 10 machinery
+# — ``openpathai run pipelines/supervised_tile_classification.yaml``
+# runs end-to-end on any install, with no torch, no datasets, no
+# network.
+
+steps:
+  # Per-slide "index": the demo.constant op accepts a literal value;
+  # fan-out doesn't inject a slide payload here (the node's input
+  # schema does not declare a `slide` field), but the per-slide
+  # pipeline id is still distinct so the manifest / audit log
+  # records every slide as its own run.
+  - id: load_slide_index
+    op: demo.constant
+    inputs:
+      value: 1
+
+  # Per-slide "feature vector": reuses the cached slide index.
+  - id: compute_features
+    op: demo.double
+    inputs:
+      value: "@load_slide_index.value"
+
+  # Per-slide "aggregated metric": combines the two upstream values.
+  - id: slide_metric
+    op: demo.mean
+    inputs:
+      a: "@load_slide_index.value"
+      b: "@compute_features.value"

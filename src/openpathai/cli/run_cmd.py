@@ -1,4 +1,13 @@
-"""``openpathai run PIPELINE.yaml`` — execute a pipeline from a YAML file."""
+"""``openpathai run PIPELINE.yaml`` — execute a pipeline from a YAML file.
+
+Phase 10 extends the original run with three new flags:
+
+* ``--workers N``                — thread-pool size for parallel execution.
+* ``--parallel-mode {sequential,thread}`` — topology. ``sequential``
+  (default) preserves Phase 1 behaviour.
+* ``--snakefile PATH``           — export-only. Writes a Snakefile
+  equivalent of the pipeline and exits **without** executing it.
+"""
 
 from __future__ import annotations
 
@@ -35,6 +44,35 @@ def register(app: typer.Typer) -> None:
                 help="Cache directory (defaults to ~/.openpathai/cache/).",
             ),
         ] = None,
+        workers: Annotated[
+            int | None,
+            typer.Option(
+                "--workers",
+                min=1,
+                help=(
+                    "Thread-pool size when --parallel-mode=thread. "
+                    "Overrides any pipeline-level max_workers hint."
+                ),
+            ),
+        ] = None,
+        parallel_mode: Annotated[
+            str,
+            typer.Option(
+                "--parallel-mode",
+                help="Execution topology: 'sequential' (default) or 'thread'.",
+                case_sensitive=False,
+            ),
+        ] = "sequential",
+        snakefile: Annotated[
+            Path | None,
+            typer.Option(
+                "--snakefile",
+                help=(
+                    "Export-only: write a Snakefile to this path and exit "
+                    "without executing the pipeline."
+                ),
+            ),
+        ] = None,
         no_audit: Annotated[
             bool,
             typer.Option(
@@ -50,8 +88,35 @@ def register(app: typer.Typer) -> None:
             typer.secho(str(exc), fg=typer.colors.RED, err=True)
             raise typer.Exit(2) from exc
 
+        # Export-only path — no execution, no audit.
+        if snakefile is not None:
+            from openpathai.pipeline.snakemake import write_snakefile
+
+            target = write_snakefile(pipeline, snakefile)
+            typer.secho(f"Wrote Snakefile → {target}", fg="green")
+            typer.echo(
+                f"Run with `snakemake --snakefile {target} --cores N` "
+                "(requires the `[snakemake]` extra)."
+            )
+            return
+
+        mode = parallel_mode.strip().lower()
+        if mode not in {"sequential", "thread"}:
+            typer.secho(
+                f"--parallel-mode must be 'sequential' or 'thread', got {parallel_mode!r}.",
+                fg="red",
+                err=True,
+            )
+            raise typer.Exit(2)
+
+        effective_workers = workers if workers is not None else pipeline.max_workers
+
         cache = ContentAddressableCache(root=cache_root or default_cache_root())
-        executor = Executor(cache)
+        executor = Executor(
+            cache,
+            max_workers=effective_workers,
+            parallel_mode=mode,  # type: ignore[arg-type]
+        )
         result = executor.run(pipeline)
 
         destination = output_dir or Path("runs") / str(uuid.uuid4())
@@ -69,9 +134,15 @@ def register(app: typer.Typer) -> None:
             json.dumps(artifact_summary, indent=2),
             encoding="utf-8",
         )
+        parallel_blurb = (
+            f"parallel=thread workers={effective_workers or 1}"
+            if mode == "thread"
+            else "parallel=sequential"
+        )
         typer.echo(
             f"pipeline={pipeline.id}  steps={len(result.step_records)}  "
-            f"hits={result.cache_stats.hits} misses={result.cache_stats.misses}"
+            f"hits={result.cache_stats.hits} misses={result.cache_stats.misses}  "
+            f"{parallel_blurb}"
         )
         typer.echo(f"manifest: {manifest_path}")
 

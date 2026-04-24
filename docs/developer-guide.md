@@ -579,6 +579,53 @@ Cohort helpers
      Content-hash is deterministic, so the Phase 1 executor's
      cache works at cohort scope for free.
 
+## Orchestration (Phase 10)
+
+Phase 10 adds parallelism + Snakefile export + MLflow mirroring on
+top of the Phase 1 executor. Full user-facing docs:
+[Orchestration (Phase 10)](orchestration.md). Library-side surface:
+
+```python
+from openpathai.pipeline import (
+    Executor, CohortRunResult, ContentAddressableCache,
+)
+from openpathai.pipeline.snakemake import generate_snakefile, write_snakefile
+from openpathai.pipeline.mlflow_backend import MLflowSink, mlflow_enabled
+```
+
+Parallel executor
+:    `Executor(cache, max_workers=N, parallel_mode="thread")` walks
+     the DAG topologically but runs independent nodes at the same
+     level on a `ThreadPoolExecutor`. Sequential mode (the default)
+     preserves Phase 1 behaviour. Cache writes are atomic: the
+     `ContentAddressableCache.put` helper now uses per-call unique
+     tmp suffixes so concurrent writers to the same key never race.
+
+Cohort fan-out
+:    `Executor.run_cohort(pipeline, cohort)` returns a
+     `CohortRunResult` containing one `RunResult` per slide plus an
+     aggregated `CacheStats`. Requires `pipeline.cohort_fanout` to
+     name a step id. Nodes whose input schema declares
+     `slide / slide_ref / cohort_slide` get the slide payload
+     injected automatically; others are cached as identical across
+     slides (intentional — every slide still produces its own audit
+     row thanks to the per-slide scoped pipeline id).
+
+Snakefile exporter
+:    `openpathai.pipeline.snakemake.generate_snakefile(pipeline)` is
+     a pure-string generator — it never imports Snakemake. One rule
+     per pipeline step; cohort fan-out lowers to an
+     `expand('{slide_id}/…', slide_id=SLIDES)` pattern.
+
+MLflow sink
+:    `openpathai.pipeline.mlflow_backend.MLflowSink` is a secondary
+     sink behind `OPENPATHAI_MLFLOW_ENABLED=1`. It lazy-imports
+     mlflow (zero cost when disabled, verified by a test that
+     inspects `sys.modules`). Every sink method wraps its mlflow
+     call in `try/except`; failure logs a warning and the Phase 8
+     audit DB write is unaffected — the DB remains the single
+     source of truth.
+
 ## License
 
 By contributing, you agree your contribution is licensed under the

@@ -24,8 +24,10 @@ without changing the public API.
 from __future__ import annotations
 
 import hashlib
+import os
 import shutil
 import time
+import uuid
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
@@ -175,8 +177,13 @@ class ContentAddressableCache:
             created_at=time.time(),
         )
         # Write-then-rename for atomicity inside the entry directory.
-        artifact_tmp = paths.artifact.with_suffix(".json.tmp")
-        meta_tmp = paths.meta.with_suffix(".json.tmp")
+        # Use a per-call unique suffix so concurrent writers to the same
+        # key never race on the same tmp path (Phase 10 parallel
+        # executor — two workers can compute the same cache key from
+        # different DAG paths).
+        suffix = f".{os.getpid()}.{uuid.uuid4().hex[:8]}.tmp"
+        artifact_tmp = paths.artifact.with_suffix(suffix)
+        meta_tmp = paths.meta.with_suffix(suffix)
         artifact_tmp.write_text(artifact.model_dump_json(), encoding="utf-8")
         meta_tmp.write_text(meta.model_dump_json(), encoding="utf-8")
         artifact_tmp.replace(paths.artifact)

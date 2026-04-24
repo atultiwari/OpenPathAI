@@ -96,6 +96,7 @@ def log_analysis(
             if result.timestamp.tzinfo is not None
             else _utcnow_iso(),
         )
+        _mirror_to_mlflow("analysis", entry)
         return entry.analysis_id
     except Exception as exc:
         _LOGGER.warning("log_analysis failed (non-fatal): %s", exc)
@@ -147,6 +148,7 @@ def log_training(
             run_id=run_id,
             timestamp_end=_utcnow_iso(),
         )
+        _mirror_to_mlflow("training", entry, artifact_path=manifest_path or None)
         return entry.run_id
     except Exception as exc:
         _LOGGER.warning("log_training failed (non-fatal): %s", exc)
@@ -211,7 +213,41 @@ def log_pipeline(
             manifest_path=manifest_path,
             timestamp_end=_utcnow_iso(),
         )
+        _mirror_to_mlflow("pipeline", entry, artifact_path=manifest_path or None)
         return entry.run_id
     except Exception as exc:
         _LOGGER.warning("log_pipeline failed (non-fatal): %s", exc)
         return ""
+
+
+# --------------------------------------------------------------------------- #
+# Secondary sink — MLflow (Phase 10)
+# --------------------------------------------------------------------------- #
+
+
+def _mirror_to_mlflow(
+    kind: str,
+    entry: Any,
+    *,
+    artifact_path: str | None = None,
+) -> None:
+    """Best-effort: mirror ``entry`` into MLflow behind a feature flag.
+
+    No-op + zero imports unless ``OPENPATHAI_MLFLOW_ENABLED=1``. Every
+    mlflow failure is swallowed + logged; the Phase 8 DB remains the
+    single source of truth.
+    """
+    try:
+        from openpathai.pipeline.mlflow_backend import _sink
+
+        sink = _sink()
+        if sink is None:
+            return
+        if kind == "analysis":
+            sink.log_analysis(entry, pdf_path=artifact_path)
+        elif kind == "training":
+            sink.log_training(entry, report_path=artifact_path)
+        elif kind == "pipeline":
+            sink.log_pipeline(entry, manifest_path=artifact_path)
+    except Exception as exc:
+        _LOGGER.warning("MLflow mirror failed (non-fatal): %s", exc)

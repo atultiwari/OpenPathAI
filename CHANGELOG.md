@@ -9,6 +9,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Phase 10 (v0.5.0 line) — Snakemake + MLflow + parallel slide execution (2026-04-24)
+
+Added
+- `Executor` gained `max_workers` + `parallel_mode` params
+  (`sequential` default, `thread` opt-in). Threaded runs produce
+  byte-identical manifests and hit the cache on re-runs.
+- `Executor.run_cohort(pipeline, cohort, ...)` fans a pipeline over
+  a cohort; returns a typed `CohortRunResult` with per-slide
+  `RunResult`s plus aggregated `CacheStats`.
+- `Pipeline` schema gained optional `cohort_fanout` + `max_workers`
+  fields; round-trip preserved.
+- `ContentAddressableCache.put` uses per-call unique tmp suffixes
+  so concurrent writers to the same key never race.
+- New `openpathai.pipeline.snakemake` — pure-string Snakefile
+  generator (no runtime Snakemake dependency).
+- `openpathai run --workers N --parallel-mode {sequential,thread}
+  --snakefile PATH` CLI flags.
+- New `openpathai.pipeline.mlflow_backend` + `openpathai mlflow-ui`
+  CLI — opt-in secondary sink behind `OPENPATHAI_MLFLOW_ENABLED=1`.
+  Audit hooks mirror their rows into MLflow after the DB write;
+  failures log a warning and never break the run.
+- Reference pipeline
+  `pipelines/supervised_tile_classification.yaml` demonstrating
+  `cohort_fanout` + `max_workers` end-to-end.
+- New `[mlflow]` + `[snakemake]` pyproject extras; `[local]` pulls
+  both transitively.
+- Docs: new `docs/orchestration.md`; extended `docs/cohorts.md` +
+  `docs/developer-guide.md`; `mkdocs.yml` nav updated.
+- `scripts/try-phase-10.sh` — guided smoke tour.
+
+Quality
+- 31 new tests + master-plan 100-slide acceptance integration.
+- Total: 537 passed, 2 skipped.
+
+Spec deviations (worklog §8)
+- **Snakefile export only** — we never import or subprocess
+  Snakemake from `openpathai run`.
+- **Thread-pool only** — process-pool parallelism waits for
+  Phase 18.
+- **MLflow as secondary sink** — the Phase 8 audit DB remains the
+  single source of truth.
+- **Reference pipeline uses existing demo.* nodes** — wrapping
+  `preprocessing.qc` / `tiling.plan` / `training.train` as
+  `@node`-decorated pipeline ops is scope-creep into Phase 11 / 12.
+
 ### Phase 9 (v0.5.0 line) — Cohorts + QC + stain refs + real-cohort training (2026-04-24)
 
 Added

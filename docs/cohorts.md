@@ -119,3 +119,28 @@ Because `Cohort.content_hash()` is deterministic, the Phase 1
 executor's content-addressable cache is cohort-scoped for free — a
 second `openpathai run pipeline.yaml` over the same cohort YAML hits
 100% cache.
+
+## Running a pipeline across a cohort (Phase 10)
+
+Pipelines that declare `cohort_fanout: <step_id>` run once per slide
+via `Executor.run_cohort`. The per-slide runs cache independently, so
+a re-run over an unchanged cohort is 100% cache hits:
+
+```python
+from openpathai.cli.pipeline_yaml import load_pipeline
+from openpathai.io import Cohort
+from openpathai.pipeline import ContentAddressableCache, Executor
+
+pipeline = load_pipeline("pipelines/supervised_tile_classification.yaml")
+cohort = Cohort.from_yaml("pilot.yaml")
+executor = Executor(
+    ContentAddressableCache(root="~/.openpathai/cache"),
+    max_workers=4, parallel_mode="thread",
+)
+result = executor.run_cohort(pipeline, cohort)
+print(result.cache_stats)
+```
+
+Each per-slide run lands in the Phase 8 audit DB (and, opt-in,
+MLflow) under its own `run_id`. Full orchestration docs:
+[Orchestration (Phase 10)](orchestration.md).

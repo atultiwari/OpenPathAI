@@ -143,8 +143,19 @@ safety = [
 audit = [
     "keyring>=24,<26",
 ]
+# Orchestration (Phase 10) — opt-in MLflow sink. MLflow is ~50 MB
+# of transitive deps; keep it out of the default install.
+mlflow = [
+    "mlflow>=2.17,<3",
+]
+# Snakefile export is a pure-string generator — snakemake itself is
+# only needed to *run* the generated Snakefile. This extra pins a
+# known-good version for the [local] bundle.
+snakemake = [
+    "snakemake>=8,<9",
+]
 local = [
-    "openpathai[data,kaggle,wsi,train,explain,gui,safety,audit]",
+    "openpathai[data,kaggle,wsi,train,explain,gui,safety,audit,mlflow,snakemake]",
 ]
 colab = [
     "openpathai[local]",

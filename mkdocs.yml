@@ -63,6 +63,7 @@ nav:
   - Datasets: datasets.md
   - Cohorts (Phase 9): cohorts.md
   - Preprocessing + QC: preprocessing.md
+  - Orchestration (Phase 10): orchestration.md
   - Safety (v1): safety.md
   - Audit (Phase 8): audit.md
   - Developer guide: developer-guide.md

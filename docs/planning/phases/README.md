@@ -20,10 +20,10 @@
 
 | | |
 |---|---|
-| Active phase | (none — **Phase 9 closed 2026-04-24**; v0.5.0 line opened; Phase 10 pending user authorisation) |
-| Latest Git tag | `phase-09-complete` (pending push) |
-| Latest released version | v0.1.0 feature set landed (Phase 6 close); v0.2.0 feature set complete (Phase 7 ✅, Phase 8 ✅); v0.5.0 feature set in progress (Phase 9 ✅). |
-| Blocked on user | (a) authorisation to start Phase 10 (Snakemake + MLflow + parallel slide execution); (b) HISTAI-breast gated-access still pending on the main HF account (non-blocking); (c) Ollama + MedGemma 1.5 **already installed** ✅. |
+| Active phase | (none — **Phase 10 closed 2026-04-24**; v0.5.0 line 2/4 complete; Phase 11 pending user authorisation) |
+| Latest Git tag | `phase-10-complete` (pending push) |
+| Latest released version | v0.1.0 feature set landed (Phase 6 close); v0.2.0 feature set complete (Phase 7 ✅, Phase 8 ✅); v0.5.0 feature set in progress (Phase 9 ✅, Phase 10 ✅). |
+| Blocked on user | (a) authorisation to start Phase 11 (Colab exporter — one-click `.ipynb`); (b) HISTAI-breast gated-access still pending on the main HF account (non-blocking); (c) Ollama + MedGemma 1.5 **already installed** ✅. |
 
 ---
 
@@ -41,7 +41,7 @@
 | 7 | Safety v1 + Local-first datasets (PDF reports, borderline band, model-card contract, Kather-CRC-5k card, `register_folder` lib + CLI + GUI) | v0.2 | ✅ complete (2026-04-24, tag `phase-07-complete`) | [phase-07-safety-and-local-datasets.md](phase-07-safety-and-local-datasets.md) | 1.5–2 w target / same-day actual |
 | 8 | Audit + SQLite history + run diff (AuditDB, Runs tab, `openpathai diff`, keyring-gated delete) | v0.2 | ✅ complete (2026-04-24, tag `phase-08-complete`) | [phase-08-audit-history-diff.md](phase-08-audit-history-diff.md) | 1 w target / same-day actual |
 | 9 | Cohorts + QC + stain refs + Train cohort driver (Cohorts tab, `openpathai cohort qc`, `CohortTileDataset`, `train --dataset`/`--cohort`, tab reorder) | v0.5 | ✅ complete (2026-04-24, tag `phase-09-complete`) | [phase-09-cohorts-qc-train-driver.md](phase-09-cohorts-qc-train-driver.md) | 1 w target / same-day actual |
-| 10 | Snakemake orchestration + MLflow tracking | v0.5 | ⏳ pending | — | 1.5 w |
+| 10 | Snakemake + MLflow + parallel slide execution (thread-pool fan-out, Snakefile exporter, opt-in MLflow sink, `supervised_tile_classification.yaml`) | v0.5 | ✅ complete (2026-04-24, tag `phase-10-complete`) | [phase-10-snakemake-mlflow-parallel.md](phase-10-snakemake-mlflow-parallel.md) | 1.5 w target / same-day actual |
 | 11 | Colab exporter (one-click `.ipynb`) | v0.5 | ⏳ pending | — | 3–5 d |
 | 12 | Active learning CLI prototype (Bet 1 start) | v0.5 | ⏳ pending | — | 1 w |
 | 13 | Foundation models (UNI / CONCH / Virchow / DINOv2 …) + MIL (CLAM / TransMIL) | v1.0 | ⏳ pending | — | 2 w |
