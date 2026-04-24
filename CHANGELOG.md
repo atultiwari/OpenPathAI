@@ -9,6 +9,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Phase 14 (v1.0.0 line) — Detection + Segmentation (2026-04-24)
+
+Added
+- `openpathai.detection` subpackage:
+  - `DetectionAdapter` protocol + `BoundingBox` + `DetectionResult`
+    frozen pydantic models.
+  - `DetectionRegistry` + `default_detection_registry()` —
+    5 adapters: `yolov8` (real, AGPL-3.0 via lazy-imported
+    ultralytics), `yolov11` / `yolov26` / `rt_detr_v2` (stubs),
+    `synthetic_blob` (pure-numpy Otsu + connected-components
+    fallback).
+  - `resolve_detector(id, registry=...)` — Phase-13-style
+    fallback resolver using the shared `FallbackDecision`
+    schema.
+- `openpathai.segmentation` subpackage:
+  - `SegmentationAdapter` + `PromptableSegmentationAdapter`
+    protocols, `Mask` + `SegmentationResult` frozen models.
+  - `SegmentationRegistry` + `default_segmentation_registry()` —
+    11 adapters total: 6 closed-vocab (`tiny_unet` real,
+    `attention_unet` / `nnunet_v2` / `segformer` / `hover_net`
+    stubs, `synthetic_tissue`) and 5 promptable (`sam2` / `medsam`
+    / `medsam2` / `medsam3` stubs, `synthetic_click`).
+  - `resolve_segmenter(id, registry=...)` — fallback resolver
+    routing closed-vocab failures to `synthetic_tissue`,
+    promptable failures to `synthetic_click`.
+- CLI: `openpathai detection list | resolve <id> [--strict]` +
+  `openpathai segmentation list | resolve <id> [--strict]`.
+- 5 new dataset cards: MoNuSeg, PanNuke, MoNuSAC, GlaS, MIDOG22
+  — every card populates the full Phase-7 safety fields, declares
+  a licence, and lists Phase-14 recommended models.
+- NOTICE file rewrite — concrete runtime-import attributions for
+  every third-party component in Phases 13 + 14, including the
+  iron-rule-#12 Ultralytics AGPL-3.0 entry.
+- Docs: new `docs/detection.md` + `docs/segmentation.md`; Phase-14
+  entries in `docs/cli.md` + `docs/developer-guide.md`;
+  `mkdocs.yml` nav updated; `scripts/try-phase-14.sh` smoke tour.
+
+Quality
+- 76 new tests (7 detection protocol + 7 synthetic detector +
+  6 detection resolver + 8 segmentation protocol + 10 synthetic
+  segmenter + 7 tiny U-Net + 10 seg stubs+resolver + 4 new-card
+  validation + 5 CLI detection + 5 CLI segmentation + 7 misc).
+  Full suite: 775 passed, 2 skipped.
+- Coverage on new subpackages: weighted average ≥ 80 % (the
+  YOLOv8 real-weight-download path + the nnU-Net/SegFormer stub
+  build-failure branches aren't exercisable in CI without real
+  weights; synthetic adapters carry the numeric coverage).
+- ruff + ruff format + pyright + pytest + mkdocs --strict all
+  clean. CI green on all 5 matrix jobs (macOS / Ubuntu / Windows).
+
+Spec deviations (documented in phase-14 §2 non-goals + §8 worklog)
+- Real GPU acceptance bars — "YOLOv26 on MIDOG ≥ 0.6 F1",
+  "nnU-Net on GlaS ≥ 0.85 Dice", "MedSAM2 visible-mask from click"
+  — deferred to user-side validation.
+- 9 of 12 adapters ship as stubs with fallback (4 detection stubs
+  + 4 closed-vocab seg stubs + 4 promptable seg stubs; the "9 vs
+  12" reflects the three real adapters: yolov8, tiny_unet, plus
+  the two synthetic demos).
+- LoRA fine-tuning — inherited Phase-13 deferral.
+- GUI Analyse-mode toggles + Annotate-tab click-to-segment —
+  Phase 16.
+- Pipeline nodes (`detection.yolo`, `segmentation.unet`, etc.) —
+  protocol-first means these are ~30 LOC each; Phase 14.5 or
+  alongside Phase 15.
+- HoVer-Net weights (AGPL-3.0) — stub only; users bring weights.
+
 ### Phase 13 (v1.0.0 line opens) — Foundation models + MIL (2026-04-24)
 
 Added

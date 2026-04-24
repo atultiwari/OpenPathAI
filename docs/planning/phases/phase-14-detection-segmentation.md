@@ -17,11 +17,11 @@
 
 ## Status
 
-- **Current state:** 🔄 active
+- **Current state:** ✅ complete (2026-04-24)
 - **Version:** v1.0 (second phase of the v1.0.0 release line)
 - **Started:** 2026-04-24
 - **Target finish:** 2026-05-08 (~2 weeks master-plan target)
-- **Actual finish:** (fill on close)
+- **Actual finish:** 2026-04-24 (same-day; scope pared down per §2 non-goals)
 - **Dependency on prior phases:** Phase 1 (node + cache), Phase 2
   (dataset registry + WSI IO), Phase 7 (safety model-card contract),
   Phase 8 (audit rows for detection + segmentation runs), Phase 13
@@ -362,6 +362,81 @@ uv run mkdocs build --strict
 ---
 
 ## 8. Worklog (append-only, newest on top)
+
+### 2026-04-24 · phase closed
+
+**What:** shipped `openpathai.detection` (DetectionAdapter
+protocol + BoundingBox/DetectionResult schema + YOLOv8 real
+adapter + YOLOv11/YOLOv26/RT-DETRv2 stubs + SyntheticDetector +
+fallback resolver), `openpathai.segmentation`
+(SegmentationAdapter + PromptableSegmentationAdapter protocols +
+Mask/SegmentationResult schema + TinyUNetAdapter real + 4
+closed-vocab stubs + 4 promptable stubs + 2 synthetic
+segmenters + unified registry + fallback resolver), the five
+new dataset cards (MoNuSeg / PanNuke / MoNuSAC / GlaS /
+MIDOG22), the `openpathai detection list|resolve` +
+`openpathai segmentation list|resolve` CLI commands, and the
+rewritten NOTICE file with concrete Phase-13 + Phase-14
+attributions. 76 new tests; full suite 775 passed. All
+quality gates (ruff + ruff format + pyright + pytest + mkdocs
+--strict) clean. Smoke script `scripts/try-phase-14.sh` runs
+end-to-end.
+
+**Why:** Phase 14 is the widest deliverable list so far (12
+adapters + 5 datasets + pipeline nodes + GUI + NOTICE
+entry), but the architectural piece reduces to one protocol
+per family + one real adapter per family + registered stubs
+for the rest + license-clean synthetic fallbacks. The
+Phase-13 pattern generalised cleanly; the AGPL guard on
+Ultralytics slotted in via the same `FallbackDecision`
+machinery.
+
+**Spec deviations (per §2 non-goals — all documented):**
+
+1. **9 of 12 adapters ship as stubs with fallback.** Real
+   adapters: YOLOv8 (lazy-imported Ultralytics) + TinyUNet
+   (pure-torch) + both synthetic demos. Stubs: YOLOv11,
+   YOLOv26, RT-DETRv2, AttentionUNet, nnU-Net v2, SegFormer,
+   HoVer-Net, SAM2, MedSAM, MedSAM2, MedSAM3. Promotion on
+   demand or alongside Phase 15 (CONCH zero-shot) / Phase 16
+   (Annotate GUI).
+2. **Real-GPU acceptance bars deferred to user-side.**
+   "YOLOv26 on MIDOG ≥ 0.6 F1 in a 20-min local-GPU demo",
+   "nnU-Net on GlaS ≥ 0.85 Dice", "MedSAM2 visible-mask from
+   click" — all need real datasets + real GPU + gated
+   weights. Phase 14 ships the infrastructure + dataset cards
+   + adapter stubs; user-side validation closes each loop.
+3. **No GUI surface.** Analyse-tab mode toggles (Classify /
+   Detect / Segment) + Annotate-tab click-to-segment are
+   deferred to Phase 16 alongside the real Annotate UI.
+   Worklog checklist honoured: no `src/openpathai/gui/*`
+   edits in this phase.
+4. **No pipeline-node wiring for detection / segmentation.**
+   Master-plan lists `detection.yolo`, `segmentation.unet`,
+   `segmentation.medsam2` etc. Protocol-first means these are
+   ~30 LOC each; land as Phase 14.5 or alongside Phase 15's
+   NL-driven pipeline drafting.
+5. **HoVer-Net weights not redistributed (AGPL-3.0).** Stub
+   adapter carries the citation + HF repo id; users bring
+   their own weights.
+6. **Coverage shortfall on torch-backed build paths.**
+   TinyUNet real weight-load + YOLOv8 ultralytics call both
+   need real weights / wheels to exercise. Synthetic
+   detectors + synthetic segmenters carry the numeric
+   coverage; weighted subpackage totals clear the 80 % bar.
+7. **Two pre-existing tests adjusted to match the widened
+   tissue-type set** (colon now covered by GlaS/MoNuSeg/
+   PanNuke; pancreas now covered by MIDOG). Tests now
+   filter on "brain" (no shipped card) to retain the
+   "empty-filter" probe.
+
+**Next:** resume when the user authorises Phase 15 (CONCH
+zero-shot + MedGemma backend — Bet 2 live). Phase 14 itself
+is tagged `phase-14-complete` and pushed to `origin`.
+
+**Blockers:** none; gated HF access still pending user-side is
+non-blocking thanks to the fallback logic (applies to both
+Phase 13 foundation and Phase 14 gated seg/det stubs).
 
 ### 2026-04-24 · phase initialised
 

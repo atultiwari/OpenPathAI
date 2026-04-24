@@ -1,0 +1,54 @@
+name: monusac
+display_name: "MoNuSAC (Multi-Organ Nuclei Segmentation + Classification, 2020)"
+modality: tile
+num_classes: 5
+classes:
+  - background
+  - epithelial
+  - lymphocyte
+  - neutrophil
+  - macrophage
+tile_size: [1000, 1000]
+total_images: 294
+license: CC-BY-NC-SA-4.0
+tissue: [breast, lung, kidney, prostate]
+stain: "H&E"
+magnification: "40X"
+mpp: 0.25
+
+download:
+  method: manual
+  size_gb: 0.9
+  gated: false
+  instructions_md: |
+    MoNuSAC-2020 is distributed via the challenge organisers at
+    https://monusac-2020.grand-challenge.org/. Download both the
+    training + testing archives and unzip them under
+    `$OPENPATHAI_HOME/datasets/monusac/`. The card's `local_path`
+    field can be overridden on first-run via
+    `openpathai datasets register monusac --path /path/to/folder`.
+
+citation:
+  text: >
+    Verma et al., 'MoNuSAC2020: A Multi-Organ Nuclei Segmentation and
+    Classification Challenge' (IEEE TMI 2021).
+  doi: "10.1109/TMI.2021.3085712"
+
+recommended_models: [tiny_unet, hover_net]
+recommended_splits:
+  type: patient_level
+  train: 0.65
+  val: 0.15
+  test: 0.20
+
+tier_compatibility:
+  T1: slow
+  T2: ok
+  T3: ok
+
+qc_gates: [tissue_mask]
+
+notes: >
+  Phase-14 `hover_net` stub is the natural fit for 5-class nuclear
+  segmentation + classification once a user brings weights. The
+  `tiny_unet` adapter only does binary fg/bg on this card.

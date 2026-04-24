@@ -29,7 +29,9 @@ def test_datasets_list_modality_filter() -> None:
 
 @pytest.mark.unit
 def test_datasets_list_no_match_exits_zero() -> None:
-    result = runner.invoke(app, ["datasets", "list", "--tissue", "pancreas"])
+    # "brain" — no shipped card covers it after Phase 14 added
+    # pancreas via MIDOG.
+    result = runner.invoke(app, ["datasets", "list", "--tissue", "brain"])
     assert result.exit_code == 0
     assert "no dataset cards matched" in result.stdout
 

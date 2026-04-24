@@ -1,0 +1,51 @@
+name: pannuke
+display_name: "PanNuke (Pan-organ Nuclei Segmentation, 2019)"
+modality: tile
+num_classes: 6
+classes:
+  - background
+  - neoplastic
+  - inflammatory
+  - connective
+  - dead
+  - epithelial
+tile_size: [256, 256]
+total_images: 7901
+license: CC-BY-NC-SA-4.0
+tissue: [breast, colon, lung, prostate, kidney, thyroid, stomach, ovarian, esophagus, pancreatic, adrenal, cervix, bile-duct, bladder, liver, uterus, testis, skin, head-neck]
+stain: "H&E"
+magnification: "40X"
+mpp: 0.25
+
+download:
+  method: huggingface
+  huggingface_repo: "RationAI/PanNuke"
+  size_gb: 1.8
+  gated: false
+  requires_confirmation: false
+
+citation:
+  text: >
+    Gamper et al., 'PanNuke: An Open Pan-Cancer Histology Dataset for
+    Nuclei Instance Segmentation and Classification' (ECDP 2019).
+  arxiv: "1812.01877"
+
+recommended_models: [tiny_unet, hover_net, nnunet_v2]
+recommended_splits:
+  type: patient_level
+  train: 0.60
+  val: 0.20
+  test: 0.20
+
+tier_compatibility:
+  T1: slow
+  T2: ok
+  T3: ok
+
+qc_gates: [tissue_mask, stain_check]
+
+notes: >
+  Three-fold cross-validation split is standard (folds 1/2/3). Labels
+  cover both nuclei boundaries + 5 nuclear categories; Phase 14 ships
+  binary seg adapters only, multi-class nuclear classification lands
+  in Phase 15 alongside HoVer-Net.

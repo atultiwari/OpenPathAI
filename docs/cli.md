@@ -162,6 +162,29 @@ uv run openpathai linear-probe \\
     --out      /tmp/probe.json
 ```
 
+### `openpathai detection list | resolve <id>` (Phase 14)
+
+Registry + fallback resolver for object-detection adapters
+(YOLOv8 / v11 / v26 + RT-DETRv2 + SyntheticDetector). See
+[Detection](detection.md).
+
+```bash
+uv run openpathai detection list
+uv run openpathai detection resolve yolov26          # JSON FallbackDecision
+uv run openpathai detection resolve yolov26 --strict # hard-fail mode
+```
+
+### `openpathai segmentation list | resolve <id>` (Phase 14)
+
+Registry + fallback resolver for both closed-vocab and
+promptable segmentation adapters. See [Segmentation](segmentation.md).
+
+```bash
+uv run openpathai segmentation list
+uv run openpathai segmentation resolve medsam2
+uv run openpathai segmentation resolve nnunet_v2
+```
+
 ## Pipeline YAML format
 
 See [`pipelines/README.md`](https://github.com/atultiwari/OpenPathAI/blob/main/pipelines/README.md)

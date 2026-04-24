@@ -1,0 +1,49 @@
+name: monuseg
+display_name: "MoNuSeg (Multi-Organ Nuclei Segmentation Challenge, 2018)"
+modality: tile
+num_classes: 2
+classes:
+  - background
+  - nucleus
+tile_size: [1000, 1000]
+total_images: 44
+license: CC-BY-NC-SA-4.0
+tissue: [breast, liver, kidney, prostate, bladder, colon, stomach]
+stain: "H&E"
+magnification: "40X"
+mpp: 0.25
+
+download:
+  method: kaggle
+  kaggle_slug: andrewmvd/monuseg-2018
+  size_gb: 0.4
+  gated: false
+  requires_confirmation: false
+  instructions_md: |
+    MoNuSeg splits into 30 train + 14 test tiles from TCGA. Masks are
+    binary instance nuclei, usable for Phase-14 seg adapters (U-Net,
+    nnU-Net, SegFormer) or Phase-15 promptable adapters (MedSAM2).
+
+citation:
+  text: >
+    Kumar et al., 'A Multi-Organ Nucleus Segmentation Challenge'
+    (IEEE TMI 2020).
+  doi: "10.1109/TMI.2019.2947628"
+
+recommended_models: [tiny_unet, nnunet_v2, segformer]
+recommended_splits:
+  type: patient_level
+  train: 0.68
+  val: 0.00
+  test: 0.32
+
+tier_compatibility:
+  T1: ok
+  T2: ok
+  T3: ok
+
+qc_gates: [tissue_mask, focus_check]
+
+notes: >
+  Canonical benchmark for Phase-14 closed-vocab nuclear segmentation.
+  Tiles are large (1000x1000); tile into 256x256 crops for training.

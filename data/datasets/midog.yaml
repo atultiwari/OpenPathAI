@@ -1,0 +1,54 @@
+name: midog
+display_name: "MIDOG22 (Mitosis Domain Generalization Challenge, 2022)"
+modality: tile
+num_classes: 1
+classes:
+  - mitotic_figure
+tile_size: [512, 512]
+total_images: 354
+license: CC-BY-4.0
+tissue: [breast, pancreas, skin, neuroendocrine, lymphoma]
+stain: "H&E"
+magnification: "40X"
+mpp: 0.25
+
+download:
+  method: zenodo
+  zenodo_record: "6362337"
+  size_gb: 25.0
+  gated: false
+  requires_confirmation: true
+  partial_download_hint: |
+    The MIDOG22 archive is 25 GB. For a POC subset, download only
+    the `training.zip` (~6 GB) from the Zenodo record and skip the
+    `test.zip` until you're ready for a full benchmark. Pass
+    `--partial training` to `openpathai download midog` when that
+    flag lands in Phase 16.
+
+citation:
+  text: >
+    Aubreville et al., 'Mitosis domain generalization in
+    histopathology images — The MIDOG challenge' (Medical Image
+    Analysis 2023).
+  doi: "10.1016/j.media.2023.102699"
+
+recommended_models: [yolov8, yolov11, yolov26, rt_detr_v2]
+recommended_splits:
+  type: patient_level
+  train: 0.60
+  val: 0.20
+  test: 0.20
+
+tier_compatibility:
+  T1: "no"
+  T2: slow
+  T3: ok
+
+qc_gates: [tissue_mask, focus_check]
+
+notes: >
+  Phase-14 detection acceptance target is "YOLOv26 on MIDOG reaches
+  >= 0.6 F1 in a 20-min local-GPU training demo" — deferred to
+  user-side. Phase 14 ships the card + detector stubs; the real
+  training run needs ultralytics (AGPL-3.0 — see NOTICE) + a CUDA
+  GPU + the full MIDOG22 archive.

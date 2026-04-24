@@ -9,35 +9,79 @@ MIT-licensed; third-party components retain their original licenses and are
 referenced (not vendored) at runtime unless noted otherwise.
 
 ─────────────────────────────────────────────────────────────────────────────
-PLACEHOLDER — populated across Phases 2, 13, 14
+Runtime-imported components (Phase 13 — foundation + MIL)
 ─────────────────────────────────────────────────────────────────────────────
 
-Entries will be added as the corresponding features land. Expected entries
-include (non-exhaustive):
+- DINOv2 ViT-S/14 (Meta)           — Apache-2.0
+  Imported via timm / torch.hub by src/openpathai/foundation/dinov2.py.
+- UNI / UNI2-h (MahmoodLab)        — CC-BY-NC-4.0, gated Hugging Face repo
+  MahmoodLab/UNI, MahmoodLab/UNI2-h. Research-only.
+- CONCH (MahmoodLab)               — CC-BY-NC-4.0, gated HF MahmoodLab/CONCH.
+- Virchow2 (Paige)                 — CC-BY-NC-4.0, gated HF paige-ai/Virchow2.
+- Prov-GigaPath (Microsoft)        — CC-BY-NC-4.0, gated HF prov-gigapath.
+- Hibou ViT-B/14 (HistAI)          — Apache-2.0, HF histai/hibou-B.
+- CTransPath (Wang et al.)         — GPL-3.0 upstream weights.
+  Architecture open; pretrained weights user-supplied (not
+  redistributed by this project).
 
-- Ultralytics YOLOv8 / v11 / v26    — AGPL-3.0 (commercial license available)
-- HoVer-Net (TIA Centre)            — GPL-3.0
-- Segment Anything (Meta)           — Apache-2.0
-- SAM2 (Meta)                       — Apache-2.0
-- MedSAM / MedSAM2                  — Apache-2.0
-- nnU-Net v2 (DKFZ)                 — Apache-2.0
-- RT-DETR / RT-DETRv2               — Apache-2.0
-- UNI / UNI2-h (MahmoodLab)         — research use, gated
-- CONCH (MahmoodLab)                — research use, gated
-- Virchow / Virchow2 (Paige)        — research use, gated
-- Prov-GigaPath (Microsoft)         — research use, gated
-- CTransPath                        — research use
-- DINOv2 (Meta)                     — Apache-2.0
-- MedGemma (Google)                 — research use, gated
-- MONAI                             — Apache-2.0
-- PyTorch                           — BSD-3-Clause
-- timm                              — Apache-2.0
-- tiatoolbox                        — BSD-3-Clause
-- OpenSlide                         — LGPL-2.1
-- Gradio                            — Apache-2.0
+─────────────────────────────────────────────────────────────────────────────
+Runtime-imported components (Phase 14 — detection + segmentation)
+─────────────────────────────────────────────────────────────────────────────
 
-Each entry is finalized when the dependency lands in pyproject.toml.
+DETECTION
 
-For clarity: OpenPathAI does not redistribute any of the above. Users install
-them at runtime from their original sources (PyPI, Hugging Face, GitHub).
-Redistribution terms remain the responsibility of those sources.
+- Ultralytics YOLO (v8 / v11 / v26) — AGPL-3.0
+  OpenPathAI imports `ultralytics` at runtime — never vendored —
+  through src/openpathai/detection/yolo.py. Using this adapter in
+  a proprietary pipeline requires a commercial Ultralytics licence;
+  see https://ultralytics.com/license. When ultralytics is absent,
+  openpathai.detection.resolve_detector falls back to the
+  MIT-licensed SyntheticDetector so the library surface remains
+  usable without the AGPL dependency.
+- RT-DETRv2 (Baidu)                — Apache-2.0, HF PekingU/rtdetr_v2_r50vd.
+
+SEGMENTATION — closed-vocabulary
+
+- U-Net (Ronneberger et al.)       — MIT (Phase 14's TinyUNet is a
+  pure-torch re-implementation, MIT-licensed).
+- Attention U-Net (Oktay et al.)   — MIT upstream; HF reference ship
+  under Apache-2.0.
+- nnU-Net v2 (DKFZ)                — Apache-2.0, HF MIC-DKFZ/nnunet-v2.
+- SegFormer (NVIDIA)               — NVIDIA Source Code License (non-commercial).
+- HoVer-Net (TIA Centre)           — AGPL-3.0 upstream weights. Users must
+  bring their own weights; OpenPathAI does not redistribute.
+
+SEGMENTATION — promptable
+
+- SAM2 (Meta)                      — Apache-2.0, HF facebook/sam2.1-hiera-large.
+- MedSAM / MedSAM2 (Ma et al.)     — Apache-2.0 upstream weights.
+- MedSAM3                          — not yet released; stub reserved.
+
+─────────────────────────────────────────────────────────────────────────────
+General runtime dependencies
+─────────────────────────────────────────────────────────────────────────────
+
+- MedGemma (Google)                 — research use, gated (Phase 15).
+- MONAI                             — Apache-2.0.
+- PyTorch                           — BSD-3-Clause.
+- timm                              — Apache-2.0.
+- tiatoolbox                        — BSD-3-Clause.
+- OpenSlide                         — LGPL-2.1.
+- Gradio                            — Apache-2.0.
+
+─────────────────────────────────────────────────────────────────────────────
+Redistribution policy
+─────────────────────────────────────────────────────────────────────────────
+
+OpenPathAI does not redistribute any third-party model weights or source
+code listed above. Users install these components at runtime from their
+original sources (PyPI, Hugging Face, GitHub, Google Drive for
+CTransPath). Redistribution terms remain the responsibility of those
+sources.
+
+Iron rule #12 of the project (see CLAUDE.md §2): import but never vendor
+AGPL-licensed dependencies. The fallback resolvers in Phases 13 + 14
+guarantee that the core library surface (`openpathai foundation`,
+`openpathai detection`, `openpathai segmentation`) remains usable
+without any AGPL import, at the cost of reduced capability (MIT-licensed
+synthetic detectors / segmenters instead of production models).

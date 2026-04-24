@@ -47,7 +47,11 @@ def test_datasets_rows_modality_filter() -> None:
 
 
 def test_datasets_rows_empty_on_impossible_filter() -> None:
-    rows = datasets_rows(default_registry(), tissue="pancreas")
+    # "brain" is an organ no shipped card covers — stays empty after
+    # Phase 14 added MoNuSeg/PanNuke/MIDOG (which cover many organs
+    # including pancreas, so the original pancreas filter is no
+    # longer a reliable "empty" probe).
+    rows = datasets_rows(default_registry(), tissue="brain")
     assert rows == []
 
 

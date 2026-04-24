@@ -13,6 +13,7 @@ root Typer app so ``openpathai`` exposes a single, coherent surface.
 * Phase 11 — ``export-colab``, ``sync``.
 * Phase 12 — ``active-learn``.
 * Phase 13 — ``foundation``, ``mil``, ``linear-probe``.
+* Phase 14 — ``detection``, ``segmentation``.
 """
 
 from __future__ import annotations
@@ -24,6 +25,7 @@ from openpathai.cli.audit_cmd import audit_app
 from openpathai.cli.cache_cmd import cache_app
 from openpathai.cli.cohort_cmd import cohort_app
 from openpathai.cli.datasets_cmd import datasets_app
+from openpathai.cli.detection_cmd import detection_app
 from openpathai.cli.diff_cmd import register as _register_diff
 from openpathai.cli.download_cmd import register as _register_download
 from openpathai.cli.export_cmd import register as _register_export
@@ -34,6 +36,7 @@ from openpathai.cli.mil_cmd import mil_app
 from openpathai.cli.mlflow_cmd import register as _register_mlflow
 from openpathai.cli.models_cmd import models_app
 from openpathai.cli.run_cmd import register as _register_run
+from openpathai.cli.segmentation_cmd import segmentation_app
 from openpathai.cli.train_cmd import register as _register_train
 
 app.add_typer(models_app)
@@ -43,6 +46,8 @@ app.add_typer(audit_app)
 app.add_typer(cohort_app)
 app.add_typer(foundation_app)
 app.add_typer(mil_app)
+app.add_typer(detection_app)
+app.add_typer(segmentation_app)
 _register_run(app)
 _register_analyse(app)
 _register_download(app)

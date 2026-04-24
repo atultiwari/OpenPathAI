@@ -657,6 +657,20 @@ Foundation models + MIL (Phase 13)
      it runs on any CI cell without `[train]`. See
      [Foundation models](foundation-models.md) + [MIL](mil.md).
 
+Detection + Segmentation (Phase 14)
+:    `openpathai.detection` and `openpathai.segmentation` reuse the
+     Phase-13 adapter-protocol pattern. Detection: `YOLOv8Adapter`
+     (lazy-imported AGPL ultralytics) + 3 stubs + a license-clean
+     `SyntheticDetector` (pure-numpy Otsu blob finder).
+     Segmentation: `TinyUNetAdapter` (pure-torch demo) + 4 closed-
+     vocab stubs + 4 promptable stubs + `SyntheticFullTissueSegmenter`
+     + `SyntheticClickSegmenter`. Fallback resolvers (`resolve_detector`
+     / `resolve_segmenter`) re-use `FallbackDecision` from
+     `openpathai.foundation.fallback`. NOTICE file records the
+     Ultralytics AGPL runtime-import attribution. Five new dataset
+     cards ship: MoNuSeg / PanNuke / MoNuSAC / GlaS / MIDOG.
+     See [Detection](detection.md) + [Segmentation](segmentation.md).
+
 ## License
 
 By contributing, you agree your contribution is licensed under the

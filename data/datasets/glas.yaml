@@ -1,0 +1,48 @@
+name: glas
+display_name: "GlaS (Gland Segmentation in Colon Histology, MICCAI 2015)"
+modality: tile
+num_classes: 2
+classes:
+  - background
+  - gland
+tile_size: [775, 522]
+total_images: 165
+license: "Warwick-GlaS research-only (see upstream)"
+tissue: [colon]
+stain: "H&E"
+magnification: "20X"
+mpp: 0.465
+
+download:
+  method: kaggle
+  kaggle_slug: sani84/glasmiccai2015-gland-segmentation
+  size_gb: 0.22
+  gated: false
+  requires_confirmation: false
+
+citation:
+  text: >
+    Sirinukunwattana et al., 'Gland Segmentation in Colon Histology
+    Images: The GlaS Challenge Contest' (Medical Image Analysis 2017).
+  doi: "10.1016/j.media.2016.08.008"
+
+recommended_models: [tiny_unet, attention_unet, nnunet_v2]
+recommended_splits:
+  type: patient_level
+  train: 0.50
+  val: 0.00
+  test: 0.50
+
+tier_compatibility:
+  T1: ok
+  T2: ok
+  T3: ok
+
+qc_gates: [tissue_mask]
+
+notes: >
+  Canonical gland-segmentation benchmark. Master-plan acceptance
+  target for Phase 14 is "nnU-Net on GlaS reaches >= 0.85 Dice on
+  validation" — deferred to user-side (needs real nnU-Net weights +
+  GPU). Phase 14 ships the card + adapter stub; Phase 14.5 + user-
+  side training close the loop.

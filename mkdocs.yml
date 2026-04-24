@@ -70,6 +70,8 @@ nav:
   - Active learning (Phase 12): active-learning.md
   - Foundation models (Phase 13): foundation-models.md
   - MIL (Phase 13): mil.md
+  - Detection (Phase 14): detection.md
+  - Segmentation (Phase 14): segmentation.md
   - Developer guide: developer-guide.md
 
 markdown_extensions:
