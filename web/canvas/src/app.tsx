@@ -1,20 +1,33 @@
-import { useState } from "react";
+import { Suspense, lazy, useState } from "react";
 import { AuthProvider, useAuth } from "./api/auth-context";
 import { AnalyseScreen } from "./screens/analyse/analyse-screen";
 import { AnnotateScreen } from "./screens/annotate/annotate-screen";
 import { CohortsScreen } from "./screens/cohorts/cohorts-screen";
 import { DatasetsScreen } from "./screens/datasets/datasets-screen";
 import { ModelsScreen } from "./screens/models/models-screen";
-import { PipelinesScreen } from "./screens/pipelines/pipelines-screen";
 import { SettingsScreen } from "./screens/settings/settings-screen";
 import { TrainScreen } from "./screens/train/train-screen";
 import { AuditPanel } from "./audit/audit-panel";
 import { RunsPanel } from "./runs/runs-panel";
 
+// Phase 21 refinement #3 — defer the React Flow + OpenSeadragon
+// chunks until the user actually opens those screens.
+const PipelinesScreen = lazy(() =>
+  import("./screens/pipelines/pipelines-screen").then((m) => ({
+    default: m.PipelinesScreen,
+  }))
+);
+const SlidesScreen = lazy(() =>
+  import("./screens/slides/slides-screen").then((m) => ({
+    default: m.SlidesScreen,
+  }))
+);
+
 import "./screens/screens.css";
 
 type TaskTab =
   | "analyse"
+  | "slides"
   | "datasets"
   | "train"
   | "cohorts"
@@ -32,6 +45,7 @@ const TASK_TABS: {
   group: "Doctor" | "ML" | "Power user";
 }[] = [
   { id: "analyse", label: "Analyse", icon: "🔬", group: "Doctor" },
+  { id: "slides", label: "Slides", icon: "🩻", group: "Doctor" },
   { id: "datasets", label: "Datasets", icon: "🗂", group: "Doctor" },
   { id: "train", label: "Train", icon: "🎯", group: "Doctor" },
   { id: "cohorts", label: "Cohorts", icon: "🧪", group: "Doctor" },
@@ -175,16 +189,19 @@ function CanvasShell() {
       />
 
       <main style={{ gridArea: "content", overflow: "auto" }}>
-        {tab === "analyse" && <AnalyseScreen />}
-        {tab === "datasets" && <DatasetsScreen />}
-        {tab === "train" && <TrainScreen />}
-        {tab === "cohorts" && <CohortsScreen />}
-        {tab === "annotate" && <AnnotateScreen />}
-        {tab === "models" && <ModelsScreen />}
-        {tab === "runs" && <RunsPanel />}
-        {tab === "audit" && <AuditPanel />}
-        {tab === "pipelines" && <PipelinesScreen />}
-        {tab === "settings" && <SettingsScreen />}
+        <Suspense fallback={<p className="inspector-empty">Loading…</p>}>
+          {tab === "analyse" && <AnalyseScreen />}
+          {tab === "slides" && <SlidesScreen />}
+          {tab === "datasets" && <DatasetsScreen />}
+          {tab === "train" && <TrainScreen />}
+          {tab === "cohorts" && <CohortsScreen />}
+          {tab === "annotate" && <AnnotateScreen />}
+          {tab === "models" && <ModelsScreen />}
+          {tab === "runs" && <RunsPanel />}
+          {tab === "audit" && <AuditPanel />}
+          {tab === "pipelines" && <PipelinesScreen />}
+          {tab === "settings" && <SettingsScreen />}
+        </Suspense>
       </main>
     </div>
   );

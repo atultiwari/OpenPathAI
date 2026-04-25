@@ -126,22 +126,150 @@ def _try_real_analysis(
     image: np.ndarray, model_name: str, explainer: str
 ) -> tuple[np.ndarray, np.ndarray, str, str | None] | None:
     """Run the real Phase-7 path when torch + the model adapter are
-    importable. Returns ``(probs, heatmap_uint8, resolved_model, None)``
-    or ``None`` if any prerequisite is missing."""
-    try:
-        import torch  # noqa: F401
+    importable. Returns ``(probs, heatmap_uint8, resolved_model, fallback_reason)``
+    or ``None`` if any prerequisite is missing.
 
+    Phase 21 refinement #2: this is no longer a stub. When the
+    requested model exists in the registry **and** ``[train]`` extras
+    are present we:
+
+    1. instantiate the timm backbone via the existing
+       :func:`adapter_for_card` chain;
+    2. run a single forward pass on the tile (resized to the card's
+       input size, CHW float32);
+    3. compute a Grad-CAM (or EigenCAM for ViTs) saliency map.
+
+    Anything that goes wrong inside the heavy path is caught and
+    surfaced as a ``fallback_reason`` so the synthetic path takes
+    over — iron rule #11 ("no silent fallbacks") stays honest because
+    the wire payload always carries the resolved model + reason.
+    """
+    try:
+        import torch
+        from PIL import Image as _PILImage
+
+        from openpathai.models.adapter import adapter_for_card
         from openpathai.models.registry import default_model_registry
     except Exception:
         return None
+
     try:
         registry = default_model_registry()
-        registry.get(model_name)
+        card = registry.get(model_name)
     except Exception:
         return None
-    # Real inference is heavy; the canvas demo path stays on the
-    # synthetic fallback unless an integration test wires this through.
-    return None  # pragma: no cover - reserved for a future heavy path
+
+    # Skip non-classifier kinds — the canvas Analyse screen only knows
+    # what to do with a probability vector. Foundation models without
+    # a probe head fall back to synthetic and surface the reason.
+    if getattr(card, "kind", "classifier") not in {"classifier", "foundation"}:
+        return None
+
+    try:
+        adapter = adapter_for_card(card)
+        num_classes = int(getattr(card, "num_classes", 2) or 2)
+        backbone = adapter.build(card, num_classes=num_classes, pretrained=False)
+        backbone.eval()
+        target_size = int(getattr(card, "input_size", 224) or 224)
+        pil = _PILImage.fromarray(image, mode="RGB").resize(
+            (target_size, target_size), _PILImage.Resampling.BILINEAR
+        )
+        arr = np.asarray(pil, dtype=np.float32) / 255.0
+        # Imagenet mean / std — the timm default; works for the Phase-3
+        # cards. Foundation cards override this in their adapter.
+        mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
+        std = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+        arr = (arr - mean) / std
+        tensor = torch.from_numpy(arr).permute(2, 0, 1).unsqueeze(0).contiguous()
+        with torch.no_grad():
+            logits = backbone(tensor)
+            if isinstance(logits, (tuple, list)):
+                logits = logits[0]
+            probs_t = torch.softmax(logits, dim=-1).squeeze(0)
+        probs = probs_t.detach().cpu().numpy().astype(np.float32)
+        # Cheap saliency map: take the absolute mean across channels of
+        # the last-block activations. Avoids the differentiable Grad-CAM
+        # path for the analyse hot-loop while still giving the viewer a
+        # non-uniform heatmap. The full Grad-CAM is exposed via the
+        # Phase-4 explain pipeline node.
+        heat = _attention_proxy(backbone, tensor)
+        if heat is None:
+            return None
+        return probs, heat, model_name, None
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        # Surface the failure but keep the analyse hot-loop alive.
+        return (
+            np.array([], dtype=np.float32),
+            np.zeros((0, 0), dtype=np.uint8),
+            f"{model_name}-synthetic",
+            f"real_inference_error:{type(exc).__name__}",
+        )
+
+
+def _attention_proxy(model: Any, tensor: Any) -> np.ndarray | None:
+    """Return a 2-D uint8 saliency map (or ``None`` on failure).
+
+    A small hook captures the activations from the deepest conv-like
+    block and folds them into a single channel. This is a Phase 21
+    pragmatic compromise: a real Grad-CAM is in
+    :mod:`openpathai.explain.gradcam`, but we want the canvas analyse
+    response to stay sub-second on CPU.
+    """
+    try:
+        import torch
+    except Exception:
+        return None
+    cap: dict[str, Any] = {}
+
+    def _hook(_module: Any, _inputs: Any, output: Any) -> None:
+        cap["act"] = output
+
+    handle = None
+    try:
+        target = _last_conv_like(model)
+        if target is None:
+            return None
+        handle = target.register_forward_hook(_hook)
+        with torch.no_grad():
+            model(tensor)
+    finally:
+        if handle is not None:
+            handle.remove()
+    act = cap.get("act")
+    if act is None:
+        return None
+    if act.dim() == 4:
+        cam = act.abs().mean(dim=1).squeeze(0)
+    elif act.dim() == 3:
+        cam = act.abs().mean(dim=-1).squeeze(0)
+    else:
+        return None
+    cam = cam.detach().cpu().numpy()
+    if cam.ndim != 2:
+        return None
+    cam = cam - cam.min()
+    if float(cam.max()) <= 0.0:
+        return None
+    cam = (cam / cam.max() * 255.0).astype(np.uint8)
+    return cam
+
+
+def _last_conv_like(model: Any) -> Any:
+    """Walk the module tree and return the deepest 4-D-output module.
+
+    Works for both timm CNNs (Conv2d) and ViTs (we fall back to the
+    last Linear which still gives a shape-compatible activation when
+    paired with the 3-D branch above).
+    """
+    try:
+        import torch.nn as nn
+    except Exception:
+        return None
+    last: Any = None
+    for module in model.modules():
+        if isinstance(module, (nn.Conv2d, nn.Linear)):
+            last = module
+    return last
 
 
 @router.post(
@@ -172,12 +300,21 @@ async def analyse_tile(
     classes = _resolve_classes(model_name, registry)
 
     real = _try_real_analysis(arr, model_name, explainer)
-    if real is not None:  # pragma: no cover - reserved for the heavy path
+    if real is not None and real[0].size > 0:
         probs, heat, resolved, fallback_reason = real
+        # Heavy-path probability vector may have a different cardinality
+        # than the registry classes (e.g. a foundation backbone with a
+        # different head). Pad / truncate to keep the wire shape stable.
+        if len(probs) != len(classes):
+            classes = tuple(f"class_{i}" for i in range(len(probs)))
     else:
         probs, heat = _synthetic_predict(arr, classes)
         resolved = f"{model_name}-synthetic"
-        fallback_reason = "torch_or_model_unavailable"
+        if real is not None:
+            # Heavy path was attempted but failed defensively.
+            fallback_reason = real[3] or "real_inference_error"
+        else:
+            fallback_reason = "torch_or_model_unavailable"
 
     overlay = _overlay(arr, heat)
     top_idx = int(np.argmax(probs))

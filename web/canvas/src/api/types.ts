@@ -220,4 +220,77 @@ export type TrainMetricsResponse = {
   metadata: Record<string, unknown>;
   error: string | null;
   result?: Record<string, unknown>;
+  epochs?: TrainEpochPoint[];
+  best?: { epoch: number; val_accuracy: number };
+  mode?: "synthetic" | "lightning";
 };
+
+export type TrainEpochPoint = {
+  epoch: number;
+  train_loss: number;
+  val_loss: number | null;
+  val_accuracy: number | null;
+  ece: number | null;
+};
+
+// ─── Phase 21 wire shapes ───────────────────────────────────────
+
+export type SlideSummary = {
+  slide_id: string;
+  filename: string;
+  size_bytes: number;
+  width: number;
+  height: number;
+  mpp: number | null;
+  level_count: number;
+  backend: string;
+  dzi_url: string;
+  tile_url_template: string;
+};
+
+export type HeatmapSummary = {
+  heatmap_id: string;
+  slide_id: string;
+  model_name: string;
+  resolved_model_name: string;
+  classes: string[];
+  fallback_reason: string | null;
+  width: number;
+  height: number;
+  dzi_url: string;
+  tile_url_template: string;
+};
+
+export type ComputeHeatmapRequest = {
+  slide_id: string;
+  model_name?: string;
+  classes?: string[];
+  tile_grid?: number;
+};
+
+export type RunAuditDetail = {
+  run_id: string;
+  audit: Record<string, unknown> | null;
+  runtime: Record<string, unknown> | null;
+  manifest: Record<string, unknown> | null;
+  cache_stats: Record<string, unknown> | null;
+  analyses: Record<string, unknown>[];
+  signature: Record<string, unknown> | null;
+};
+
+export type BrowserCorrection = {
+  tile_id: string;
+  predicted_label?: string;
+  corrected_label: string;
+  iteration?: number;
+};
+
+export type SubmitCorrectionsResult = {
+  id: string;
+  written: number;
+  annotator_id: string;
+  timestamp: string;
+};
+
+export type TierLevel = "Easy" | "Standard" | "Expert";
+export type RunMode = "exploratory" | "diagnostic";

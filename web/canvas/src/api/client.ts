@@ -8,10 +8,13 @@
 import type {
   ActiveLearningSession,
   AuditRunRow,
+  BrowserCorrection,
   CohortQCSummary,
   CohortSummary,
+  ComputeHeatmapRequest,
   DatasetCard,
   Health,
+  HeatmapSummary,
   ModelSummary,
   NodesResponse,
   Paged,
@@ -19,8 +22,11 @@ import type {
   PipelineEnvelope,
   PipelineValidation,
   RegisterFolderRequest,
+  RunAuditDetail,
   RunRecord,
   RunRequest,
+  SlideSummary,
+  SubmitCorrectionsResult,
   TilePrediction,
   TrainMetricsResponse,
   TrainSubmitRequest,
@@ -428,6 +434,142 @@ export class ApiClient {
       undefined,
       options
     );
+  }
+
+  // ─── Phase 21 — slides + heatmaps + audit-full + corrections ──────
+
+  async uploadSlide(
+    file: File | Blob,
+    options?: RequestOptions
+  ): Promise<SlideSummary> {
+    const form = new FormData();
+    form.append(
+      "file",
+      file,
+      file instanceof File ? file.name : "slide.tif"
+    );
+    const headers: Record<string, string> = { Accept: "application/json" };
+    if (this.token) {
+      headers["Authorization"] = `Bearer ${this.token}`;
+    }
+    const response = await fetch(this.buildUrl("/v1/slides"), {
+      method: "POST",
+      headers,
+      body: form,
+      signal: options?.signal,
+    });
+    const text = await response.text();
+    let payload: unknown = null;
+    if (text) {
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        payload = text;
+      }
+    }
+    if (!response.ok) {
+      const detail =
+        (payload &&
+          typeof payload === "object" &&
+          "detail" in (payload as Record<string, unknown>) &&
+          typeof (payload as Record<string, unknown>).detail === "string"
+          ? ((payload as Record<string, unknown>).detail as string)
+          : null) ?? "slide upload failed";
+      throw new ApiError(response.status, detail);
+    }
+    return payload as SlideSummary;
+  }
+
+  listSlides(options?: RequestOptions): Promise<Paged<SlideSummary>> {
+    return this.request("GET", "/v1/slides", undefined, options);
+  }
+
+  getSlide(slideId: string, options?: RequestOptions): Promise<SlideSummary> {
+    return this.request(
+      "GET",
+      `/v1/slides/${encodeURIComponent(slideId)}`,
+      undefined,
+      options
+    );
+  }
+
+  deleteSlide(slideId: string, options?: RequestOptions): Promise<void> {
+    return this.request(
+      "DELETE",
+      `/v1/slides/${encodeURIComponent(slideId)}`,
+      undefined,
+      options
+    );
+  }
+
+  /** Absolute URL the OpenSeadragon viewer uses as ``tileSources``. */
+  slideDziUrl(slideId: string): string {
+    return this.buildUrl(`/v1/slides/${encodeURIComponent(slideId)}.dzi`);
+  }
+
+  computeHeatmap(
+    body: ComputeHeatmapRequest,
+    options?: RequestOptions
+  ): Promise<HeatmapSummary> {
+    return this.request("POST", "/v1/heatmaps", body, options);
+  }
+
+  listHeatmaps(
+    query?: { slide_id?: string; limit?: number; offset?: number },
+    options?: RequestOptions
+  ): Promise<Paged<HeatmapSummary>> {
+    return this.request("GET", "/v1/heatmaps", undefined, {
+      ...options,
+      query: { ...query, ...(options?.query ?? {}) },
+    });
+  }
+
+  deleteHeatmap(heatmapId: string, options?: RequestOptions): Promise<void> {
+    return this.request(
+      "DELETE",
+      `/v1/heatmaps/${encodeURIComponent(heatmapId)}`,
+      undefined,
+      options
+    );
+  }
+
+  heatmapDziUrl(heatmapId: string): string {
+    return this.buildUrl(
+      `/v1/heatmaps/${encodeURIComponent(heatmapId)}.dzi`
+    );
+  }
+
+  getFullAudit(
+    runId: string,
+    options?: RequestOptions
+  ): Promise<RunAuditDetail> {
+    return this.request(
+      "GET",
+      `/v1/audit/runs/${encodeURIComponent(runId)}/full`,
+      undefined,
+      options
+    );
+  }
+
+  submitBrowserCorrections(
+    sessionId: string,
+    body: { annotator_id?: string; corrections: BrowserCorrection[] },
+    options?: RequestOptions
+  ): Promise<SubmitCorrectionsResult> {
+    return this.request(
+      "POST",
+      `/v1/active-learning/sessions/${encodeURIComponent(sessionId)}/corrections`,
+      body,
+      options
+    );
+  }
+
+  cohortQcHtmlUrl(cohortId: string): string {
+    return this.buildUrl(`/v1/cohorts/${encodeURIComponent(cohortId)}/qc.html`);
+  }
+
+  cohortQcPdfUrl(cohortId: string): string {
+    return this.buildUrl(`/v1/cohorts/${encodeURIComponent(cohortId)}/qc.pdf`);
   }
 }
 

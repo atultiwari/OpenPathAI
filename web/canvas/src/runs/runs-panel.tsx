@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../api/auth-context";
+import { RunAuditModal } from "../components/run-audit-modal";
 import type { RunRecord } from "../api/types";
 import { safeMessage, shortHash } from "../lib/safe-string";
 import { ManifestView } from "./manifest-view";
@@ -12,6 +13,7 @@ export function RunsPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [openRunId, setOpenRunId] = useState<string | null>(null);
+  const [auditRunId, setAuditRunId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -73,7 +75,7 @@ export function RunsPanel() {
                 <td>{String(run.metadata.mode ?? "")}</td>
                 <td>{run.submitted_at}</td>
                 <td>{duration(run.started_at, run.ended_at)}</td>
-                <td>
+                <td style={{ display: "flex", gap: 4 }}>
                   {run.status === "success" ? (
                     <button onClick={() => setOpenRunId(run.run_id)}>
                       Manifest
@@ -91,6 +93,9 @@ export function RunsPanel() {
                       Cancel
                     </button>
                   ) : null}
+                  <button onClick={() => setAuditRunId(run.run_id)}>
+                    View audit
+                  </button>
                 </td>
               </tr>
             ))}
@@ -101,6 +106,13 @@ export function RunsPanel() {
         <ManifestView
           runId={openRunId}
           onClose={() => setOpenRunId(null)}
+        />
+      ) : null}
+      {auditRunId ? (
+        <RunAuditModal
+          api={client}
+          runId={auditRunId}
+          onClose={() => setAuditRunId(null)}
         />
       ) : null}
     </div>

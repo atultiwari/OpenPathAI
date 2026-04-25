@@ -169,7 +169,12 @@ export function AnnotateScreen() {
         </div>
       </div>
 
-      {latest ? <SessionCard session={latest} /> : null}
+      {latest ? (
+        <>
+          <SessionCard session={latest} />
+          <BrowserOraclePanel sessionId={latest.id} />
+        </>
+      ) : null}
 
       <div className="card">
         <h3>Past sessions ({sessions.length})</h3>
@@ -203,6 +208,89 @@ export function AnnotateScreen() {
         )}
       </div>
     </section>
+  );
+}
+
+/**
+ * Phase 21 refinement #5 — browser-oracle corrections panel.
+ *
+ * Lets the pathologist append per-tile labels that get persisted
+ * through the same Phase-12 ``CorrectionLogger`` the synthetic loop
+ * uses. The "real" UX of clicking tiles in the OpenSeadragon viewer is
+ * built up here so the same backend endpoint serves both the synthetic
+ * demo and a real labeling round.
+ */
+function BrowserOraclePanel({ sessionId }: { sessionId: string }) {
+  const { client } = useAuth();
+  const [tileId, setTileId] = useState("tile-0001");
+  const [predicted, setPredicted] = useState("benign");
+  const [corrected, setCorrected] = useState("malignant");
+  const [busy, setBusy] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+
+  async function submit() {
+    setBusy(true);
+    setFeedback(null);
+    try {
+      const res = await client.submitBrowserCorrections(sessionId, {
+        annotator_id: "canvas-user",
+        corrections: [
+          {
+            tile_id: tileId,
+            predicted_label: predicted,
+            corrected_label: corrected,
+            iteration: 0,
+          },
+        ],
+      });
+      setFeedback(`logged ${res.written} correction(s) at ${res.timestamp}`);
+    } catch (err) {
+      setFeedback(safeMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="card">
+      <h3>Submit a label correction</h3>
+      <p className="lede">
+        Browser-oracle hook (refinement #5). The Phase-12 corrections
+        logger appends each row to the session&rsquo;s on-disk CSV.
+      </p>
+      <div className="form-grid">
+        <div className="field">
+          <label htmlFor="bo_tile">Tile id</label>
+          <input
+            id="bo_tile"
+            value={tileId}
+            onChange={(e) => setTileId(e.target.value)}
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="bo_pred">Model said</label>
+          <input
+            id="bo_pred"
+            value={predicted}
+            onChange={(e) => setPredicted(e.target.value)}
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="bo_corr">You say</label>
+          <input
+            id="bo_corr"
+            value={corrected}
+            onChange={(e) => setCorrected(e.target.value)}
+          />
+        </div>
+      </div>
+      <div className="toolbar" style={{ marginTop: 12 }}>
+        <button onClick={submit} disabled={busy}>
+          {busy ? "Submitting…" : "Submit correction"}
+        </button>
+        {feedback ? <span className="lede">{feedback}</span> : null}
+      </div>
+    </div>
   );
 }
 

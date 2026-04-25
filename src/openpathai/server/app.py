@@ -131,12 +131,14 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         cohorts,
         datasets,
         health,
+        heatmaps,
         manifest,
         models,
         nl,
         nodes,
         pipelines,
         runs,
+        slides,
         train,
     )
 
@@ -156,6 +158,9 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     app.include_router(train.router, prefix="/v1")
     app.include_router(cohorts.router, prefix="/v1")
     app.include_router(active_learning.router, prefix="/v1")
+    # Phase 21 — slide viewer + heatmap overlays.
+    app.include_router(slides.router, prefix="/v1")
+    app.include_router(heatmaps.router, prefix="/v1")
 
     # Phase 20 — when --canvas-dir is set we serve the built React canvas
     # at ``/`` so the API + canvas live on a single port.

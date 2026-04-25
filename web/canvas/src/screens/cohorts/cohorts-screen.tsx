@@ -195,6 +195,28 @@ export function CohortsScreen() {
               <div className="value">{qc.slide_count}</div>
             </div>
           </div>
+          <div className="toolbar" style={{ marginTop: 12, gap: 8 }}>
+            <a
+              className="nav-item"
+              href={client.cohortQcHtmlUrl(qc.id)}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Download HTML report
+            </a>
+            <a
+              className="nav-item"
+              href={client.cohortQcPdfUrl(qc.id)}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Download PDF report
+            </a>
+          </div>
+          <p className="lede" style={{ marginTop: 8, fontSize: ".7rem" }}>
+            HTML works without extras; the PDF requires the
+            <code> [safety]</code> server extra (ReportLab).
+          </p>
         </div>
       ) : null}
     </section>

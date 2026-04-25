@@ -9,6 +9,110 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Phase 21 (v2.0 line) — OpenSeadragon viewer + tier badges + 5 refinement seams (2026-04-25)
+
+The slide-aware closer for v2.0. Phase 20 + 20.5 made the canvas
+doctor-usable for tile-shaped work; Phase 21 brings whole-slide
+viewing in via OpenSeadragon with a heatmap-overlay layer, adds a
+single-click run-audit modal, ships shared tier + mode badges, and
+folds in the five refinement seams the user flagged for "later" so
+the v2.0 line closes with no maintained TODOs in the canvas.
+
+Added — backend
+- `src/openpathai/server/dzi.py` — pure-Python DZI generator built on
+  top of `openpathai.io.wsi.open_slide`. Lazy + content-addressable;
+  pyramids cache under `$OPENPATHAI_HOME/dzi/` and are static-served
+  on subsequent reads.
+- `POST /v1/slides` — multipart slide upload (sha256-keyed). Plus
+  `GET /v1/slides` (paged), `GET /v1/slides/{id}`,
+  `DELETE /v1/slides/{id}`,
+  `GET /v1/slides/{id}.dzi`,
+  `GET /v1/slides/{id}_files/{level}/{col}_{row}.png` (canonical
+  OpenSeadragon URL pattern).
+- `POST /v1/heatmaps` — compute a per-class heatmap and serve it as
+  its own DZI pyramid for an OpenSeadragon overlay layer. Plus
+  `GET /v1/heatmaps`, `GET /v1/heatmaps/{id}`,
+  `DELETE /v1/heatmaps/{id}`, `GET /v1/heatmaps/{id}.dzi`,
+  `GET /v1/heatmaps/{id}_files/...`.
+- `GET /v1/audit/runs/{run_id}/full` — single envelope joining
+  audit-DB row + JobRunner runtime record + Phase-17 manifest +
+  signature info + per-run analyses.
+- `POST /v1/active-learning/sessions/{id}/corrections` — browser
+  oracle that persists user-clicked labels through the existing
+  Phase-12 `CorrectionLogger`.
+- `GET /v1/cohorts/{id}/qc.html` and `GET /v1/cohorts/{id}/qc.pdf`
+  — self-contained QC reports (HTML always; PDF needs `[safety]`).
+
+Refinement seams folded in
+- **#1 real Lightning launch** — `routes/train.py` now runs a
+  Lightning fit against an in-memory synthetic batch when
+  `synthetic=false` and the model resolves through the registry.
+  `synthetic=true` (canvas default) still uses the deterministic
+  curve so the dashboard renders without `[train]` extras.
+- **#2 real foundation-model analyse** —
+  `routes/analyse.py::_try_real_analysis` is no longer a stub; when
+  torch + a registered card are available it runs a forward pass and
+  emits a per-channel saliency proxy. Iron rule #11 holds — every
+  fall-back surfaces `fallback_reason` on the wire.
+- **#3 route-level code splitting** — Pipelines (React Flow) and the
+  new Slides screen load via `React.lazy`. Initial JS chunk drops to
+  ~60 KB gzip (was ~119 KB monolithic in Phase 20.5).
+- **#4 cohort QC HTML/PDF download** — exposed as endpoints + two
+  download buttons on the canvas Cohorts panel.
+- **#5 real Annotate labeling hook** — Annotate screen gains a
+  Submit-correction panel that round-trips to the new corrections
+  endpoint.
+
+Added — frontend (`web/canvas/`)
+- `openseadragon` dependency (`^4.1.1`) + `@types/openseadragon`.
+- `src/screens/slides/`:
+  - `slides-screen.tsx` — upload + library + viewer split.
+  - `slide-viewer.tsx` — OpenSeadragon adapter with optional heatmap
+    overlay + opacity slider; OpenSeadragon imported via dynamic
+    `import()` so it lives in its own chunk.
+  - `heatmap-controls.tsx` — model picker + class entry + "Compute
+    heatmap" + per-layer selector.
+- `src/components/tier-badges.tsx` — shared `TierBadge`, `ModeBadge`,
+  `BadgeStrip`.
+- `src/components/run-audit-modal.tsx` — modal that loads
+  `/v1/audit/runs/{id}/full` and renders each section.
+- Runs panel: per-row "View audit" button.
+- Cohorts panel: "Download HTML report" + "Download PDF report"
+  buttons next to the QC summary tile.
+- Annotate panel: `BrowserOraclePanel` for refinement #5.
+- App shell: new "Slides" tab in the Doctor sidebar group; lazy
+  imports of Pipelines + Slides behind `Suspense`.
+- Typed client methods: `uploadSlide`, `listSlides`, `getSlide`,
+  `deleteSlide`, `slideDziUrl`, `computeHeatmap`, `listHeatmaps`,
+  `deleteHeatmap`, `heatmapDziUrl`, `getFullAudit`,
+  `submitBrowserCorrections`, `cohortQcHtmlUrl`, `cohortQcPdfUrl`.
+
+Tests
+- `tests/unit/server/test_slides.py` — upload + list + DZI + delete +
+  invalid id (6 cases).
+- `tests/unit/server/test_heatmaps.py` — compute + DZI + list +
+  delete + 404 (5 cases).
+- `tests/unit/server/test_audit_full.py` — runtime resolution + 404
+  (2 cases).
+- `tests/unit/server/test_train_real.py` — synthetic curve + opt-in
+  real-Lightning case (2 cases).
+- `tests/unit/server/test_cohort_reports.py` — HTML self-contained +
+  PDF magic-bytes + summary URLs + 404 (4 cases).
+- `tests/unit/server/test_phase21_routes.py` — OpenAPI smoke +
+  browser-oracle round-trip + 404 (3 cases).
+- Vitest: `src/test/phase21.test.tsx` — slides + heatmap clients +
+  URL builders + corrections payload + tier/mode badges + run-audit
+  modal shell (8 cases).
+
+Verification
+- 998 Python tests green (was 956).
+- 22 Vitest cases green (canonical `.ts` set after pruning the
+  previously-emitted stale `.js` duplicates).
+- `ruff check`, `pyright src/openpathai/server`, `tsc --noEmit`,
+  `eslint .`, `vite build` all clean.
+- Bundle split: initial chunk 60 KB gzip, lazy chunks pipelines
+  61 KB / openseadragon 60 KB / slides 3 KB.
+
 ### Phase 20.5 (v2.0 line) — Canvas task surfaces (2026-04-25)
 
 User feedback after Phase 20 was that the canvas shipped a generic

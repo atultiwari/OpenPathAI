@@ -26,7 +26,27 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from openpathai.server.auth import AuthDependency
 
-__all__ = ["StartSessionRequest", "router"]
+__all__ = ["BrowserCorrection", "StartSessionRequest", "SubmitCorrectionsRequest", "router"]
+
+
+class BrowserCorrection(BaseModel):
+    """One label correction submitted from the canvas Annotate tile grid."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    tile_id: str = Field(min_length=1)
+    predicted_label: str = Field(default="", min_length=0)
+    corrected_label: str = Field(min_length=1)
+    iteration: int = Field(default=0, ge=0)
+
+
+class SubmitCorrectionsRequest(BaseModel):
+    """Browser-oracle payload (refinement #5)."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    annotator_id: str = Field(default="canvas-user", min_length=1)
+    corrections: tuple[BrowserCorrection, ...] = Field(min_length=1)
 
 
 router = APIRouter(
@@ -176,3 +196,49 @@ async def create_session(request: Request, body: StartSessionRequest) -> dict[st
             detail=str(exc),
         ) from exc
     return {"id": session_id, "manifest": run.model_dump(mode="json")}
+
+
+@router.post(
+    "/sessions/{session_id}/corrections",
+    summary="Append browser-sourced label corrections to a session",
+)
+async def submit_corrections(
+    request: Request, session_id: str, body: SubmitCorrectionsRequest
+) -> dict[str, Any]:
+    """Refinement #5 — accept user-clicked labels from the canvas
+    Annotate tile grid and persist them through the same Phase-12
+    :class:`CorrectionLogger` the synthetic loop uses. The Annotate
+    screen calls this endpoint after the user labels a batch of tiles
+    in the OpenSeadragon viewer.
+    """
+    from datetime import UTC, datetime
+
+    from openpathai.active_learning.corrections import CorrectionLogger
+    from openpathai.active_learning.oracle import LabelCorrection
+
+    session_dir = _session_dir(request, session_id)
+    if not session_dir.is_dir():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"session {session_id!r} not found",
+        )
+    logger = CorrectionLogger(session_dir / "corrections.csv")
+    now = datetime.now(UTC).replace(microsecond=0).isoformat()
+    rows = [
+        LabelCorrection(
+            tile_id=c.tile_id,
+            predicted_label=c.predicted_label or "unknown",
+            corrected_label=c.corrected_label,
+            annotator_id=body.annotator_id,
+            iteration=c.iteration,
+            timestamp=now,
+        )
+        for c in body.corrections
+    ]
+    written = logger.log(rows)
+    return {
+        "id": session_id,
+        "written": int(written),
+        "annotator_id": body.annotator_id,
+        "timestamp": now,
+    }
