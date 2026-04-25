@@ -63,7 +63,9 @@ def _runner(request: Request) -> JobRunner:
     return runner
 
 
-def _synthetic_train(req: TrainRequest, *, sleep: Callable[[float], None] = time.sleep) -> dict[str, Any]:
+def _synthetic_train(
+    req: TrainRequest, *, sleep: Callable[[float], None] = time.sleep
+) -> dict[str, Any]:
     """Deterministic synthetic loop. Emits real loss / val_accuracy /
     ECE points so the Train dashboard has something to render even
     without ``[train]``.
@@ -123,9 +125,7 @@ def _real_train(req: TrainRequest) -> dict[str, Any]:
         from openpathai.training.datasets import InMemoryTileBatch
         from openpathai.training.engine import LightningTrainer
     except Exception as exc:
-        raise RuntimeError(
-            "training extras not installed; run `uv sync --extra train`."
-        ) from exc
+        raise RuntimeError("training extras not installed; run `uv sync --extra train`.") from exc
 
     try:
         registry = default_model_registry()
@@ -143,9 +143,7 @@ def _real_train(req: TrainRequest) -> dict[str, Any]:
     labels = rng.integers(0, 2, size=(n,)).astype("int64")
     class_names = ("class_0", "class_1")
     train_batch = InMemoryTileBatch(pixels=pixels, labels=labels, class_names=class_names)
-    val_batch = InMemoryTileBatch(
-        pixels=pixels[:8], labels=labels[:8], class_names=class_names
-    )
+    val_batch = InMemoryTileBatch(pixels=pixels[:8], labels=labels[:8], class_names=class_names)
 
     from openpathai.training.config import OptimizerConfig
 
@@ -172,7 +170,7 @@ def _real_train(req: TrainRequest) -> dict[str, Any]:
     ]
     best = max(
         epochs,
-        key=lambda e: (e["val_accuracy"] if e["val_accuracy"] is not None else -1.0),
+        key=lambda e: e["val_accuracy"] if e["val_accuracy"] is not None else -1.0,
         default={"epoch": 0, "val_accuracy": 0.0},
     )
     return {

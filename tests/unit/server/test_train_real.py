@@ -17,9 +17,7 @@ def _wait_for_success(
     deadline = time.monotonic() + timeout
     last: dict[str, object] = {}
     while time.monotonic() < deadline:
-        response = client.get(
-            f"/v1/train/runs/{run_id}/metrics", headers=headers
-        )
+        response = client.get(f"/v1/train/runs/{run_id}/metrics", headers=headers)
         assert response.status_code == 200
         last = response.json()
         if last.get("status") == "success":

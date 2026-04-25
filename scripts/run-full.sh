@@ -136,6 +136,16 @@ info "Project:        $PROJECT_DIR"
 info "OPENPATHAI_HOME: $OPENPATHAI_HOME"
 info "Log directory:   $LOG_DIR"
 
+# Belt-and-braces format check — CI's ``ruff format --check`` step has
+# blocked Phase 21 once already. Surfacing it here means the user sees
+# the same failure locally before the push.
+if [[ "${OPA_SKIP_FORMAT_CHECK:-0}" != "1" ]] && uv run ruff --version >/dev/null 2>&1; then
+  if ! uv run ruff format --check src tests >/dev/null 2>&1; then
+    warn "ruff format would reformat files in src/ or tests/."
+    info "Run 'uv run ruff format src tests' to fix, or set OPA_SKIP_FORMAT_CHECK=1 to silence."
+  fi
+fi
+
 # ---------------------------------------------------------------------------
 # Step 1 — install extras
 # ---------------------------------------------------------------------------

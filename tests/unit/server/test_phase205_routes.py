@@ -69,9 +69,7 @@ def test_register_folder_creates_card(
         "tissue": ["colon"],
         "overwrite": True,
     }
-    response = client.post(
-        "/v1/datasets/register", headers=auth_headers, json=payload
-    )
+    response = client.post("/v1/datasets/register", headers=auth_headers, json=payload)
     assert response.status_code == 201
     body = response.json()
     assert body["name"] == "phase205_demo_dataset"

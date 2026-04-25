@@ -146,9 +146,7 @@ async def upload_slide(
 ) -> SlideSummary:
     raw = await file.read()
     if not raw:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="empty upload"
-        )
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="empty upload")
     name = filename or (file.filename or "slide.tif")
     safe_name = Path(name).name  # strip any client-supplied directory parts.
     root = _slides_root(request)
@@ -243,9 +241,7 @@ async def get_dzi_descriptor(request: Request, slide_id: str) -> Response:
     summary="DZI tile bytes",
     responses={200: {"content": {"image/png": {}}}},
 )
-async def get_dzi_tile(
-    request: Request, slide_id: str, tile_path: str
-) -> Response:
+async def get_dzi_tile(request: Request, slide_id: str, tile_path: str) -> Response:
     sid = _safe(slide_id)
     match = _TILE_PATH.match(tile_path)
     if not match:
@@ -267,9 +263,7 @@ async def get_dzi_tile(
             int(match.group("row")),
         )
     except FileNotFoundError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     return Response(content=body, media_type="image/png")
 
 

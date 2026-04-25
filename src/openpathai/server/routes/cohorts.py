@@ -226,18 +226,13 @@ def _render_html(cohort_id: str, report: Any) -> str:
         f"<div class='kpi'><span class='n'>{summary['pass']}</span> pass</div>"
         f"<div class='kpi'><span class='n'>{summary['warn']}</span> warn</div>"
         f"<div class='kpi'><span class='n'>{summary['fail']}</span> fail</div>"
-        "</div>"
-        + "".join(rows)
-        + "</body></html>"
+        "</div>" + "".join(rows) + "</body></html>"
     )
 
 
 def _escape(value: str) -> str:
     return (
-        value.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace('"', "&quot;")
+        value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
     )
 
 
@@ -315,8 +310,7 @@ def _render_pdf(cohort_id: str, report: Any) -> bytes:
     story = [
         Paragraph(f"QC report — {cohort_id}", styles["Title"]),
         Paragraph(
-            f"Generated {report.generated_at_utc} · "
-            f"{len(report.slide_findings)} slide(s)",
+            f"Generated {report.generated_at_utc} · {len(report.slide_findings)} slide(s)",
             styles["Normal"],
         ),
         Spacer(1, 12),

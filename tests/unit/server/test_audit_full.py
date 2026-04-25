@@ -9,9 +9,7 @@ pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 
 
-def test_audit_full_404_for_unknown(
-    client: TestClient, auth_headers: dict[str, str]
-) -> None:
+def test_audit_full_404_for_unknown(client: TestClient, auth_headers: dict[str, str]) -> None:
     response = client.get("/v1/audit/runs/missing-run/full", headers=auth_headers)
     assert response.status_code == 404
 

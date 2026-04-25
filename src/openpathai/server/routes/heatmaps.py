@@ -153,9 +153,7 @@ def _heatmap_array(
     # mutable `random.seed()` and keep tests reproducible.
     palette = _class_palette(len(body.classes))
     rgb = np.zeros((cells_h, cells_w, 3), dtype=np.uint8)
-    seed_bytes = hashlib.sha256(
-        f"{body.slide_id}:{body.model_name}".encode()
-    ).digest()
+    seed_bytes = hashlib.sha256(f"{body.slide_id}:{body.model_name}".encode()).digest()
     rng = np.random.default_rng(int.from_bytes(seed_bytes[:8], "big"))
     raw_logits = rng.standard_normal((cells_h, cells_w, len(body.classes)))
     probs = np.exp(raw_logits - raw_logits.max(axis=-1, keepdims=True))
@@ -165,9 +163,7 @@ def _heatmap_array(
     rgb[..., :] = palette[top_class]
     intensity = (top_conf * 255).clip(0, 255).astype(np.uint8)
     rgb = np.where(intensity[..., None] > 0, rgb, 0)
-    rgb = (rgb.astype(np.float32) * (intensity[..., None] / 255.0)).clip(0, 255).astype(
-        np.uint8
-    )
+    rgb = (rgb.astype(np.float32) * (intensity[..., None] / 255.0)).clip(0, 255).astype(np.uint8)
     return rgb, resolved, fallback
 
 
@@ -224,15 +220,12 @@ def _class_palette(n: int) -> np.ndarray:
     summary="Compute a heatmap for a slide",
     response_model=HeatmapSummary,
 )
-async def compute_heatmap(
-    request: Request, body: ComputeHeatmapRequest
-) -> HeatmapSummary:
+async def compute_heatmap(request: Request, body: ComputeHeatmapRequest) -> HeatmapSummary:
     slide_meta = _slide_meta(request, body.slide_id)
     rgb, resolved, fallback = _heatmap_array(request, body, slide_meta)
     height, width = rgb.shape[:2]
     digest = hashlib.sha256(
-        f"{body.slide_id}|{body.model_name}|{','.join(body.classes)}".encode()
-        + rgb.tobytes()[:512]
+        f"{body.slide_id}|{body.model_name}|{','.join(body.classes)}".encode() + rgb.tobytes()[:512]
     ).hexdigest()[:24]
     heatmap_id = f"hm_{digest}"
     meta = {
@@ -248,9 +241,7 @@ async def compute_heatmap(
     }
     root = _heatmaps_root(request)
     (root / heatmap_id).mkdir(parents=True, exist_ok=True)
-    _meta_path(root, heatmap_id).write_text(
-        json.dumps(meta, indent=2), encoding="utf-8"
-    )
+    _meta_path(root, heatmap_id).write_text(json.dumps(meta, indent=2), encoding="utf-8")
     # Materialise pyramid eagerly so the viewer's first DZI request is
     # cheap. This is small (cells_h x cells_w <= 64**2) so the cost is a
     # few milliseconds.
@@ -272,9 +263,7 @@ async def compute_heatmap(
         width=int(width),
         height=int(height),
         dzi_url=f"/v1/heatmaps/{heatmap_id}.dzi",
-        tile_url_template=(
-            f"/v1/heatmaps/{heatmap_id}_files/{{level}}/{{col}}_{{row}}.png"
-        ),
+        tile_url_template=(f"/v1/heatmaps/{heatmap_id}_files/{{level}}/{{col}}_{{row}}.png"),
     )
 
 
@@ -330,9 +319,7 @@ async def get_dzi_descriptor(request: Request, heatmap_id: str) -> Response:
     summary="DZI tile bytes",
     responses={200: {"content": {"image/png": {}}}},
 )
-async def get_dzi_tile(
-    request: Request, heatmap_id: str, tile_path: str
-) -> Response:
+async def get_dzi_tile(request: Request, heatmap_id: str, tile_path: str) -> Response:
     hid = _safe(heatmap_id)
     match = _TILE_PATH.match(tile_path)
     if not match:
@@ -355,9 +342,7 @@ async def get_dzi_tile(
             int(match.group("row")),
         )
     except FileNotFoundError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     return Response(content=body, media_type="image/png")
 
 
@@ -407,9 +392,7 @@ async def delete_heatmap(request: Request, heatmap_id: str) -> None:
         shutil.rmtree(pyramid_dir, ignore_errors=True)
 
 
-def _pyramid_for(
-    request: Request, heatmap_id: str, meta: dict[str, Any]
-) -> DziPyramid:
+def _pyramid_for(request: Request, heatmap_id: str, meta: dict[str, Any]) -> DziPyramid:
     """Reconstruct the in-memory pyramid backing for a heatmap.
 
     The heatmap RGB bytes live alongside the meta as a tiny PNG; we

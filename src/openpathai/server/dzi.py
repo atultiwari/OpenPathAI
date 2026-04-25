@@ -111,9 +111,7 @@ def compute_levels(width: int, height: int) -> int:
     return math.ceil(math.log2(largest)) + 1
 
 
-def tile_path(
-    root: Path, slide_id: str, level: int, col: int, row: int, ext: str = "png"
-) -> Path:
+def tile_path(root: Path, slide_id: str, level: int, col: int, row: int, ext: str = "png") -> Path:
     """Canonical DZI tile path under ``root/<slide_id>_files/<level>/<col>_<row>.<ext>``."""
     return root / f"{slide_id}_files" / str(level) / f"{col}_{row}.{ext}"
 
@@ -246,9 +244,7 @@ class DziPyramid:
         base, width, height = self._open_base()
         levels = compute_levels(width, height)
         if level < 0 or level >= levels:
-            raise FileNotFoundError(
-                f"DZI level {level} out of range (have {levels} levels)"
-            )
+            raise FileNotFoundError(f"DZI level {level} out of range (have {levels} levels)")
         # DZI level i has size ceil(orig / 2 ** (max_level - i)).
         scale = 2 ** (levels - 1 - level)
         lvl_w = max(1, math.ceil(width / scale))

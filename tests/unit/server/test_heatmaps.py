@@ -30,9 +30,7 @@ def _upload(client: TestClient, headers: dict[str, str]) -> str:
     return response.json()["slide_id"]
 
 
-def test_compute_heatmap_returns_summary(
-    client: TestClient, auth_headers: dict[str, str]
-) -> None:
+def test_compute_heatmap_returns_summary(client: TestClient, auth_headers: dict[str, str]) -> None:
     sid = _upload(client, auth_headers)
     response = client.post(
         "/v1/heatmaps",
@@ -54,9 +52,7 @@ def test_compute_heatmap_returns_summary(
     assert body["dzi_url"].endswith(".dzi")
 
 
-def test_heatmap_dzi_descriptor_and_tile(
-    client: TestClient, auth_headers: dict[str, str]
-) -> None:
+def test_heatmap_dzi_descriptor_and_tile(client: TestClient, auth_headers: dict[str, str]) -> None:
     sid = _upload(client, auth_headers)
     create = client.post(
         "/v1/heatmaps",
@@ -73,9 +69,7 @@ def test_heatmap_dzi_descriptor_and_tile(
     assert descriptor.status_code == 200
     assert b"Image" in descriptor.content
     # Top-of-pyramid level for any image is 0; this tile must exist.
-    tile = client.get(
-        f"/v1/heatmaps/{hid}_files/0/0_0.png", headers=auth_headers
-    )
+    tile = client.get(f"/v1/heatmaps/{hid}_files/0/0_0.png", headers=auth_headers)
     assert tile.status_code == 200
     assert tile.headers["content-type"] == "image/png"
 
@@ -91,9 +85,7 @@ def test_compute_heatmap_404_when_slide_missing(
     assert response.status_code == 404
 
 
-def test_list_then_delete_heatmap(
-    client: TestClient, auth_headers: dict[str, str]
-) -> None:
+def test_list_then_delete_heatmap(client: TestClient, auth_headers: dict[str, str]) -> None:
     sid = _upload(client, auth_headers)
     create = client.post(
         "/v1/heatmaps",

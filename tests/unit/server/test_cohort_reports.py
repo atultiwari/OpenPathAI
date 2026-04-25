@@ -64,8 +64,6 @@ def test_qc_pdf_when_safety_extra_present(
     assert response.content.startswith(b"%PDF")
 
 
-def test_qc_html_404_for_missing_cohort(
-    client: TestClient, auth_headers: dict[str, str]
-) -> None:
+def test_qc_html_404_for_missing_cohort(client: TestClient, auth_headers: dict[str, str]) -> None:
     response = client.get("/v1/cohorts/missing/qc.html", headers=auth_headers)
     assert response.status_code == 404
