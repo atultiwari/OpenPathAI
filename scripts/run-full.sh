@@ -30,12 +30,15 @@
 #   canvas  — FastAPI + Phase-20/20.5/21 React canvas mounted at /
 #
 # Environment overrides:
-#   OPA_API_PORT        (default: 7870)
-#   OPA_GUI_PORT        (default: 7860)
-#   OPA_MLFLOW_PORT     (default: 5001 — macOS AirPlay Receiver grabs 5000)
-#   OPA_API_TOKEN       (default: auto-generated + printed)
-#   OPA_SKIP_SYNC=1     skip the uv sync step (reuse your .venv as-is)
-#   OPA_HOME            override OPENPATHAI_HOME (default: ~/.openpathai)
+#   OPA_API_PORT          (default: 7870)
+#   OPA_GUI_PORT          (default: 7860)
+#   OPA_MLFLOW_PORT       (default: 5001 — macOS AirPlay Receiver grabs 5000)
+#   OPA_API_TOKEN         (default: auto-generated + printed)
+#   OPA_SKIP_SYNC=1       skip the uv sync step (reuse your .venv as-is)
+#   OPA_HOME              override OPENPATHAI_HOME (default: ~/.openpathai)
+#   OPA_REBUILD_CANVAS=1  force a fresh `npm install && npm run build` even
+#                         if web/canvas/dist already exists (use after a
+#                         git pull that touched web/canvas/)
 #
 # Ctrl-C shuts every child down cleanly. All logs go to ./logs/.
 # ---------------------------------------------------------------------------
@@ -219,6 +222,10 @@ if [[ "$MODE" == "all" || "$MODE" == "api" || "$MODE" == "canvas" ]]; then
   CANVAS_FLAG=""
   if [[ "$MODE" == "canvas" || "$MODE" == "all" ]]; then
     CANVAS_DIR="$PROJECT_DIR/web/canvas/dist"
+    if [[ "${OPA_REBUILD_CANVAS:-0}" == "1" && -d "$CANVAS_DIR" ]]; then
+      info "OPA_REBUILD_CANVAS=1 — wiping $CANVAS_DIR before rebuild."
+      rm -rf "$CANVAS_DIR"
+    fi
     if [[ ! -d "$CANVAS_DIR" ]]; then
       say "Building React canvas (Phase 20 / 20.5 / 21)"
       if command -v npm >/dev/null 2>&1; then
@@ -231,7 +238,7 @@ if [[ "$MODE" == "all" || "$MODE" == "api" || "$MODE" == "canvas" ]]; then
         warn "npm not installed — install Node.js 20+ first to build the canvas."
       fi
     else
-      info "Canvas already built at $CANVAS_DIR (delete it to rebuild)."
+      info "Canvas already built at $CANVAS_DIR (set OPA_REBUILD_CANVAS=1 to force rebuild)."
     fi
     if [[ -d "$CANVAS_DIR" ]]; then
       CANVAS_FLAG="--canvas-dir $CANVAS_DIR"
