@@ -54,6 +54,19 @@ class ClassifyRequest(BaseModel):
     prompts: tuple[str, ...] = Field(min_length=1)
 
 
+class ClassifyNamedRequest(BaseModel):
+    """Phase-20.5 helper — friendlier name for the canvas Analyse
+    screen's zero-shot toggle. Wraps :class:`ClassifyRequest` so the
+    caller passes a list of class names rather than CONCH-style
+    prompts."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    image_b64: str = Field(min_length=8)
+    classes: tuple[str, ...] = Field(min_length=2, max_length=16)
+    prompt_template: str = Field(default="a histopathology image of {label}")
+
+
 class SegmentRequest(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -126,6 +139,24 @@ async def classify(body: ClassifyRequest) -> dict[str, Any]:
     image = _decode_image(body.image_b64)
     result = classify_zero_shot(image, list(body.prompts))
     return result.model_dump(mode="json")
+
+
+@router.post(
+    "/classify-named",
+    summary="Zero-shot classification with friendly class names",
+)
+async def classify_named(body: ClassifyNamedRequest) -> dict[str, Any]:
+    """Phase-20.5 — reshape the CONCH zero-shot call around a list of
+    class names so the Analyse screen can hand the user's pasted
+    classes straight through."""
+    from openpathai.nl.zero_shot import classify_zero_shot
+
+    image = _decode_image(body.image_b64)
+    prompts = [body.prompt_template.format(label=cls) for cls in body.classes]
+    result = classify_zero_shot(image, prompts)
+    payload = result.model_dump(mode="json")
+    payload["classes"] = list(body.classes)
+    return payload
 
 
 @router.post("/segment", summary="MedSAM2 text-prompted segmentation")

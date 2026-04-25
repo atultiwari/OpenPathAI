@@ -9,6 +9,85 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Phase 20.5 (v2.0 line) — Canvas task surfaces (2026-04-25)
+
+User feedback after Phase 20 was that the canvas shipped a generic
+node-graph editor only — none of the master-plan §13 pathologist
+surfaces (Analyse, Train, Datasets/import, Cohorts, Annotate, Models
+with gated helpers, Settings) existed in the UI. Phase 20.5 closes
+that gap on top of the already-shipped library + Phase-19 API.
+
+Added — backend
+- Six new ``/v1`` routers wired into the FastAPI app:
+  - ``POST /v1/analyse/tile`` — multipart upload of one tile + model
+    id; returns predictions + a base64-encoded heatmap (synthetic
+    fallback when ``[train]`` is absent so the canvas demo path
+    works without torch).
+  - ``POST /v1/analyse/report`` — render the last analysis as a PDF
+    via Phase-7 ``safety/report.py``.
+  - ``POST /v1/datasets/register`` — wraps
+    ``data.local.register_folder`` so a folder of class-named
+    subdirectories becomes a tile dataset card.
+  - ``POST /v1/cohorts``, ``GET``, ``GET /{id}``, ``DELETE /{id}``,
+    ``POST /{id}/qc`` — cohort CRUD + Phase-9 QC summary.
+  - ``POST /v1/active-learning/sessions`` (+ list + get) — runs the
+    Phase-12 ``ActiveLearningLoop`` against the Phase-12
+    ``PrototypeTrainer`` and synthetic oracle so the canvas shows the
+    canonical loop shape end-to-end.
+  - ``POST /v1/nl/classify-named`` — friendlier wrapper over CONCH
+    zero-shot that takes a class-name list rather than CONCH-style
+    prompts.
+  - ``POST /v1/train`` + ``GET /v1/train/runs/{id}/metrics`` —
+    enqueues training jobs through ``JobRunner`` (returns a clear
+    "training extras not installed" error when ``[train]`` is missing).
+- 7 new server tests (55 server tests in total; 956 in the full
+  Python suite — all green).
+
+Added — frontend
+- ``web/canvas/src/screens/`` — 9 task-shaped screens replacing the
+  top-tab nav with a sidebar:
+  - **Analyse**: drag-drop tile, model + explainer pickers,
+    zero-shot toggle (CONCH), prediction table, heatmap preview,
+    PDF download.
+  - **Datasets**: registry table + "Register custom dataset" wizard
+    that posts to ``/v1/datasets/register``.
+  - **Train**: Easy / Standard / Expert difficulty toggle, dataset +
+    model picker, hparam panels, polling live dashboard.
+  - **Cohorts**: build cohort YAML from directory, list slides, run
+    QC, render summary KPIs.
+  - **Annotate**: Bet-1 surface — start synthetic active-learning
+    sessions, render iteration metrics + ECE deltas.
+  - **Models**: zoo browser by kind, gated badges, "Request access
+    on Hugging Face" CTA in the details modal.
+  - **Runs / Audit**: existing panels, now first-class sidebar tabs.
+  - **Pipelines**: the existing Phase-20 React Flow canvas, moved
+    behind a "Power user" sidebar group.
+  - **Settings**: base URL, sign out, server version readout.
+- Sidebar groups (Doctor / ML / Power user) so the pathologist's
+  task tabs live above the ML + canvas tabs.
+- Typed API client extended with 12 new methods covering every new
+  endpoint; 28 Vitest tests all green; bundle is ~119 KB JS gzip
+  (~9 KB more than Phase 20).
+
+Iron-rule enforcement at the new screens
+- **#8 no PHI in plaintext** — every panel runs ``redactPayload``
+  before render; the Datasets register wizard sends paths over the
+  bearer-authenticated HTTPS-friendly transport; QC + cohort
+  responses surface basenames + slide ids only.
+- **#9 never auto-execute LLM-drafted pipelines** — Analyse's
+  zero-shot toggle returns probabilities only and never enqueues a
+  run; the canvas tab still requires explicit Validate → Save → Run.
+- **#11 no silent fallbacks** — Analyse responses carry
+  ``resolved_model_name`` + ``fallback_reason`` and the UI shows a
+  yellow banner whenever the synthetic path was used.
+
+Non-goals (deferred)
+- No OpenSeadragon viewer (Phase 21).
+- No real interactive labeling on tile images (still Phase 21+ — the
+  Annotate screen drives the Phase-12 synthetic loop end-to-end so
+  the Bet-1 shape is visible).
+- No multi-user auth.
+
 ### Phase 20 (v2.0 line) — React + React Flow canvas (2026-04-25)
 
 Second of three v2.0 phases (19 backend ✅ · 20 canvas · 21 viewer).

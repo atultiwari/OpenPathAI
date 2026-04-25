@@ -1,14 +1,30 @@
-"""Dataset card registry (Phase 19)."""
+"""Dataset card registry (Phase 19) + custom-folder register (Phase 20.5)."""
 
 from __future__ import annotations
 
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, status
+from pydantic import BaseModel, ConfigDict, Field
 
 from openpathai.server.auth import AuthDependency
 
-__all__ = ["router"]
+__all__ = ["RegisterFolderRequest", "router"]
+
+
+class RegisterFolderRequest(BaseModel):
+    """``POST /v1/datasets/register`` payload."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    path: str = Field(min_length=1)
+    name: str = Field(min_length=1)
+    tissue: tuple[str, ...] = Field(min_length=1)
+    classes: tuple[str, ...] | None = None
+    display_name: str | None = None
+    license: str = "user-supplied"
+    stain: str = "H&E"
+    overwrite: bool = False
 
 
 router = APIRouter(
@@ -64,5 +80,38 @@ async def get_dataset(dataset_id: str) -> dict[str, Any]:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"unknown dataset {dataset_id!r}",
+        ) from exc
+    return _dump_card(card)
+
+
+@router.post(
+    "/register",
+    summary="Register a folder of class-named subfolders as a tile dataset",
+    status_code=status.HTTP_201_CREATED,
+)
+async def register_folder(body: RegisterFolderRequest) -> dict[str, Any]:
+    """Thin wrapper over :func:`openpathai.data.local.register_folder`.
+
+    The folder layout is ``<path>/<class_name>/<image>.png`` (Phase 7).
+    Returns the registered :class:`DatasetCard` payload.
+    """
+    from openpathai.data.local import register_folder as _register
+
+    try:
+        card = _register(
+            body.path,
+            name=body.name,
+            tissue=list(body.tissue),
+            classes=list(body.classes) if body.classes else None,
+            display_name=body.display_name,
+            license=body.license,
+            stain=body.stain,
+            overwrite=body.overwrite,
+        )
+    except FileExistsError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except (NotADirectoryError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
         ) from exc
     return _dump_card(card)

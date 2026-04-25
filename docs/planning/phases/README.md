@@ -20,8 +20,8 @@
 
 | | |
 |---|---|
-| Active phase | **Phase 21 — OpenSeadragon viewer** (pending spec; Phase 20 closed 2026-04-25) |
-| Latest Git tag | `phase-20-complete` (pushed to `origin`) |
+| Active phase | **Phase 21 — OpenSeadragon viewer** (pending spec; Phase 20.5 closed 2026-04-25) |
+| Latest Git tag | `phase-20.5-complete` (pushed to `origin`) |
 | Latest released version | v1.0.0 complete (Phases 13–17 ✅). **All three bets live** 🎯. v1.1.0 complete (Phase 18 ✅) — `pipx install`, Docker CPU + GPU, full docs site. Pre-Phase-19 audit closed (tag `phase-18-audit-complete`): 6 must-fix + 8 warnings + docker.yml workflow shipped. Next: v2.0.0 React canvas (19 backend · 20 canvas · 21 viewer). |
 | Blocked on user | (a) HISTAI-breast gated-access still pending on the main HF account (non-blocking); (b) Ollama + MedGemma 1.5 **already installed** ✅. |
 
@@ -52,6 +52,7 @@
 | 18 | Packaging + Docker + docs site | v1.1 | ✅ complete (2026-04-24, tag `phase-18-complete`) | [phase-18-packaging-docker-docs.md](phase-18-packaging-docker-docs.md) | 1 w target / same-day actual |
 | 19 | FastAPI backend for canvas | v2.0 | ✅ complete (2026-04-24, tag `phase-19-complete`) | [phase-19-fastapi-backend.md](phase-19-fastapi-backend.md) | 2–3 w target / same-day actual |
 | 20 | React + React Flow canvas (visual pipeline builder) | v2.0 | ✅ complete (2026-04-25, tag `phase-20-complete`) | [phase-20-react-canvas.md](phase-20-react-canvas.md) | 3–4 w target / same-day actual |
+| 20.5 | Canvas task surfaces (Analyse / Train / Datasets / Cohorts / Annotate / Models / Settings) | v2.0 | ✅ complete (2026-04-25, tag `phase-20.5-complete`) | [phase-20.5-canvas-task-surfaces.md](phase-20.5-canvas-task-surfaces.md) | 2 w target / same-day actual |
 | 21 | OpenSeadragon viewer + run-audit modal + tier badges | v2.0 | ⏳ pending | — | 1–2 w |
 | 22+ | Conditional: RunPod tier, marketplace, DICOM-SR, SaMD | v2.5+ | 🧊 deferred | — | conditional |
 

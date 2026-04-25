@@ -1,26 +1,46 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { AuthProvider, useAuth } from "./api/auth-context";
-import type { NodeSummary, PipelineValidation } from "./api/types";
-import { ApiError } from "./api/client";
-import { Canvas } from "./canvas/canvas";
-import { newCanvas, toPipeline } from "./canvas/types";
-import type { CanvasState } from "./canvas/types";
-import { Palette } from "./palette/palette";
-import { Inspector } from "./inspector/inspector";
-import { RunsPanel } from "./runs/runs-panel";
+import { AnalyseScreen } from "./screens/analyse/analyse-screen";
+import { AnnotateScreen } from "./screens/annotate/annotate-screen";
+import { CohortsScreen } from "./screens/cohorts/cohorts-screen";
+import { DatasetsScreen } from "./screens/datasets/datasets-screen";
+import { ModelsScreen } from "./screens/models/models-screen";
+import { PipelinesScreen } from "./screens/pipelines/pipelines-screen";
+import { SettingsScreen } from "./screens/settings/settings-screen";
+import { TrainScreen } from "./screens/train/train-screen";
 import { AuditPanel } from "./audit/audit-panel";
-import { ModelsPanel } from "./models/models-panel";
-import { DatasetsPanel } from "./datasets/datasets-panel";
-import { safeMessage } from "./lib/safe-string";
+import { RunsPanel } from "./runs/runs-panel";
 
-type Tab = "canvas" | "runs" | "audit" | "models" | "datasets";
+import "./screens/screens.css";
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: "canvas", label: "Canvas" },
-  { id: "runs", label: "Runs" },
-  { id: "audit", label: "Audit" },
-  { id: "models", label: "Models" },
-  { id: "datasets", label: "Datasets" },
+type TaskTab =
+  | "analyse"
+  | "datasets"
+  | "train"
+  | "cohorts"
+  | "annotate"
+  | "models"
+  | "runs"
+  | "audit"
+  | "pipelines"
+  | "settings";
+
+const TASK_TABS: {
+  id: TaskTab;
+  label: string;
+  icon: string;
+  group: "Doctor" | "ML" | "Power user";
+}[] = [
+  { id: "analyse", label: "Analyse", icon: "🔬", group: "Doctor" },
+  { id: "datasets", label: "Datasets", icon: "🗂", group: "Doctor" },
+  { id: "train", label: "Train", icon: "🎯", group: "Doctor" },
+  { id: "cohorts", label: "Cohorts", icon: "🧪", group: "Doctor" },
+  { id: "annotate", label: "Annotate", icon: "✍️", group: "Doctor" },
+  { id: "models", label: "Models", icon: "📦", group: "ML" },
+  { id: "runs", label: "Runs", icon: "📈", group: "ML" },
+  { id: "audit", label: "Audit", icon: "🧾", group: "ML" },
+  { id: "pipelines", label: "Pipelines", icon: "🧩", group: "Power user" },
+  { id: "settings", label: "Settings", icon: "⚙", group: "Power user" },
 ];
 
 function TokenPrompt({
@@ -79,146 +99,54 @@ function TokenPrompt({
   );
 }
 
+function Sidebar({
+  current,
+  onPick,
+  onSignOut,
+}: {
+  current: TaskTab;
+  onPick: (tab: TaskTab) => void;
+  onSignOut: () => void;
+}) {
+  const groups = ["Doctor", "ML", "Power user"] as const;
+  return (
+    <nav className="task-sidebar" aria-label="Primary navigation">
+      {groups.map((group) => (
+        <div key={group}>
+          <h3>{group}</h3>
+          {TASK_TABS.filter((t) => t.group === group).map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              className={t.id === current ? "nav-item active" : "nav-item"}
+              onClick={() => onPick(t.id)}
+            >
+              <span className="nav-icon" aria-hidden>
+                {t.icon}
+              </span>
+              {t.label}
+            </button>
+          ))}
+        </div>
+      ))}
+      <button
+        type="button"
+        className="nav-item"
+        onClick={onSignOut}
+        style={{ marginTop: "auto", color: "var(--color-text-dim)" }}
+      >
+        <span className="nav-icon" aria-hidden>
+          ⏻
+        </span>
+        Sign out
+      </button>
+    </nav>
+  );
+}
+
 function CanvasShell() {
-  const { client, token, setToken, baseUrl, setBaseUrl } = useAuth();
-  const [tab, setTab] = useState<Tab>("canvas");
-  const [canvas, setCanvas] = useState<CanvasState>(() => newCanvas());
-  const [selection, setSelection] = useState<string | null>(null);
-  const [paletteFilter, setPaletteFilter] = useState("");
-  const [catalog, setCatalog] = useState<NodeSummary[]>([]);
-  const [paletteLoading, setPaletteLoading] = useState(false);
-  const [paletteError, setPaletteError] = useState<string | null>(null);
-  const [validation, setValidation] = useState<PipelineValidation | null>(
-    null
-  );
-  const [statusBar, setStatusBar] = useState<{
-    kind: "info" | "ok" | "error";
-    message: string;
-  } | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  const catalogMap = useMemo(
-    () => new Map(catalog.map((n) => [n.id, n])),
-    [catalog]
-  );
-
-  // Load /v1/nodes when the token + base url change.
-  useEffect(() => {
-    if (!token) return;
-    let cancelled = false;
-    setPaletteLoading(true);
-    setPaletteError(null);
-    client
-      .listNodes()
-      .then((response) => {
-        if (!cancelled) setCatalog(response.items);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        if (err instanceof ApiError && err.status === 401) {
-          setToken(null);
-        }
-        setPaletteError(safeMessage(err));
-      })
-      .finally(() => {
-        if (!cancelled) setPaletteLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [client, token, setToken]);
-
-  const onRename = useCallback(
-    (oldId: string, newId: string) => {
-      const trimmed = newId.trim();
-      if (!trimmed || trimmed === oldId) return;
-      if (canvas.nodes.some((n) => n.id === trimmed)) return;
-      const nextNodes = canvas.nodes.map((n) =>
-        n.id === oldId ? { ...n, id: trimmed } : n
-      );
-      const nextEdges = canvas.edges.map((e) => ({
-        ...e,
-        source: e.source === oldId ? trimmed : e.source,
-        target: e.target === oldId ? trimmed : e.target,
-      }));
-      setCanvas({ ...canvas, nodes: nextNodes, edges: nextEdges });
-      if (selection === oldId) setSelection(trimmed);
-    },
-    [canvas, selection]
-  );
-
-  const handleValidate = useCallback(async () => {
-    setBusy(true);
-    setStatusBar({ kind: "info", message: "Validating…" });
-    try {
-      const report = await client.validatePipeline(toPipeline(canvas));
-      setValidation(report);
-      if (report.valid) {
-        setStatusBar({ kind: "ok", message: "Pipeline is valid." });
-      } else {
-        setStatusBar({
-          kind: "error",
-          message: `Invalid: ${report.errors.length} error(s).`,
-        });
-      }
-    } catch (err) {
-      setStatusBar({ kind: "error", message: safeMessage(err) });
-    } finally {
-      setBusy(false);
-    }
-  }, [canvas, client]);
-
-  const handleSave = useCallback(async () => {
-    setBusy(true);
-    setStatusBar({ kind: "info", message: "Saving…" });
-    try {
-      const envelope = await client.putPipeline(
-        canvas.pipelineId,
-        toPipeline(canvas)
-      );
-      setStatusBar({
-        kind: "ok",
-        message: `Saved ${envelope.id} (graph ${envelope.graph_hash.slice(0, 10)}).`,
-      });
-    } catch (err) {
-      setStatusBar({ kind: "error", message: safeMessage(err) });
-    } finally {
-      setBusy(false);
-    }
-  }, [canvas, client]);
-
-  const handleRun = useCallback(async () => {
-    setBusy(true);
-    setStatusBar({ kind: "info", message: "Submitting run…" });
-    try {
-      const record = await client.createRun({ pipeline: toPipeline(canvas) });
-      setStatusBar({
-        kind: "ok",
-        message: `Run ${record.run_id.slice(0, 12)} ${record.status}.`,
-      });
-      setTab("runs");
-    } catch (err) {
-      setStatusBar({ kind: "error", message: safeMessage(err) });
-    } finally {
-      setBusy(false);
-    }
-  }, [canvas, client]);
-
-  const tabContent = useMemo(() => {
-    switch (tab) {
-      case "runs":
-        return <RunsPanel />;
-      case "audit":
-        return <AuditPanel />;
-      case "models":
-        return <ModelsPanel />;
-      case "datasets":
-        return <DatasetsPanel />;
-      case "canvas":
-      default:
-        return null;
-    }
-  }, [tab]);
+  const { token, setToken, baseUrl, setBaseUrl } = useAuth();
+  const [tab, setTab] = useState<TaskTab>("analyse");
 
   if (!token) {
     return (
@@ -231,93 +159,33 @@ function CanvasShell() {
   }
 
   return (
-    <div className="app-shell">
-      <header className="app-topbar">
-        <h1>OpenPathAI Canvas</h1>
+    <div className="task-shell">
+      <header className="task-topbar">
+        <h1>OpenPathAI</h1>
         <span className="pill">{baseUrl}</span>
-        <nav>
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              className={t.id === tab ? "active" : undefined}
-              onClick={() => setTab(t.id)}
-            >
-              {t.label}
-            </button>
-          ))}
-          <button onClick={() => setToken(null)} title="Forget token">
-            Sign out
-          </button>
-        </nav>
+        <div className="topbar-actions">
+          <span className="pill">v2.0 canvas</span>
+        </div>
       </header>
 
-      {tab === "canvas" ? (
-        <>
-          <Palette
-            nodes={catalog}
-            loading={paletteLoading}
-            error={paletteError}
-            filter={paletteFilter}
-            onFilterChange={setPaletteFilter}
-          />
-          <main style={{ position: "relative", gridArea: "canvas" }}>
-            <div className="canvas-toolbar">
-              <button onClick={handleValidate} disabled={busy}>
-                Validate
-              </button>
-              <button onClick={handleSave} disabled={busy}>
-                Save
-              </button>
-              <button
-                onClick={handleRun}
-                disabled={busy || canvas.nodes.length === 0}
-              >
-                Run
-              </button>
-            </div>
-            <Canvas
-              canvas={canvas}
-              onChange={setCanvas}
-              selection={selection}
-              onSelect={setSelection}
-              catalog={catalogMap}
-            />
-            {statusBar ? (
-              <div
-                className={
-                  statusBar.kind === "error"
-                    ? "canvas-status error"
-                    : statusBar.kind === "ok"
-                    ? "canvas-status ok"
-                    : "canvas-status"
-                }
-              >
-                {statusBar.message}
-                {validation && !validation.valid && validation.errors.length ? (
-                  <ul className="errors-list">
-                    {validation.errors.slice(0, 5).map((e) => (
-                      <li key={e}>{e}</li>
-                    ))}
-                  </ul>
-                ) : null}
-              </div>
-            ) : null}
-          </main>
-          <Inspector
-            canvas={canvas}
-            selection={selection}
-            catalog={catalogMap}
-            onChange={setCanvas}
-            onRename={onRename}
-          />
-        </>
-      ) : (
-        <main
-          style={{ gridArea: "palette / palette / inspector / inspector" }}
-        >
-          {tabContent}
-        </main>
-      )}
+      <Sidebar
+        current={tab}
+        onPick={setTab}
+        onSignOut={() => setToken(null)}
+      />
+
+      <main style={{ gridArea: "content", overflow: "auto" }}>
+        {tab === "analyse" && <AnalyseScreen />}
+        {tab === "datasets" && <DatasetsScreen />}
+        {tab === "train" && <TrainScreen />}
+        {tab === "cohorts" && <CohortsScreen />}
+        {tab === "annotate" && <AnnotateScreen />}
+        {tab === "models" && <ModelsScreen />}
+        {tab === "runs" && <RunsPanel />}
+        {tab === "audit" && <AuditPanel />}
+        {tab === "pipelines" && <PipelinesScreen />}
+        {tab === "settings" && <SettingsScreen />}
+      </main>
     </div>
   );
 }

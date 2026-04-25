@@ -1,7 +1,24 @@
-# OpenPathAI Canvas (Phase 20)
+# OpenPathAI Canvas (Phase 20 + Phase 20.5)
 
-> **Status:** Phase 20 ships the React canvas. Phase 21 adds the
-> OpenSeadragon WSI viewer + run-audit modal on top.
+> **Status:** Phase 20 shipped the React Flow canvas. Phase 20.5
+> reshaped it around the pathologist's task model — the canvas is now
+> a sidebar app with 10 task screens. Phase 21 adds the OpenSeadragon
+> WSI viewer + run-audit modal on top.
+
+## What's in the canvas
+
+| Group | Screen | Purpose |
+|---|---|---|
+| Doctor | **Analyse** | Drop a tile, pick model + explainer, get heatmap + PDF. Zero-shot toggle (CONCH) lets you classify against free-text class names. |
+| Doctor | **Datasets** | Browse the registry; register a folder of class-named subfolders as a tile dataset. |
+| Doctor | **Train** | Easy / Standard / Expert difficulty. Pick dataset + model, hit Start, watch the live status panel. |
+| Doctor | **Cohorts** | Build a cohort YAML from a directory, list slides, run Phase-9 QC. |
+| Doctor | **Annotate** | Active-learning loop (Bet 1) — synthetic demo session shows the canonical seed → score → acquire → label → retrain shape. |
+| ML | **Models** | Zoo browser with gated badges + Hugging Face request-access CTAs. |
+| ML | **Runs** | Live run status + manifest viewer (PHI-redacted). |
+| ML | **Audit** | Phase-8 audit DB browser. |
+| Power user | **Pipelines** | The original React Flow canvas — node palette + inspector + Validate / Save / Run. |
+| Power user | **Settings** | Base URL, sign out, server version readout. |
 
 The canvas is a React + React Flow app that auto-derives a draggable
 node palette from the Phase-19 `/v1/nodes` JSON schemas, lets a user

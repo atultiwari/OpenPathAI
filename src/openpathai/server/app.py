@@ -125,7 +125,10 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     # factory so a caller that just wants ``ServerSettings`` (e.g. a
     # unit test) does not pay the full fastapi+uvicorn import cost.
     from openpathai.server.routes import (
+        active_learning,
+        analyse,
         audit,
+        cohorts,
         datasets,
         health,
         manifest,
@@ -134,6 +137,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         nodes,
         pipelines,
         runs,
+        train,
     )
 
     # Public.
@@ -147,6 +151,11 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     app.include_router(audit.router, prefix="/v1")
     app.include_router(nl.router, prefix="/v1")
     app.include_router(manifest.router, prefix="/v1")
+    # Phase 20.5 task-shaped surfaces.
+    app.include_router(analyse.router, prefix="/v1")
+    app.include_router(train.router, prefix="/v1")
+    app.include_router(cohorts.router, prefix="/v1")
+    app.include_router(active_learning.router, prefix="/v1")
 
     # Phase 20 — when --canvas-dir is set we serve the built React canvas
     # at ``/`` so the API + canvas live on a single port.

@@ -1,0 +1,302 @@
+/* Phase 20.5 task screens — shared layout + form helpers. */
+
+.task-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  grid-template-rows: 48px 1fr;
+  grid-template-areas:
+    "topbar topbar"
+    "sidebar content";
+  height: 100vh;
+}
+
+.task-topbar {
+  grid-area: topbar;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-panel);
+}
+
+.task-topbar h1 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+
+.task-topbar .pill {
+  font-size: 11px;
+  background: var(--color-bg);
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: var(--color-text-dim);
+  border: 1px solid var(--color-border);
+}
+
+.task-topbar .topbar-actions {
+  margin-left: auto;
+  display: flex;
+  gap: var(--space-2);
+}
+
+.task-sidebar {
+  grid-area: sidebar;
+  border-right: 1px solid var(--color-border);
+  background: var(--color-panel);
+  overflow: auto;
+  padding: var(--space-3) 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.task-sidebar h3 {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-text-dim);
+  margin: var(--space-3) var(--space-4) var(--space-1);
+  font-weight: 500;
+}
+
+.task-sidebar a,
+.task-sidebar button.nav-item {
+  appearance: none;
+  background: transparent;
+  border: none;
+  text-align: left;
+  width: 100%;
+  font: inherit;
+  color: var(--color-text);
+  padding: 8px 16px;
+  cursor: pointer;
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  border-left: 2px solid transparent;
+}
+
+.task-sidebar button.nav-item:hover {
+  background: var(--color-panel-2);
+}
+
+.task-sidebar button.nav-item.active {
+  background: var(--color-panel-2);
+  border-left-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.task-sidebar .nav-icon {
+  width: 18px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--color-text-dim);
+}
+
+.task-sidebar button.nav-item.active .nav-icon {
+  color: var(--color-accent);
+}
+
+.task-content {
+  grid-area: content;
+  overflow: auto;
+  padding: var(--space-5);
+  background: var(--color-bg);
+}
+
+.task-content h2 {
+  margin-top: 0;
+}
+
+.task-content p.lede {
+  color: var(--color-text-dim);
+  max-width: 720px;
+  line-height: 1.5;
+  margin-bottom: var(--space-5);
+}
+
+.card {
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.card h3 {
+  margin: 0 0 var(--space-3);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-dim);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-3);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.field label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-dim);
+}
+
+.field .help {
+  font-size: 11px;
+  color: var(--color-text-dim);
+}
+
+.toolbar {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.toolbar .grow {
+  flex: 1;
+}
+
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.kpi {
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+}
+
+.kpi .label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-dim);
+}
+
+.kpi .value {
+  font-size: 22px;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.kpi.ok .value {
+  color: var(--color-accent-2);
+}
+
+.kpi.warn .value {
+  color: var(--color-warn);
+}
+
+.kpi.err .value {
+  color: var(--color-error);
+}
+
+.preview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+}
+
+.preview-grid img {
+  width: 100%;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+.preview-grid figcaption {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-dim);
+  margin-bottom: 4px;
+}
+
+.banner-warn {
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid var(--color-warn);
+  color: var(--color-warn);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  font-size: 12px;
+  margin-bottom: var(--space-3);
+}
+
+.banner-err {
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid var(--color-error);
+  color: var(--color-error);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  font-size: 12px;
+  margin-bottom: var(--space-3);
+}
+
+.banner-ok {
+  background: rgba(52, 211, 153, 0.08);
+  border: 1px solid var(--color-accent-2);
+  color: var(--color-accent-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  font-size: 12px;
+  margin-bottom: var(--space-3);
+}
+
+.panel-table.bordered {
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.tag {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-panel-2);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+}
+
+.tag.gated {
+  border-color: var(--color-warn);
+  color: var(--color-warn);
+}
+
+.dropzone {
+  border: 1.5px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-5);
+  text-align: center;
+  color: var(--color-text-dim);
+  background: var(--color-panel);
+  transition: border-color var(--duration), background var(--duration);
+}
+
+.dropzone.is-over {
+  border-color: var(--color-accent);
+  background: rgba(56, 189, 248, 0.05);
+  color: var(--color-accent);
+}

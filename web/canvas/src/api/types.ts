@@ -129,3 +129,95 @@ export type AuditRunRow = {
   metrics_json?: string | null;
   [key: string]: unknown;
 };
+
+// ─── Phase 20.5 task-shaped wire shapes ─────────────────────────
+
+export type TilePrediction = {
+  image_sha256: string;
+  model_name: string;
+  resolved_model_name: string;
+  explainer_name: string;
+  classes: string[];
+  probabilities: number[];
+  predicted_class: string;
+  confidence: number;
+  borderline: boolean;
+  heatmap_b64: string;
+  thumbnail_b64: string;
+  fallback_reason: string | null;
+};
+
+export type RegisterFolderRequest = {
+  path: string;
+  name: string;
+  tissue: string[];
+  classes?: string[] | null;
+  display_name?: string | null;
+  license?: string;
+  stain?: string;
+  overwrite?: boolean;
+};
+
+export type CohortSummary = {
+  id: string;
+  slide_count?: number;
+  slide_ids?: string[];
+  error?: string;
+};
+
+export type CohortQCSummary = {
+  id: string;
+  summary: { pass: number; warn: number; fail: number };
+  slide_count: number;
+};
+
+export type ActiveLearningManifest = {
+  run_id: string;
+  config: Record<string, unknown>;
+  started_at: string;
+  finished_at: string;
+  acquisitions: Array<{
+    iteration: number;
+    selected_tile_ids: string[];
+    ece_before: number;
+    ece_after: number;
+    accuracy_after: number;
+    train_loss: number;
+  }>;
+  initial_ece: number;
+  final_ece: number;
+  final_accuracy: number;
+  acquired_tile_ids: string[];
+};
+
+export type ActiveLearningSession = {
+  id: string;
+  manifest: ActiveLearningManifest;
+};
+
+export type ZeroShotNamedResult = {
+  classes: string[];
+  prompts: string[];
+  probs: number[];
+  predicted_prompt: string;
+  resolved_backbone_id: string;
+};
+
+export type TrainSubmitRequest = {
+  dataset: string;
+  model: string;
+  epochs?: number;
+  batch_size?: number;
+  learning_rate?: number;
+  seed?: number;
+  synthetic?: boolean;
+  duration_preset?: "Quick" | "Standard" | "Thorough";
+};
+
+export type TrainMetricsResponse = {
+  run_id: string;
+  status: RunStatus;
+  metadata: Record<string, unknown>;
+  error: string | null;
+  result?: Record<string, unknown>;
+};

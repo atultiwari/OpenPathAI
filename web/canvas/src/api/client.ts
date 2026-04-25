@@ -6,7 +6,10 @@
 // declarative.
 
 import type {
+  ActiveLearningSession,
   AuditRunRow,
+  CohortQCSummary,
+  CohortSummary,
   DatasetCard,
   Health,
   ModelSummary,
@@ -15,9 +18,14 @@ import type {
   Pipeline,
   PipelineEnvelope,
   PipelineValidation,
+  RegisterFolderRequest,
   RunRecord,
   RunRequest,
+  TilePrediction,
+  TrainMetricsResponse,
+  TrainSubmitRequest,
   Version,
+  ZeroShotNamedResult,
 } from "./types";
 
 export class ApiError extends Error {
@@ -255,6 +263,171 @@ export class ApiClient {
       ...options,
       query: { ...query, ...(options?.query ?? {}) },
     });
+  }
+
+  // ─── Phase 20.5 task surfaces ─────────────────────────────────────
+
+  /** ``POST /v1/analyse/tile`` — multipart upload of one tile + model id. */
+  async analyseTile(
+    image: File | Blob,
+    args: { modelName: string; explainer?: string; low?: number; high?: number },
+    options?: RequestOptions
+  ): Promise<TilePrediction> {
+    const form = new FormData();
+    form.append("image", image, image instanceof File ? image.name : "tile.png");
+    form.append("model_name", args.modelName);
+    form.append("explainer", args.explainer ?? "gradcam");
+    form.append("low", String(args.low ?? 0.4));
+    form.append("high", String(args.high ?? 0.6));
+    const headers: Record<string, string> = { Accept: "application/json" };
+    if (this.token) {
+      headers["Authorization"] = `Bearer ${this.token}`;
+    }
+    const response = await fetch(this.buildUrl("/v1/analyse/tile"), {
+      method: "POST",
+      headers,
+      body: form,
+      signal: options?.signal,
+    });
+    const text = await response.text();
+    let payload: unknown = null;
+    if (text) {
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        payload = text;
+      }
+    }
+    if (!response.ok) {
+      const detail =
+        (payload &&
+          typeof payload === "object" &&
+          "detail" in (payload as Record<string, unknown>) &&
+          typeof (payload as Record<string, unknown>).detail === "string"
+          ? ((payload as Record<string, unknown>).detail as string)
+          : null) ?? "analyse failed";
+      throw new ApiError(response.status, detail);
+    }
+    return payload as TilePrediction;
+  }
+
+  /** ``POST /v1/analyse/report`` — render the last analysis as a PDF. */
+  async analyseReport(options?: RequestOptions): Promise<Blob> {
+    const headers: Record<string, string> = { Accept: "application/pdf" };
+    if (this.token) {
+      headers["Authorization"] = `Bearer ${this.token}`;
+    }
+    const response = await fetch(this.buildUrl("/v1/analyse/report"), {
+      method: "POST",
+      headers,
+      signal: options?.signal,
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new ApiError(response.status, text || "report failed");
+    }
+    return response.blob();
+  }
+
+  registerDatasetFolder(
+    body: RegisterFolderRequest,
+    options?: RequestOptions
+  ): Promise<DatasetCard> {
+    return this.request("POST", "/v1/datasets/register", body, options);
+  }
+
+  listCohorts(
+    options?: RequestOptions
+  ): Promise<Paged<CohortSummary>> {
+    return this.request("GET", "/v1/cohorts", undefined, options);
+  }
+
+  createCohort(
+    body: { id: string; directory: string; pattern?: string | null },
+    options?: RequestOptions
+  ): Promise<CohortSummary> {
+    return this.request("POST", "/v1/cohorts", body, options);
+  }
+
+  deleteCohort(cohortId: string, options?: RequestOptions): Promise<void> {
+    return this.request(
+      "DELETE",
+      `/v1/cohorts/${encodeURIComponent(cohortId)}`,
+      undefined,
+      options
+    );
+  }
+
+  cohortQc(cohortId: string, options?: RequestOptions): Promise<CohortQCSummary> {
+    return this.request(
+      "POST",
+      `/v1/cohorts/${encodeURIComponent(cohortId)}/qc`,
+      undefined,
+      options
+    );
+  }
+
+  startActiveLearningSession(
+    body: {
+      classes: string[];
+      pool_size?: number;
+      seed_size?: number;
+      holdout_size?: number;
+      iterations?: number;
+      budget_per_iteration?: number;
+      scorer?: string;
+      diversity_weight?: number;
+      random_seed?: number;
+    },
+    options?: RequestOptions
+  ): Promise<ActiveLearningSession> {
+    return this.request(
+      "POST",
+      "/v1/active-learning/sessions",
+      body,
+      options
+    );
+  }
+
+  listActiveLearningSessions(
+    options?: RequestOptions
+  ): Promise<Paged<ActiveLearningSession>> {
+    return this.request(
+      "GET",
+      "/v1/active-learning/sessions",
+      undefined,
+      options
+    );
+  }
+
+  classifyNamed(
+    body: {
+      image_b64: string;
+      classes: string[];
+      prompt_template?: string;
+    },
+    options?: RequestOptions
+  ): Promise<ZeroShotNamedResult> {
+    return this.request("POST", "/v1/nl/classify-named", body, options);
+  }
+
+  submitTrain(
+    body: TrainSubmitRequest,
+    options?: RequestOptions
+  ): Promise<RunRecord> {
+    return this.request("POST", "/v1/train", body, options);
+  }
+
+  getTrainMetrics(
+    runId: string,
+    options?: RequestOptions
+  ): Promise<TrainMetricsResponse> {
+    return this.request(
+      "GET",
+      `/v1/train/runs/${encodeURIComponent(runId)}/metrics`,
+      undefined,
+      options
+    );
   }
 }
 
