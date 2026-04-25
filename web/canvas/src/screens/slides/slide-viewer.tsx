@@ -6,6 +6,7 @@
 // stays in its own chunk (refinement #3).
 
 import { useEffect, useMemo, useRef } from "react";
+import { useAuth } from "../../api/auth-context";
 
 interface SlideViewerProps {
   slideDziUrl: string;
@@ -30,6 +31,8 @@ interface Overlay {
 interface AddTiledImageOptions {
   tileSource: string;
   opacity: number;
+  loadTilesWithAjax?: boolean;
+  ajaxHeaders?: Record<string, string>;
   success?: () => void;
 }
 
@@ -40,6 +43,7 @@ export function SlideViewer({
   className,
   onTileClick,
 }: SlideViewerProps) {
+  const { token } = useAuth();
   const hostRef = useRef<HTMLDivElement | null>(null);
   const viewerRef = useRef<ViewerInstance | null>(null);
 
@@ -56,6 +60,13 @@ export function SlideViewer({
       const mod = await import("openseadragon");
       const OpenSeadragon = mod.default ?? (mod as unknown as typeof mod.default);
       if (cancelled || !hostRef.current) return;
+      // Bearer token must travel with every DZI XML descriptor + tile
+      // PNG request — both are auth-gated. OpenSeadragon's
+      // `loadTilesWithAjax + ajaxHeaders` injects the header on every
+      // fetch so a bare <img>-style tile pull doesn't 401.
+      const ajaxHeaders: Record<string, string> = token
+        ? { Authorization: `Bearer ${token}` }
+        : {};
       const viewer = OpenSeadragon({
         id,
         prefixUrl:
@@ -63,6 +74,9 @@ export function SlideViewer({
         showNavigationControl: true,
         gestureSettingsMouse: { clickToZoom: false },
         crossOriginPolicy: "Anonymous",
+        loadTilesWithAjax: true,
+        ajaxHeaders,
+        ajaxWithCredentials: false,
         tileSources: slideDziUrl,
       }) as unknown as ViewerInstance;
       viewerRef.current = viewer;
@@ -70,6 +84,8 @@ export function SlideViewer({
         viewer.addTiledImage({
           tileSource: heatmapDziUrl,
           opacity: heatmapOpacity,
+          loadTilesWithAjax: true,
+          ajaxHeaders,
         });
       }
       if (onTileClick) {
