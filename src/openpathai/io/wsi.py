@@ -26,6 +26,14 @@ from typing import Any
 import numpy as np
 from PIL import Image
 
+# OpenPathAI consumes user-trusted local pathology files. Pillow's default
+# 178-megapixel decompression-bomb guard rejects every real WSI exported
+# as a single-plane TIFF (HISTAI-breast slides are ~4 Gpx, for example),
+# so disable the cap module-wide. The ``[wsi]`` extra's openslide-python
+# is the preferred backend for huge slides — Pillow only handles them
+# when openslide can't open the file format.
+Image.MAX_IMAGE_PIXELS = None
+
 __all__ = [
     "OpenSlideReader",
     "PillowSlideReader",

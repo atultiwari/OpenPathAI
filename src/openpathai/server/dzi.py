@@ -35,6 +35,7 @@ import threading
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 from xml.etree import ElementTree as ET
 
 import numpy as np
@@ -58,6 +59,15 @@ __all__ = [
 DEFAULT_TILE_SIZE: int = 254
 DEFAULT_OVERLAP: int = 1
 DZI_NS = "http://schemas.microsoft.com/deepzoom/2008"
+
+# Cap the DZI base image at this many pixels on the longer axis. Real
+# pathology slides are routinely 50_000-100_000 px wide; rendering a
+# pyramid from level 0 would mean materialising tens of GB in RAM. The
+# Phase-21 viewer is a doctor-usable preview, not a streaming WSI tile
+# server — Phase 22+ is the right place for streaming. So we render
+# the DZI from a downsampled base; OpenSlide-backed sources pick the
+# closest pyramid level, Pillow-backed sources Lanczos-thumbnail.
+MAX_DZI_BASE_LONGEST_AXIS: int = 8192
 
 
 @dataclass(frozen=True)
@@ -173,14 +183,15 @@ class DziPyramid:
         return self._slide_id
 
     def _open_base(self) -> tuple[np.ndarray, int, int]:
-        """Materialise the level-0 image as an in-memory ``np.uint8``
+        """Materialise the DZI base image as an in-memory ``np.uint8``
         RGB array.
 
-        For Pillow / synthetic-TIFF sources this is the whole image —
-        practical for test fixtures (≤ a few thousand pixels per side).
-        For OpenSlide sources we still read the level-0 image at the
-        smallest level dimensions OpenSlide provides; production-scale
-        WSI use cases should swap to a streaming generator (Phase 22+).
+        For arrays we use the array as-is (heatmap pipeline). For slide
+        files, we downsample to ``MAX_DZI_BASE_LONGEST_AXIS`` so a 4-Gpx
+        WSI doesn't blow RAM. OpenSlide-backed slides pick the closest
+        pyramid level natively; Pillow-backed slides read the whole
+        image and then Lanczos-thumbnail it (Pillow streams TIFF tiles
+        internally).
         """
         if self._array is not None:
             arr = self._array
@@ -190,11 +201,55 @@ class DziPyramid:
                 arr = arr.astype(np.uint8)
             return arr, arr.shape[1], arr.shape[0]
         assert self._source_path is not None
+        target_w, target_h = self._dzi_base_size()
+        from openpathai.io.wsi import OpenSlideReader
+
         with open_slide(self._source_path) as slide:
             info = slide.info
-            width, height = info.width, info.height
-            tile = slide.read_region((0, 0), (width, height), level=0)
-        return tile, width, height
+            if (
+                isinstance(slide, OpenSlideReader)
+                and info.level_count > 1
+                and (target_w, target_h) != (info.width, info.height)
+            ):
+                level = self._pick_openslide_level(info, target_w, target_h)
+                level_w, level_h = info.level_dimensions[level]
+                arr = slide.read_region((0, 0), (level_w, level_h), level=level)
+                if (level_w, level_h) != (target_w, target_h):
+                    pil = Image.fromarray(arr, mode="RGB").resize(
+                        (target_w, target_h), Image.Resampling.LANCZOS
+                    )
+                    arr = np.asarray(pil, dtype=np.uint8)
+            else:
+                arr = slide.read_region((0, 0), (info.width, info.height), level=0)
+                if arr.shape[:2] != (target_h, target_w):
+                    pil = Image.fromarray(arr, mode="RGB").resize(
+                        (target_w, target_h), Image.Resampling.LANCZOS
+                    )
+                    arr = np.asarray(pil, dtype=np.uint8)
+        return arr, target_w, target_h
+
+    def _dzi_base_size(self) -> tuple[int, int]:
+        """Return the (width, height) of the DZI base image — the slide's
+        native resolution clamped to ``MAX_DZI_BASE_LONGEST_AXIS``."""
+        assert self._source_path is not None
+        with open_slide(self._source_path) as slide:
+            width, height = slide.info.width, slide.info.height
+        longer = max(width, height, 1)
+        if longer <= MAX_DZI_BASE_LONGEST_AXIS:
+            return int(width), int(height)
+        scale = MAX_DZI_BASE_LONGEST_AXIS / longer
+        return max(1, round(width * scale)), max(1, round(height * scale))
+
+    @staticmethod
+    def _pick_openslide_level(info: Any, target_w: int, target_h: int) -> int:
+        """Return the OpenSlide pyramid level closest to (and >=)
+        ``target_w x target_h``. Falls back to the deepest level if no
+        level is large enough (rare; means the slide has fewer pixels
+        than the target)."""
+        for idx, (lw, lh) in enumerate(info.level_dimensions):
+            if lw <= target_w * 1.5 and lh <= target_h * 1.5:
+                return idx
+        return info.level_count - 1
 
     def descriptor(self) -> DziDescriptor:
         """Return the DZI descriptor without materialising tiles."""
@@ -202,8 +257,7 @@ class DziPyramid:
             height, width = self._array.shape[:2]
         else:
             assert self._source_path is not None
-            with open_slide(self._source_path) as slide:
-                width, height = slide.info.width, slide.info.height
+            width, height = self._dzi_base_size()
         return DziDescriptor(
             width=int(width),
             height=int(height),

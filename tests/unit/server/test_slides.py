@@ -104,3 +104,44 @@ def test_empty_upload_rejected(client: TestClient, auth_headers: dict[str, str])
         files={"file": ("empty.png", b"", "image/png")},
     )
     assert response.status_code == 422
+
+
+def test_oversized_slide_is_downsampled_for_dzi(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    """A slide larger than ``MAX_DZI_BASE_LONGEST_AXIS`` (8192 px) must
+    upload cleanly and the DZI descriptor must reflect the downsampled
+    base — not the native dimensions — so OpenSeadragon doesn't ask
+    for tiles that don't exist.
+
+    Pillow's decompression-bomb cap is also disabled at the WSI reader,
+    so this test doubles as a regression for the HISTAI-breast slide
+    upload (~4 Gpx, native).
+    """
+    # 9000 x 6000 synthetic TIFF — bigger than the 8192 cap so the
+    # downsampling branch fires, small enough that the test is fast.
+    arr = np.full((6000, 9000, 3), 200, dtype=np.uint8)
+    buf = io.BytesIO()
+    Image.fromarray(arr).save(buf, format="TIFF")
+    response = client.post(
+        "/v1/slides",
+        headers=auth_headers,
+        files={"file": ("oversize.tif", buf.getvalue(), "image/tiff")},
+    )
+    assert response.status_code == 201, response.text
+    body = response.json()
+    sid = body["slide_id"]
+    # Native dimensions are reported as-is.
+    assert body["width"] == 9000
+    assert body["height"] == 6000
+    # DZI descriptor reflects the clamped base.
+    descriptor = client.get(body["dzi_url"], headers=auth_headers)
+    assert descriptor.status_code == 200
+    root = ET.fromstring(descriptor.content)
+    size = root.find("{http://schemas.microsoft.com/deepzoom/2008}Size")
+    assert size is not None
+    assert int(size.attrib["Width"]) <= 8192
+    assert int(size.attrib["Width"]) >= 8000
+    # Top-of-pyramid tile is renderable.
+    tile = client.get(f"/v1/slides/{sid}_files/0/0_0.png", headers=auth_headers)
+    assert tile.status_code == 200
