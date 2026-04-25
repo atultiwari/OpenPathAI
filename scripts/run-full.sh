@@ -1,22 +1,24 @@
 #!/usr/bin/env bash
-# Run OpenPathAI at full power — everything shipped up to Phase 19.
+# Run OpenPathAI at full power — everything shipped up to Phase 20.
 #
 # Boots, in parallel:
 #   * Gradio GUI          (Phase 6+)     http://127.0.0.1:7860
 #   * FastAPI backend     (Phase 19)     http://127.0.0.1:7870
-#   * MLflow tracking UI  (Phase 10)     http://127.0.0.1:5000  (if --extra mlflow)
+#   * React canvas        (Phase 20)     http://127.0.0.1:7870/  (mounted on the API)
+#   * MLflow tracking UI  (Phase 10)     http://127.0.0.1:5001  (if --extra mlflow)
 #
 # Also checks for a local LLM backend (Ollama / LM Studio) so the
 # Phase-15 natural-language endpoints have somewhere to talk to.
 # Never auto-starts ollama for you — that belongs to the user.
 #
 # Usage:
-#   ./scripts/run-full.sh [all|api|gui|mlflow]   (default: all)
+#   ./scripts/run-full.sh [all|api|gui|mlflow|canvas]   (default: all)
 #
-#   all     — api + gui + mlflow (what most users want)
+#   all     — api + gui + canvas + mlflow (what most users want)
 #   api     — FastAPI backend only
 #   gui     — Gradio GUI only
 #   mlflow  — MLflow UI only
+#   canvas  — FastAPI + Phase-20 React canvas mounted at /
 #
 # Environment overrides:
 #   OPA_API_PORT        (default: 7870)
@@ -184,22 +186,27 @@ if [[ "$MODE" == "all" || "$MODE" == "mlflow" ]]; then
   fi
 fi
 
+CANVAS_MOUNTED=0
 if [[ "$MODE" == "all" || "$MODE" == "api" || "$MODE" == "canvas" ]]; then
   CANVAS_FLAG=""
-  if [[ "$MODE" == "canvas" ]]; then
+  if [[ "$MODE" == "canvas" || "$MODE" == "all" ]]; then
     CANVAS_DIR="$PROJECT_DIR/web/canvas/dist"
     if [[ ! -d "$CANVAS_DIR" ]]; then
       say "Building React canvas (Phase 20)"
       if command -v npm >/dev/null 2>&1; then
+        info "Building web/canvas/ (logs: $LOG_DIR/canvas-build.log)"
         ( cd "$PROJECT_DIR/web/canvas" && npm install --no-audit --no-fund >>"$LOG_DIR/canvas-build.log" 2>&1 \
           && npm run build >>"$LOG_DIR/canvas-build.log" 2>&1 ) \
           || warn "Canvas build failed — see $LOG_DIR/canvas-build.log"
       else
-        warn "npm not installed — install Node.js 20+ first."
+        warn "npm not installed — install Node.js 20+ first to build the canvas."
       fi
+    else
+      info "Canvas already built at $CANVAS_DIR (delete it to rebuild)."
     fi
     if [[ -d "$CANVAS_DIR" ]]; then
       CANVAS_FLAG="--canvas-dir $CANVAS_DIR"
+      CANVAS_MOUNTED=1
       info "Canvas dist mount: $CANVAS_DIR"
     fi
   fi
@@ -239,36 +246,53 @@ say "Readiness checks"
 if [[ "$MODE" == "all" || "$MODE" == "mlflow" ]]; then
   wait_for "http://127.0.0.1:$MLFLOW_PORT/" "mlflow" 20 || true
 fi
-if [[ "$MODE" == "all" || "$MODE" == "api" ]]; then
+if [[ "$MODE" == "all" || "$MODE" == "api" || "$MODE" == "canvas" ]]; then
   wait_for "http://127.0.0.1:$API_PORT/v1/health" "api" 30 || true
 fi
 if [[ "$MODE" == "all" || "$MODE" == "gui" ]]; then
   wait_for "http://127.0.0.1:$GUI_PORT/" "gui" 60 || true
 fi
+if [[ "$CANVAS_MOUNTED" == "1" ]]; then
+  wait_for "http://127.0.0.1:$API_PORT/" "canvas" 15 || true
+fi
 
 say "OpenPathAI is live — full power"
-cat <<EOF
-
-  Gradio GUI          http://127.0.0.1:$GUI_PORT
-  FastAPI docs        http://127.0.0.1:$API_PORT/docs
-  FastAPI OpenAPI     http://127.0.0.1:$API_PORT/openapi.json
-  FastAPI health      http://127.0.0.1:$API_PORT/v1/health   (no auth)
-  React canvas        http://127.0.0.1:$API_PORT/             (canvas mode)
-  MLflow UI           http://127.0.0.1:$MLFLOW_PORT          (if [mlflow] extra installed)
-
-  API token           $OPA_API_TOKEN
-
-  Try it:
-    curl -H "Authorization: Bearer \$OPENPATHAI_API_TOKEN" \\
-         http://127.0.0.1:$API_PORT/v1/nodes | jq '.total'
-
-    curl -H "Authorization: Bearer \$OPENPATHAI_API_TOKEN" \\
-         http://127.0.0.1:$API_PORT/v1/models?kind=foundation | jq '.items[].id'
-
-  Logs are streaming to $LOG_DIR/  (tail -f logs/api.log  etc.)
-
-  Ctrl-C to stop everything.
-EOF
+{
+  echo
+  if [[ "$MODE" == "all" || "$MODE" == "gui" ]]; then
+    echo "  Gradio GUI          http://127.0.0.1:$GUI_PORT"
+  fi
+  if [[ "$MODE" == "all" || "$MODE" == "api" || "$MODE" == "canvas" ]]; then
+    echo "  FastAPI docs        http://127.0.0.1:$API_PORT/docs"
+    echo "  FastAPI OpenAPI     http://127.0.0.1:$API_PORT/openapi.json"
+    echo "  FastAPI health      http://127.0.0.1:$API_PORT/v1/health   (no auth)"
+  fi
+  if [[ "$CANVAS_MOUNTED" == "1" ]]; then
+    echo "  React canvas        http://127.0.0.1:$API_PORT/             (Phase 20)"
+  elif [[ "$MODE" == "all" || "$MODE" == "canvas" ]]; then
+    echo "  React canvas        (build skipped — install Node 20+ and rerun)"
+  fi
+  if [[ "$MODE" == "all" || "$MODE" == "mlflow" ]]; then
+    echo "  MLflow UI           http://127.0.0.1:$MLFLOW_PORT          (if [mlflow] extra installed)"
+  fi
+  echo
+  echo "  API token           $OPA_API_TOKEN"
+  echo
+  echo "  Try it:"
+  echo "    curl -H \"Authorization: Bearer \$OPENPATHAI_API_TOKEN\" \\"
+  echo "         http://127.0.0.1:$API_PORT/v1/nodes | jq '.total'"
+  echo
+  echo "    curl -H \"Authorization: Bearer \$OPENPATHAI_API_TOKEN\" \\"
+  echo "         http://127.0.0.1:$API_PORT/v1/models?kind=foundation | jq '.items[].id'"
+  echo
+  if [[ "$CANVAS_MOUNTED" == "1" ]]; then
+    echo "    open http://127.0.0.1:$API_PORT/        # Phase-20 canvas"
+    echo
+  fi
+  echo "  Logs are streaming to $LOG_DIR/  (tail -f logs/api.log  etc.)"
+  echo
+  echo "  Ctrl-C to stop everything."
+}
 
 # Keep the script alive until a child exits or the user ^C's.
 wait -n "${PIDS[@]}" 2>/dev/null || true
