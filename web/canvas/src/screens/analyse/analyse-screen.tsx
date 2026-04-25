@@ -5,6 +5,25 @@ import { safeMessage } from "../../lib/safe-string";
 
 const EXPLAINERS = ["gradcam", "gradcam++", "eigencam", "attention", "ig"];
 
+/**
+ * Encode a byte array as base64.
+ *
+ * `String.fromCharCode(...bytes)` spreads each byte as a function
+ * argument; for any non-trivial image that crosses the JS engine's
+ * argument-list limit and throws "Maximum call stack size exceeded".
+ * Walking the buffer in fixed-size chunks keeps the call stack flat
+ * regardless of file size.
+ */
+function bytesToBase64(bytes: Uint8Array): string {
+  const chunkSize = 0x8000;
+  let binary = "";
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    const chunk = bytes.subarray(offset, offset + chunkSize);
+    binary += String.fromCharCode.apply(null, chunk as unknown as number[]);
+  }
+  return btoa(binary);
+}
+
 type ZeroShotState = {
   enabled: boolean;
   classes: string;
@@ -80,9 +99,7 @@ export function AnalyseScreen() {
     try {
       if (zeroShot.enabled) {
         const buf = await file.arrayBuffer();
-        const b64 = btoa(
-          String.fromCharCode(...new Uint8Array(buf).slice(0, buf.byteLength))
-        );
+        const b64 = bytesToBase64(new Uint8Array(buf));
         const classes = zeroShot.classes
           .split("\n")
           .map((c) => c.trim())
