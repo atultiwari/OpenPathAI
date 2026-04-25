@@ -1,0 +1,54 @@
+# Phase 20 — lint + typecheck + unit tests for the React canvas.
+#
+# Build is also verified so we catch typescript drift between the
+# canvas and the Phase-19 API client.
+
+name: Web
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/canvas/**"
+      - ".github/workflows/web.yml"
+  pull_request:
+    paths:
+      - "web/canvas/**"
+      - ".github/workflows/web.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: canvas (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["20", "22"]
+    defaults:
+      run:
+        working-directory: web/canvas
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: "npm"
+          cache-dependency-path: web/canvas/package-lock.json
+
+      - name: Install
+        run: npm install --no-audit --no-fund
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Build
+        run: npm run build

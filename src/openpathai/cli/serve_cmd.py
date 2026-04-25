@@ -71,6 +71,16 @@ def register(app: typer.Typer) -> None:
                 help="Override OPENPATHAI_HOME for this process.",
             ),
         ] = None,
+        canvas_dir: Annotated[
+            Path | None,
+            typer.Option(
+                "--canvas-dir",
+                help=(
+                    "Phase 20 — serve a built Vite ``dist/`` directory at "
+                    "/ so the React canvas + /v1 API share a single port."
+                ),
+            ),
+        ] = None,
         reload: Annotated[
             bool,
             typer.Option("--reload", help="Enable uvicorn auto-reload (dev only)."),
@@ -108,6 +118,8 @@ def register(app: typer.Typer) -> None:
         }
         if openpathai_home is not None:
             settings_kwargs["openpathai_home"] = openpathai_home
+        if canvas_dir is not None:
+            settings_kwargs["canvas_dir"] = canvas_dir
         settings = ServerSettings(**settings_kwargs)  # type: ignore[arg-type]
         app = create_app(settings)
         typer.secho(

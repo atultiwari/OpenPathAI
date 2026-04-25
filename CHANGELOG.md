@@ -9,6 +9,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Phase 20 (v2.0 line) — React + React Flow canvas (2026-04-25)
+
+Second of three v2.0 phases (19 backend ✅ · 20 canvas · 21 viewer).
+Phase 20 ships the visual pipeline builder; Phase 21 adds the WSI
+viewer.
+
+Added
+- `web/canvas/` Vite + React 18 + TypeScript workspace.
+- `@xyflow/react` (the React Flow successor) wires a draggable
+  canvas with typed nodes + edges + minimap + controls.
+- Auto-derived node palette: drag-from-palette pulls a step from
+  `/v1/nodes`; the inspector renders a form from the input pydantic
+  JSON schema (string / integer / number / boolean / enum /
+  array<string> / raw-JSON fallback).
+- Canvas toolbar: **Validate** posts to `/v1/pipelines/validate` and
+  surfaces field-level + unknown-op errors inline; **Save** writes
+  via `PUT /v1/pipelines/{id}`; **Run** posts to `/v1/runs` and
+  switches to the Runs tab.
+- Runs panel polls `/v1/runs` every 2 s; failed/cancelled rows show
+  the cancel/cancelled status; success rows open a manifest modal
+  that runs `redactPayload` defence-in-depth before render.
+- Audit / Models / Datasets panels — read-only catalog views over
+  the matching Phase-19 endpoints.
+- Bearer-token prompt: token is held in `sessionStorage` only (never
+  `localStorage`) and a React context; 401 invalidates the token.
+- 14 Vitest tests across the API client, schema-form widgets, and
+  the redact helpers.
+- `.github/workflows/web.yml` runs lint + typecheck + unit tests +
+  build on Node 20 + 22.
+- `openpathai serve --canvas-dir <path>` mounts the built `dist/`
+  at `/` so the API + canvas live on a single port. SPA fallback
+  serves `index.html` for unknown routes; `/v1/*` keeps precedence.
+- `scripts/run-full.sh canvas` builds + serves canvas on the API
+  port for a one-command demo.
+- `docs/canvas.md` published.
+
+Iron-rule enforcement at the UI
+- **#8 no PHI in plaintext** — `lib/redact.ts` mirrors the server
+  regex; every error string + manifest panel runs through it. Token
+  never persists outside `sessionStorage`.
+- **#9 never auto-execute LLM-drafted pipelines** — the canvas has
+  no "draft + run" path; explicit Validate → Save → Run only.
+- **#11 no silent fallbacks** — manifest + runs panels render the
+  executor's `resolved_*_id` + `fallback_reason` verbatim.
+
+Non-goals (deferred)
+- No OpenSeadragon viewer (Phase 21).
+- No DZI tile serving (Phase 21).
+- No multi-user auth.
+- No PWA / offline mode.
+
 ### Phase 19 (v2.0 line) — FastAPI backend for the React canvas (2026-04-24)
 
 First of three phases (19 backend · 20 canvas · 21 viewer) that

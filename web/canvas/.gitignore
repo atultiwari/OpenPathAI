@@ -1,0 +1,16 @@
+node_modules
+dist
+dist-ssr
+.env
+.env.local
+.eslintcache
+playwright-report
+test-results
+*.log
+*.tsbuildinfo
+vite.config.js
+src/test/setup.js
+src/**/*.js
+src/**/*.js.map
+src/**/*.d.ts
+src/**/*.d.ts.map

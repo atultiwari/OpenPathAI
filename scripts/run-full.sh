@@ -32,10 +32,13 @@
 set -euo pipefail
 
 MODE="${1:-all}"
-if [[ "$MODE" != "all" && "$MODE" != "api" && "$MODE" != "gui" && "$MODE" != "mlflow" ]]; then
-  echo "usage: $0 [all|api|gui|mlflow]  (got: $MODE)" >&2
-  exit 2
-fi
+case "$MODE" in
+  all|api|gui|mlflow|canvas) ;;
+  *)
+    echo "usage: $0 [all|api|gui|mlflow|canvas]  (got: $MODE)" >&2
+    exit 2
+    ;;
+esac
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_DIR"
@@ -132,6 +135,7 @@ case "$MODE" in
   api)    EXTRAS+=("--extra" "server") ;;
   gui)    EXTRAS+=("--extra" "gui" "--extra" "train" "--extra" "explain") ;;
   mlflow) EXTRAS+=("--extra" "mlflow") ;;
+  canvas) EXTRAS+=("--extra" "server") ;;
 esac
 
 if [[ "${OPA_SKIP_SYNC:-0}" != "1" ]]; then
@@ -180,7 +184,25 @@ if [[ "$MODE" == "all" || "$MODE" == "mlflow" ]]; then
   fi
 fi
 
-if [[ "$MODE" == "all" || "$MODE" == "api" ]]; then
+if [[ "$MODE" == "all" || "$MODE" == "api" || "$MODE" == "canvas" ]]; then
+  CANVAS_FLAG=""
+  if [[ "$MODE" == "canvas" ]]; then
+    CANVAS_DIR="$PROJECT_DIR/web/canvas/dist"
+    if [[ ! -d "$CANVAS_DIR" ]]; then
+      say "Building React canvas (Phase 20)"
+      if command -v npm >/dev/null 2>&1; then
+        ( cd "$PROJECT_DIR/web/canvas" && npm install --no-audit --no-fund >>"$LOG_DIR/canvas-build.log" 2>&1 \
+          && npm run build >>"$LOG_DIR/canvas-build.log" 2>&1 ) \
+          || warn "Canvas build failed — see $LOG_DIR/canvas-build.log"
+      else
+        warn "npm not installed — install Node.js 20+ first."
+      fi
+    fi
+    if [[ -d "$CANVAS_DIR" ]]; then
+      CANVAS_FLAG="--canvas-dir $CANVAS_DIR"
+      info "Canvas dist mount: $CANVAS_DIR"
+    fi
+  fi
   if port_in_use "$API_PORT"; then
     warn "Port $API_PORT is already in use — the API will not start."
   else
@@ -189,6 +211,7 @@ if [[ "$MODE" == "all" || "$MODE" == "api" ]]; then
         --host 127.0.0.1 --port "$API_PORT" \
         --token "$OPA_API_TOKEN" \
         --log-level info \
+        $CANVAS_FLAG \
         > "$LOG_DIR/api.log" 2>&1 ) &
     PIDS+=("$!")
   fi
@@ -230,6 +253,7 @@ cat <<EOF
   FastAPI docs        http://127.0.0.1:$API_PORT/docs
   FastAPI OpenAPI     http://127.0.0.1:$API_PORT/openapi.json
   FastAPI health      http://127.0.0.1:$API_PORT/v1/health   (no auth)
+  React canvas        http://127.0.0.1:$API_PORT/             (canvas mode)
   MLflow UI           http://127.0.0.1:$MLFLOW_PORT          (if [mlflow] extra installed)
 
   API token           $OPA_API_TOKEN

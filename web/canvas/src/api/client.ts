@@ -1,0 +1,274 @@
+// Typed HTTP client for the Phase-19 /v1 API.
+//
+// Every method accepts the bearer token explicitly so the client is a
+// pure-function module — no React context, no module-level state. The
+// React layer wraps it via ``api-context.tsx`` so components stay
+// declarative.
+
+import type {
+  AuditRunRow,
+  DatasetCard,
+  Health,
+  ModelSummary,
+  NodesResponse,
+  Paged,
+  Pipeline,
+  PipelineEnvelope,
+  PipelineValidation,
+  RunRecord,
+  RunRequest,
+  Version,
+} from "./types";
+
+export class ApiError extends Error {
+  status: number;
+  detail: string;
+
+  constructor(status: number, detail: string) {
+    super(`API ${status}: ${detail}`);
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
+export type RequestOptions = {
+  signal?: AbortSignal;
+  query?: Record<string, string | number | boolean | undefined>;
+};
+
+export class ApiClient {
+  baseUrl: string;
+  token: string | null;
+
+  constructor(baseUrl: string, token: string | null = null) {
+    this.baseUrl = baseUrl.replace(/\/+$/, "");
+    this.token = token;
+  }
+
+  withToken(token: string | null): ApiClient {
+    return new ApiClient(this.baseUrl, token);
+  }
+
+  private buildUrl(path: string, query?: RequestOptions["query"]): string {
+    const url = new URL(this.baseUrl + path);
+    if (query) {
+      for (const [key, value] of Object.entries(query)) {
+        if (value !== undefined && value !== null && value !== "") {
+          url.searchParams.set(key, String(value));
+        }
+      }
+    }
+    return url.toString();
+  }
+
+  private async request<T>(
+    method: string,
+    path: string,
+    body?: unknown,
+    options: RequestOptions = {}
+  ): Promise<T> {
+    const headers: Record<string, string> = {
+      Accept: "application/json",
+    };
+    if (body !== undefined) {
+      headers["Content-Type"] = "application/json";
+    }
+    if (this.token) {
+      headers["Authorization"] = `Bearer ${this.token}`;
+    }
+    const init: RequestInit = {
+      method,
+      headers,
+      signal: options.signal,
+    };
+    if (body !== undefined) {
+      init.body = JSON.stringify(body);
+    }
+    const response = await fetch(this.buildUrl(path, options.query), init);
+    if (response.status === 204) {
+      return undefined as T;
+    }
+    const text = await response.text();
+    let payload: unknown = null;
+    if (text) {
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        payload = text;
+      }
+    }
+    if (!response.ok) {
+      const detail =
+        (payload &&
+          typeof payload === "object" &&
+          "detail" in (payload as Record<string, unknown>) &&
+          typeof (payload as Record<string, unknown>).detail === "string"
+          ? ((payload as Record<string, unknown>).detail as string)
+          : null) ?? `request failed`;
+      throw new ApiError(response.status, detail);
+    }
+    return payload as T;
+  }
+
+  // ─── Health + version ────────────────────────────────────────────
+
+  health(options?: RequestOptions): Promise<Health> {
+    return this.request("GET", "/v1/health", undefined, options);
+  }
+
+  version(options?: RequestOptions): Promise<Version> {
+    return this.request("GET", "/v1/version", undefined, options);
+  }
+
+  // ─── Catalogs ────────────────────────────────────────────────────
+
+  listNodes(options?: RequestOptions): Promise<NodesResponse> {
+    return this.request("GET", "/v1/nodes", undefined, options);
+  }
+
+  listModels(
+    query?: { kind?: string; q?: string; limit?: number; offset?: number },
+    options?: RequestOptions
+  ): Promise<Paged<ModelSummary>> {
+    return this.request("GET", "/v1/models", undefined, {
+      ...options,
+      query: { ...query, ...(options?.query ?? {}) },
+    });
+  }
+
+  listDatasets(
+    query?: { q?: string; limit?: number; offset?: number },
+    options?: RequestOptions
+  ): Promise<Paged<DatasetCard>> {
+    return this.request("GET", "/v1/datasets", undefined, {
+      ...options,
+      query: { ...query, ...(options?.query ?? {}) },
+    });
+  }
+
+  // ─── Pipelines ───────────────────────────────────────────────────
+
+  listPipelines(
+    query?: { limit?: number; offset?: number },
+    options?: RequestOptions
+  ): Promise<Paged<PipelineEnvelope>> {
+    return this.request("GET", "/v1/pipelines", undefined, {
+      ...options,
+      query: { ...query, ...(options?.query ?? {}) },
+    });
+  }
+
+  getPipeline(
+    pipelineId: string,
+    options?: RequestOptions
+  ): Promise<PipelineEnvelope> {
+    return this.request(
+      "GET",
+      `/v1/pipelines/${encodeURIComponent(pipelineId)}`,
+      undefined,
+      options
+    );
+  }
+
+  putPipeline(
+    pipelineId: string,
+    body: Pipeline,
+    options?: RequestOptions
+  ): Promise<PipelineEnvelope> {
+    return this.request(
+      "PUT",
+      `/v1/pipelines/${encodeURIComponent(pipelineId)}`,
+      body,
+      options
+    );
+  }
+
+  deletePipeline(pipelineId: string, options?: RequestOptions): Promise<void> {
+    return this.request(
+      "DELETE",
+      `/v1/pipelines/${encodeURIComponent(pipelineId)}`,
+      undefined,
+      options
+    );
+  }
+
+  validatePipeline(
+    body: Pipeline,
+    options?: RequestOptions
+  ): Promise<PipelineValidation> {
+    return this.request("POST", "/v1/pipelines/validate", body, options);
+  }
+
+  // ─── Runs ────────────────────────────────────────────────────────
+
+  listRuns(
+    query?: { limit?: number; offset?: number; status?: string },
+    options?: RequestOptions
+  ): Promise<Paged<RunRecord>> {
+    return this.request("GET", "/v1/runs", undefined, {
+      ...options,
+      query: { ...query, ...(options?.query ?? {}) },
+    });
+  }
+
+  createRun(body: RunRequest, options?: RequestOptions): Promise<RunRecord> {
+    return this.request("POST", "/v1/runs", body, options);
+  }
+
+  getRun(runId: string, options?: RequestOptions): Promise<RunRecord> {
+    return this.request(
+      "GET",
+      `/v1/runs/${encodeURIComponent(runId)}`,
+      undefined,
+      options
+    );
+  }
+
+  getRunManifest(
+    runId: string,
+    options?: RequestOptions
+  ): Promise<Record<string, unknown>> {
+    return this.request(
+      "GET",
+      `/v1/runs/${encodeURIComponent(runId)}/manifest`,
+      undefined,
+      options
+    );
+  }
+
+  cancelRun(runId: string, options?: RequestOptions): Promise<RunRecord> {
+    return this.request(
+      "DELETE",
+      `/v1/runs/${encodeURIComponent(runId)}`,
+      undefined,
+      options
+    );
+  }
+
+  // ─── Audit ───────────────────────────────────────────────────────
+
+  listAuditRuns(
+    query?: { kind?: string; status?: string; limit?: number },
+    options?: RequestOptions
+  ): Promise<Paged<AuditRunRow>> {
+    return this.request("GET", "/v1/audit/runs", undefined, {
+      ...options,
+      query: { ...query, ...(options?.query ?? {}) },
+    });
+  }
+}
+
+export function defaultBaseUrl(): string {
+  const env = (
+    import.meta as unknown as { env?: Record<string, string | undefined> }
+  ).env;
+  if (env?.VITE_API_BASE_URL) {
+    return env.VITE_API_BASE_URL;
+  }
+  if (typeof window !== "undefined" && window.location?.origin) {
+    // When the canvas is served from the FastAPI app itself, hit the
+    // same origin. The Vite dev server falls back to 7870 below.
+    return window.location.origin;
+  }
+  return "http://127.0.0.1:7870";
+}

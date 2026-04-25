@@ -12,6 +12,8 @@ eggs/
 .eggs/
 lib/
 lib64/
+# Phase 20 — the canvas's local helpers live under web/canvas/src/lib/.
+!web/canvas/src/lib/
 parts/
 sdist/
 var/
@@ -86,6 +88,9 @@ data/cohorts/user/
 data/stain_references/user/
 ~/.openpathai/
 runs/
+# Phase 20 — the canvas runs panel lives at web/canvas/src/runs/ and
+# must not be caught by the generic ``runs/`` ignore above.
+!web/canvas/src/runs/
 analyse-output/
 try-it-scratch/
 mlruns/
@@ -109,12 +114,15 @@ checkpoints/
 # (PNG thumbnails / small test fixtures that SHOULD be tracked go under tests/fixtures/)
 !tests/fixtures/**
 
-# ─── Node (future v2.0 React canvas) ──────────────────────────────────
+# ─── Node (Phase 20 — React canvas at web/canvas/) ────────────────────
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+web/canvas/dist/
+web/canvas/playwright-report/
+web/canvas/test-results/
 
 # ─── Misc ─────────────────────────────────────────────────────────────
 *.log

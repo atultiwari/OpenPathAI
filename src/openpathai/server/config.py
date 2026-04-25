@@ -89,6 +89,11 @@ class ServerSettings(BaseModel):
     api_title: str = Field(default="OpenPathAI API", min_length=1)
     api_version: str = Field(default="v1", min_length=1)
 
+    canvas_dir: Path | None = Field(default=None)
+    """Phase 20 — when set, the FastAPI app serves the built React
+    canvas (Vite ``dist/`` directory) at ``/``. ``/v1/*`` API routes
+    keep precedence; the static mount handles every other path."""
+
     def resolved_pipelines_dir(self) -> Path:
         """Concrete pipelines directory — falls back to
         ``openpathai_home/pipelines``."""
