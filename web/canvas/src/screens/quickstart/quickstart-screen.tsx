@@ -12,6 +12,8 @@ import { safeMessage } from "../../lib/safe-string";
 import {
   WIZARD_TEMPLATES,
   findTemplate,
+  type ManualChoice,
+  type StepControl,
   type StepResult,
   type StepStatus,
   type WizardContext,
@@ -198,6 +200,30 @@ export function QuickstartScreen() {
     });
   }
 
+  function confirmManualChoice(step: WizardStep, choice: ManualChoice) {
+    if (!template) return;
+    if (choice.state) {
+      ctxState.current = { ...ctxState.current, ...choice.state };
+    }
+    updateResults(step.id, {
+      status: choice.id === "skip_hf" ? "skipped" : "done",
+      message: choice.message ?? `Confirmed: ${choice.label}.`,
+    });
+  }
+
+  function setControlValue(controlId: string, value: unknown) {
+    ctxState.current = { ...ctxState.current, [controlId]: value };
+    setSession((prev) => {
+      if (!prev) return prev;
+      const next: StoredSession = {
+        ...prev,
+        state: { ...ctxState.current },
+      };
+      saveSession(next);
+      return next;
+    });
+  }
+
   // Template picker (no session yet).
   if (!template) {
     return (
@@ -357,6 +383,14 @@ export function QuickstartScreen() {
                   </dl>
                 ) : null}
 
+                {step.controls?.length ? (
+                  <div className="qs-controls">
+                    {step.controls.map((control) =>
+                      renderControl(control, ctxState.current, setControlValue)
+                    )}
+                  </div>
+                ) : null}
+
                 <div className="qs-step-actions">
                   {step.run ? (
                     <button
@@ -367,6 +401,22 @@ export function QuickstartScreen() {
                       {isDone ? "Re-run" : "Run"}
                     </button>
                   ) : null}
+                  {step.manualChoices?.length
+                    ? step.manualChoices.map((choice) => (
+                        <button
+                          key={choice.id}
+                          type="button"
+                          onClick={() => confirmManualChoice(step, choice)}
+                          className={
+                            choice.id === "skip_hf" || choice.id.startsWith("skip")
+                              ? "qs-skip"
+                              : undefined
+                          }
+                        >
+                          {choice.label}
+                        </button>
+                      ))
+                    : null}
                   {step.skippable && !isDone ? (
                     <button
                       type="button"
@@ -383,5 +433,69 @@ export function QuickstartScreen() {
         })}
       </ol>
     </section>
+  );
+}
+
+function renderControl(
+  control: StepControl,
+  state: Record<string, unknown>,
+  onChange: (id: string, value: unknown) => void
+) {
+  const current = state[control.id];
+  if (control.kind === "text") {
+    return (
+      <div key={control.id} className="qs-control">
+        <label htmlFor={`qs-${control.id}`}>{control.label}</label>
+        <input
+          id={`qs-${control.id}`}
+          type="text"
+          placeholder={control.placeholder}
+          value={typeof current === "string" ? current : ""}
+          onChange={(e) => onChange(control.id, e.target.value)}
+          spellCheck={false}
+          autoComplete="off"
+        />
+        {control.help ? <span className="qs-control-help">{control.help}</span> : null}
+      </div>
+    );
+  }
+  if (control.kind === "select") {
+    const value =
+      typeof current === "string" && control.options.includes(current)
+        ? current
+        : control.options[0];
+    return (
+      <div key={control.id} className="qs-control">
+        <label htmlFor={`qs-${control.id}`}>{control.label}</label>
+        <select
+          id={`qs-${control.id}`}
+          value={value}
+          onChange={(e) => onChange(control.id, e.target.value)}
+        >
+          {control.options.map((opt) => (
+            <option key={opt} value={opt}>
+              {opt}
+            </option>
+          ))}
+        </select>
+        {control.help ? <span className="qs-control-help">{control.help}</span> : null}
+      </div>
+    );
+  }
+  // checkbox
+  const checked = current === undefined ? true : current === true;
+  return (
+    <div key={control.id} className="qs-control qs-control-checkbox">
+      <label htmlFor={`qs-${control.id}`}>
+        <input
+          id={`qs-${control.id}`}
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onChange(control.id, e.target.checked)}
+        />
+        <span>{control.label}</span>
+      </label>
+      {control.help ? <span className="qs-control-help">{control.help}</span> : null}
+    </div>
   );
 }

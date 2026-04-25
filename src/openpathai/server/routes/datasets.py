@@ -37,13 +37,23 @@ class RegisterFolderRequest(BaseModel):
 
 
 class DatasetDownloadRequest(BaseModel):
-    """``POST /v1/datasets/{name}/download`` payload."""
+    """``POST /v1/datasets/{name}/download`` payload.
+
+    The three override fields (Phase 21.6.1) let the wizard work
+    around unsupported card methods (e.g. Zenodo when the canonical
+    archive is unreachable) or point at a Hugging Face mirror /
+    local folder. Priority: local_source_path > override_url >
+    override_huggingface_repo > the card's declared download.method.
+    """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     subset: int | None = Field(default=None, ge=1)
     allow_patterns: tuple[str, ...] | None = None
     dry_run: bool = False
+    override_url: str | None = Field(default=None, min_length=1)
+    override_huggingface_repo: str | None = Field(default=None, min_length=1)
+    local_source_path: str | None = Field(default=None, min_length=1)
 
 
 class DatasetDownloadResult(BaseModel):
@@ -277,7 +287,13 @@ async def download_dataset(dataset_id: str, body: DatasetDownloadRequest) -> Dat
         )
 
     try:
-        result = dispatch_download(card, subset=body.subset)
+        result = dispatch_download(
+            card,
+            subset=body.subset,
+            override_url=body.override_url,
+            override_huggingface_repo=body.override_huggingface_repo,
+            local_source_path=body.local_source_path,
+        )
     except MissingBackendError as exc:
         return DatasetDownloadResult(
             dataset=card.name,

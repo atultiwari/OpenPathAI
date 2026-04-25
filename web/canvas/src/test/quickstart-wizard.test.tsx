@@ -73,6 +73,40 @@ describe("WIZARD_TEMPLATES", () => {
     const stepIds = TEMPLATE_YOLO_CLASSIFIER.steps.map((s) => s.id);
     expect(stepIds).toContain("yolo_strict_choice");
   });
+
+  it("YOLO strict-choice step exposes manualChoices so the user can advance", () => {
+    const step = TEMPLATE_YOLO_CLASSIFIER.steps.find(
+      (s) => s.id === "yolo_strict_choice"
+    );
+    expect(step).toBeDefined();
+    expect(step?.kind).toBe("manual");
+    expect(step?.manualChoices?.length).toBeGreaterThanOrEqual(2);
+    const choiceIds = step!.manualChoices!.map((c) => c.id);
+    expect(choiceIds).toContain("allow_fallback");
+    expect(choiceIds).toContain("strict_v26");
+  });
+
+  it("download_dataset step ships override controls (url / hf repo / local)", () => {
+    for (const t of WIZARD_TEMPLATES) {
+      const step = t.steps.find((s) => s.id === "download_dataset");
+      expect(step?.controls?.length, t.id).toBeGreaterThanOrEqual(3);
+      const controlIds = step!.controls!.map((c) => c.id);
+      expect(controlIds).toContain("override_url");
+      expect(controlIds).toContain("override_huggingface_repo");
+      expect(controlIds).toContain("local_source_path");
+    }
+  });
+
+  it("train step ships duration_preset select + use_synthetic checkbox", () => {
+    for (const t of WIZARD_TEMPLATES) {
+      const step = t.steps.find((s) => s.id === "train");
+      expect(step?.controls?.length, t.id).toBeGreaterThanOrEqual(2);
+      const dur = step!.controls!.find((c) => c.id === "duration_preset");
+      expect(dur?.kind).toBe("select");
+      const synth = step!.controls!.find((c) => c.id === "use_synthetic");
+      expect(synth?.kind).toBe("checkbox");
+    }
+  });
 });
 
 describe("<QuickstartScreen>", () => {
@@ -159,6 +193,76 @@ describe("<QuickstartScreen>", () => {
     expect(
       screen.getByText(/YOLO classifier — YOLOv26-cls \+ Kather-CRC-5K/i)
     ).toBeInTheDocument();
+  });
+
+  it("download step posts the user's override fields when set", async () => {
+    let downloadCalls = 0;
+    let receivedBody: unknown = null;
+    globalThis.fetch = vi.fn(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (
+          url.endsWith("/v1/datasets/kather_crc_5k/download") &&
+          init?.method === "POST"
+        ) {
+          downloadCalls += 1;
+          receivedBody = JSON.parse(init.body as string);
+          return mockJson({
+            dataset: "kather_crc_5k",
+            status: "downloaded",
+            method: "local",
+            target_dir: "/tmp/.openpathai/datasets/kather_crc_5k",
+            files_written: 5000,
+            bytes_written: 52428800,
+            message: "ok",
+            extra_required: null,
+          });
+        }
+        if (url.includes("/v1/datasets/") && url.endsWith("/status")) {
+          return mockJson({
+            dataset: "kather_crc_5k",
+            present: false,
+            target_dir: "/tmp/.openpathai/datasets/kather_crc_5k",
+            files: 0,
+            bytes: 0,
+          });
+        }
+        if (url.endsWith("/v1/credentials/huggingface")) {
+          return mockJson({
+            present: false,
+            source: "none",
+            token_preview: null,
+          });
+        }
+        return mockJson({});
+      }
+    ) as unknown as typeof fetch;
+
+    localStorage.setItem(
+      "openpathai.quickstart.session",
+      JSON.stringify({
+        templateId: TEMPLATE_TILE_CLASSIFIER.id,
+        stepResults: {},
+        // Pre-seed the override so the runStep call carries it.
+        state: { local_source_path: "/Users/me/data/kather" },
+      })
+    );
+
+    render(
+      <AuthProvider>
+        <QuickstartScreen />
+      </AuthProvider>
+    );
+
+    const runBtns = await screen.findAllByRole("button", { name: /^run$/i });
+    fireEvent.click(runBtns[0]);
+
+    await waitFor(() => {
+      expect(downloadCalls).toBe(1);
+      expect(receivedBody).toEqual({
+        local_source_path: "/Users/me/data/kather",
+      });
+    });
   });
 
   it("download step calls the API and surfaces target_dir", async () => {

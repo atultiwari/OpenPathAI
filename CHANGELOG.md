@@ -9,6 +9,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Phase 21.6.1 (v2.0.x) — Wizard fixes: Zenodo backend, download overrides, train duration selector, manual confirms (2026-04-26)
+
+Three concrete bugs from the Phase 21.6 close screenshots:
+1. The Quickstart wizard's download step failed against `kather_crc_5k`
+   with `API 501: Zenodo backend lands in Phase 9` — and offered no
+   fallback path.
+2. The train step's body said "Pick Quick / Standard / Thorough" but
+   no actual selector existed; preset was hardcoded to `Quick`.
+3. The YOLO template's strict-vs-fallback step had no Run / Confirm
+   button so the user couldn't advance past it.
+
+Fixed — backend
+- `openpathai.data.downloaders.download_zenodo` + `zenodo_record_url()`:
+  resolves a Zenodo record id to its canonical archive URL and routes
+  through a shared `download_from_url` helper. No more 501.
+- `dispatch_download` grew three optional override parameters —
+  `local_source_path`, `override_url`, `override_huggingface_repo`
+  (priority in that order). Each lets the caller bypass the card's
+  declared method when the canonical source is unreachable.
+- `download_local_source` symlinks (or copies on Windows) a local
+  folder into the datasets root so users with already-downloaded
+  data can point OpenPathAI at it without re-downloading.
+- `POST /v1/datasets/{name}/download` payload gained the same three
+  override fields. The legacy `test_dispatch_zenodo_raises_not_implemented`
+  test was rewritten to assert the new resolver behaviour.
+
+Fixed — frontend
+- `WizardStep` grew typed `controls` (text / select / checkbox) and
+  `manualChoices` arrays. The screen renders both: download step
+  shows three override inputs (URL / HF mirror / local path); train
+  step shows a Quick/Standard/Thorough selector + a Synthetic
+  checkbox; manual steps surface one button per choice that marks
+  the step done and merges state.
+- YOLO strict-choice step now ships two buttons: **Allow fallback
+  (default)** and **Strict mode — YOLOv26 only**, each setting
+  `ctx.state.strict_model` and advancing the wizard.
+- HF token and explain steps gained matching Confirm / Skip buttons
+  so every step on every template is now actionable inline.
+- DINOv2 + YOLO templates suggest the `1aurent/Colorectal-Histology-MNIST`
+  HF mirror in the override-repo placeholder so the user has a
+  working alternative to Zenodo a click away.
+
+Tests: +14 (5 downloader unit + 4 server route + 5 frontend) → 329
+pytest, 50 vitest, all gates green.
+
 ### Phase 21.6 (v2.0.x) — Quickstart Wizard + dataset download UI + storage transparency (2026-04-26)
 
 Closes the four gaps the post-Phase-21.5 screenshots flagged: the

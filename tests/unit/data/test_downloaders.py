@@ -47,17 +47,45 @@ def test_download_manual_is_idempotent(tmp_path: Path) -> None:
     assert result_a.target_dir == result_b.target_dir
 
 
-def test_dispatch_zenodo_raises_not_implemented() -> None:
+def test_dispatch_zenodo_routes_through_url_resolver(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Phase 21.6.1 — Zenodo cards used to raise NotImplementedError;
+    now they resolve to a canonical archive URL and route through the
+    HTTP path. We monkeypatch ``download_from_url`` so the test never
+    actually hits the network."""
+    from openpathai.data import downloaders
+
+    captured: dict[str, str] = {}
+
+    def fake_from_url(
+        name: str, url: str, *, root: Path | None = None, method: str = "http"
+    ) -> downloaders.DownloadResult:
+        captured["url"] = url
+        captured["method"] = method
+        target = (root or tmp_path) / name
+        target.mkdir(parents=True, exist_ok=True)
+        return downloaders.DownloadResult(
+            card_name=name,
+            method=method,
+            target_dir=target,
+            files_written=1,
+            bytes_written=64,
+        )
+
+    monkeypatch.setattr(downloaders, "download_from_url", fake_from_url)
+
     card = _manual_card().model_copy(
         update={
             "download": DatasetDownload(
                 method="zenodo",
-                zenodo_record="test-record",
+                zenodo_record="53169",
             ),
         }
     )
-    with pytest.raises(NotImplementedError):
-        dispatch_download(card)
+    result = dispatch_download(card, root=tmp_path)
+    assert result.method == "zenodo"
+    assert captured["url"] == "https://zenodo.org/record/53169/files/archive.zip?download=1"
 
 
 def test_dispatch_unknown_method_raises() -> None:

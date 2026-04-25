@@ -28,10 +28,14 @@ __all__ = [
     "MissingBackendError",
     "default_download_root",
     "dispatch_download",
+    "download_from_url",
     "download_http",
     "download_huggingface",
     "download_kaggle",
+    "download_local_source",
     "download_manual",
+    "download_zenodo",
+    "zenodo_record_url",
 ]
 
 
@@ -196,13 +200,152 @@ def download_http(  # pragma: no cover - exercised in integration tests only
 # --------------------------------------------------------------------------- #
 
 
+def zenodo_record_url(record: str) -> str:
+    """Canonical archive URL for a Zenodo record id.
+
+    Zenodo serves a single ``zip`` archive at
+    ``https://zenodo.org/record/{record}/files/archive.zip?download=1``
+    that contains every file uploaded under the record. We deliberately
+    *don't* try to enumerate per-file URLs — for the quickstart wizard,
+    one big zip is the right surface area.
+    """
+    raw = str(record).strip()
+    cleaned = raw.removeprefix("zenodo:").strip()
+    if not cleaned:
+        raise ValueError("Zenodo record id must not be empty.")
+    return f"https://zenodo.org/record/{cleaned}/files/archive.zip?download=1"
+
+
+def download_zenodo(  # pragma: no cover - exercised in integration tests only
+    card: DatasetCard,
+    *,
+    root: Path | None = None,
+) -> DownloadResult:
+    """Resolve a Zenodo record to a single archive URL and HTTP-download it."""
+    if card.download.zenodo_record is None:
+        raise ValueError(f"{card.name}: Zenodo download requires zenodo_record")
+    url = zenodo_record_url(card.download.zenodo_record)
+    return download_from_url(card.name, url, root=root, method="zenodo")
+
+
+def download_from_url(  # pragma: no cover - exercised in integration tests only
+    card_name: str,
+    url: str,
+    *,
+    root: Path | None = None,
+    method: str = "http",
+) -> DownloadResult:
+    """Generic single-URL HTTP downloader — used by the Zenodo shim
+    and by the override-URL path on :func:`dispatch_download`.
+
+    Splits out from :func:`download_http` so callers can pass a URL
+    that wasn't declared on the card (e.g. a wizard override or a
+    Zenodo-resolved archive)."""
+    import urllib.parse
+    import urllib.request
+
+    base = root if root is not None else default_download_root()
+    target = base / card_name
+    target.mkdir(parents=True, exist_ok=True)
+    parsed = urllib.parse.urlparse(url)
+    filename = Path(parsed.path).name or "download.bin"
+    destination = target / filename
+    with urllib.request.urlopen(url) as response, destination.open("wb") as fh:
+        bytes_written = 0
+        for chunk in iter(lambda: response.read(64 * 1024), b""):
+            fh.write(chunk)
+            bytes_written += len(chunk)
+    return DownloadResult(
+        card_name=card_name,
+        method=method,
+        target_dir=target,
+        files_written=1,
+        bytes_written=bytes_written,
+    )
+
+
+def download_local_source(
+    card_name: str,
+    source: Path,
+    *,
+    root: Path | None = None,
+) -> DownloadResult:
+    """Symlink (or, on Windows, copy) a local folder into the dataset root.
+
+    Used when the user already has the data on disk and wants to point
+    OpenPathAI at it rather than re-downloading. The source folder is
+    not touched; the dataset root contains a symlink named after the
+    card so subsequent reads resolve to the same bytes."""
+    import os
+    import shutil
+
+    src = Path(source).expanduser().resolve()
+    if not src.is_dir():
+        raise ValueError(f"local_source_path must be a directory: {src}")
+    base = root if root is not None else default_download_root()
+    target = base / card_name
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if target.exists() or target.is_symlink():
+        if target.is_symlink() or target.is_file():
+            target.unlink()
+        else:
+            shutil.rmtree(target)
+    try:
+        os.symlink(src, target, target_is_directory=True)
+    except OSError:
+        # Fallback: copy the tree (Windows without dev-mode, etc.)
+        shutil.copytree(src, target)
+    files = sum(1 for _ in target.rglob("*") if _.is_file())
+    return DownloadResult(
+        card_name=card_name,
+        method="local",
+        target_dir=target,
+        files_written=files,
+        bytes_written=None,
+        message=f"Linked {src} -> {target}",
+    )
+
+
 def dispatch_download(
     card: DatasetCard,
     *,
     root: Path | None = None,
     subset: int | None = None,
+    override_url: str | None = None,
+    override_huggingface_repo: str | None = None,
+    local_source_path: str | None = None,
 ) -> DownloadResult:
-    """Route a :class:`DatasetCard` to the right backend."""
+    """Route a :class:`DatasetCard` to the right backend.
+
+    The three optional override parameters let the caller (typically
+    the Quickstart wizard) work around an unsupported card method or
+    a download that fails for other reasons. Override priority,
+    highest first: ``local_source_path`` > ``override_url`` >
+    ``override_huggingface_repo`` > the card's declared method.
+    """
+    if local_source_path:
+        return download_local_source(card.name, Path(local_source_path), root=root)
+    if override_url:
+        return download_from_url(card.name, override_url, root=root, method="http")
+    if override_huggingface_repo:
+        # Build a synthetic card-like view with the override repo.
+        from copy import deepcopy
+
+        clone = deepcopy(card)
+        # ``DatasetDownload`` is frozen — re-construct it with the
+        # override repo + method=huggingface.
+        clone = clone.model_copy(
+            update={
+                "download": clone.download.model_copy(
+                    update={
+                        "method": "huggingface",
+                        "huggingface_repo": override_huggingface_repo,
+                    }
+                )
+            }
+        )
+        return download_huggingface(clone, root=root, subset=subset)
+
     method = card.download.method
     if method == "manual":
         return download_manual(card, root=root)
@@ -213,8 +356,14 @@ def dispatch_download(
     if method == "http":
         return download_http(card, root=root)
     if method == "zenodo":
-        # Phase 9 wires the Zenodo record -> direct URL shim.
-        raise NotImplementedError("Zenodo backend lands in Phase 9.")
+        return download_zenodo(card, root=root)
+    if method == "local":
+        # Local cards are already on disk — _target_dir resolves to the
+        # card's local_path via the registry, no fetch needed.
+        local = card.download.local_path
+        if local is None:
+            raise ValueError(f"{card.name}: local card missing local_path")
+        return download_local_source(card.name, Path(local), root=root)
     raise ValueError(f"Unknown download method {method!r}")
 
 

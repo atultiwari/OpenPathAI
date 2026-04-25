@@ -359,6 +359,9 @@ export type DatasetDownloadRequest = {
   subset?: number;
   allow_patterns?: string[];
   dry_run?: boolean;
+  override_url?: string;
+  override_huggingface_repo?: string;
+  local_source_path?: string;
 };
 
 export type StoragePaths = {
