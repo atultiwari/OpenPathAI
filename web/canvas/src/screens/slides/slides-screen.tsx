@@ -218,10 +218,14 @@ export function SlidesScreen() {
           {selected ? (
             <SlideViewer
               key={selected.slide_id + (activeHeatmap?.heatmap_id ?? "")}
-              slideDziUrl={api.slideDziUrl(selected.slide_id)}
+              slideDziUrl={api.slideDziUrl(selected.slide_id, {
+                withToken: true,
+              })}
               heatmapDziUrl={
                 activeHeatmap
-                  ? api.heatmapDziUrl(activeHeatmap.heatmap_id)
+                  ? api.heatmapDziUrl(activeHeatmap.heatmap_id, {
+                      withToken: true,
+                    })
                   : null
               }
               heatmapOpacity={opacity}

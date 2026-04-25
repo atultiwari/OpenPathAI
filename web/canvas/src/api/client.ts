@@ -502,9 +502,20 @@ export class ApiClient {
     );
   }
 
-  /** Absolute URL the OpenSeadragon viewer uses as ``tileSources``. */
-  slideDziUrl(slideId: string): string {
-    return this.buildUrl(`/v1/slides/${encodeURIComponent(slideId)}.dzi`);
+  /** Absolute URL the OpenSeadragon viewer uses as ``tileSources``.
+   *
+   * The viewer's tile fetches are not always able to inject the bearer
+   * header (some proxies / browsers strip it on image loads). When
+   * ``withToken`` is set we append ``?token=<bearer>`` so the URL is
+   * self-authenticating — the Phase-21 auth dependency honours it
+   * alongside the Authorization header.
+   */
+  slideDziUrl(slideId: string, opts?: { withToken?: boolean }): string {
+    const path = `/v1/slides/${encodeURIComponent(slideId)}.dzi`;
+    return this.buildUrl(
+      path,
+      opts?.withToken && this.token ? { token: this.token } : undefined
+    );
   }
 
   computeHeatmap(
@@ -533,9 +544,11 @@ export class ApiClient {
     );
   }
 
-  heatmapDziUrl(heatmapId: string): string {
+  heatmapDziUrl(heatmapId: string, opts?: { withToken?: boolean }): string {
+    const path = `/v1/heatmaps/${encodeURIComponent(heatmapId)}.dzi`;
     return this.buildUrl(
-      `/v1/heatmaps/${encodeURIComponent(heatmapId)}.dzi`
+      path,
+      opts?.withToken && this.token ? { token: this.token } : undefined
     );
   }
 

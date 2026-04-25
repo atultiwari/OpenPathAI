@@ -29,6 +29,21 @@ def test_valid_token_passes(client: TestClient, auth_headers: dict[str, str]) ->
     assert response.status_code == 200
 
 
+def test_query_token_passes(client: TestClient) -> None:
+    """Phase 21 — ``?token=<bearer>`` accepted as a fallback so the
+    OpenSeadragon viewer's image tile fetches can authenticate without
+    a custom header."""
+    from tests.unit.server.conftest import TEST_TOKEN
+
+    response = client.get(f"/v1/nodes?token={TEST_TOKEN}")
+    assert response.status_code == 200
+
+
+def test_query_token_wrong_returns_401(client: TestClient) -> None:
+    response = client.get("/v1/nodes?token=wrong")
+    assert response.status_code == 401
+
+
 def test_extract_bearer_helper() -> None:
     assert _extract_bearer("Bearer abc") == "abc"
     assert _extract_bearer("bearer abc") == "abc"  # case-insensitive scheme

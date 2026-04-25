@@ -48,6 +48,14 @@ def require_token(
 
     The settings live on ``request.app.state.settings`` (populated
     by :func:`openpathai.server.app.create_app`).
+
+    Phase 21 also accepts ``?token=<bearer>`` as a fallback. The
+    OpenSeadragon viewer drives DZI XML + tile PNG fetches that don't
+    always carry custom headers (e.g. some proxy paths strip them);
+    a query-string token is the canonical pattern for auth-gated
+    tile servers and keeps the viewer working in every browser /
+    proxy combo. The query token is opt-in and the bearer header
+    still wins when present.
     """
     settings: ServerSettings | None = getattr(request.app.state, "settings", None)
     if settings is None:  # pragma: no cover - defensive; app always sets this
@@ -56,6 +64,11 @@ def require_token(
             detail="server settings not initialised",
         )
     token = _extract_bearer(authorization)
+    if token is None:
+        # Fallback: ``?token=<bearer>`` on the URL.
+        query_token = request.query_params.get("token")
+        if query_token:
+            token = query_token.strip() or None
     if token is None or not secrets.compare_digest(token, settings.token):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
