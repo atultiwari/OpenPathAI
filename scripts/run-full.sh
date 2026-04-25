@@ -1,11 +1,20 @@
 #!/usr/bin/env bash
-# Run OpenPathAI at full power — everything shipped up to Phase 20.
+# Run OpenPathAI at full power — everything shipped up to Phase 21.
 #
 # Boots, in parallel:
-#   * Gradio GUI          (Phase 6+)     http://127.0.0.1:7860
-#   * FastAPI backend     (Phase 19)     http://127.0.0.1:7870
-#   * React canvas        (Phase 20)     http://127.0.0.1:7870/  (mounted on the API)
-#   * MLflow tracking UI  (Phase 10)     http://127.0.0.1:5001  (if --extra mlflow)
+#   * Gradio GUI          (Phase 6+)        http://127.0.0.1:7860
+#   * FastAPI backend     (Phase 19+20.5+21) http://127.0.0.1:7870
+#   * React canvas        (Phase 20+20.5+21) http://127.0.0.1:7870/  (mounted on the API)
+#   * MLflow tracking UI  (Phase 10)        http://127.0.0.1:5001    (if --extra mlflow)
+#
+# Phase 21 surface the script wires for you out of the box:
+#   * /v1/slides + /v1/slides/<id>.dzi  — OpenSeadragon-ready DZI tile pyramids
+#   * /v1/heatmaps + /v1/heatmaps/<id>.dzi — overlay heatmap layers
+#   * /v1/audit/runs/<run_id>/full — single-call audit envelope
+#   * /v1/cohorts/<id>/qc.html and /qc.pdf — downloadable QC reports
+#   * /v1/active-learning/sessions/<id>/corrections — browser-oracle hook
+#   * /v1/train (real Lightning when synthetic=false + [train])
+#   * /v1/analyse/tile (real foundation-model path when [train] + a registered card)
 #
 # Also checks for a local LLM backend (Ollama / LM Studio) so the
 # Phase-15 natural-language endpoints have somewhere to talk to.
@@ -18,7 +27,7 @@
 #   api     — FastAPI backend only
 #   gui     — Gradio GUI only
 #   mlflow  — MLflow UI only
-#   canvas  — FastAPI + Phase-20 React canvas mounted at /
+#   canvas  — FastAPI + Phase-20/20.5/21 React canvas mounted at /
 #
 # Environment overrides:
 #   OPA_API_PORT        (default: 7870)
@@ -131,13 +140,22 @@ info "Log directory:   $LOG_DIR"
 # Step 1 — install extras
 # ---------------------------------------------------------------------------
 
-EXTRAS=("--extra" "dev" "--extra" "safety" "--extra" "audit")
+# Phase 21 notes on extras:
+#  - [safety]   — needed for /v1/cohorts/{id}/qc.pdf and /v1/analyse/report
+#                 (ReportLab). HTML QC always works without it.
+#  - [data]     — pulls scikit-image + tifffile so Pillow-backed slides
+#                 (single-plane TIFF / PNG) round-trip cleanly through the
+#                 Phase-21 DZI pyramid generator.
+#  - [wsi]      — adds openslide-python so real .svs / .ndpi / .mrxs slides
+#                 can be uploaded via /v1/slides. Optional — synthetic TIFFs
+#                 work without it.
+EXTRAS=("--extra" "dev" "--extra" "safety" "--extra" "audit" "--extra" "data")
 case "$MODE" in
-  all)    EXTRAS+=("--extra" "server" "--extra" "gui" "--extra" "train" "--extra" "explain" "--extra" "mlflow") ;;
+  all)    EXTRAS+=("--extra" "server" "--extra" "gui" "--extra" "train" "--extra" "explain" "--extra" "mlflow" "--extra" "wsi") ;;
   api)    EXTRAS+=("--extra" "server") ;;
   gui)    EXTRAS+=("--extra" "gui" "--extra" "train" "--extra" "explain") ;;
   mlflow) EXTRAS+=("--extra" "mlflow") ;;
-  canvas) EXTRAS+=("--extra" "server") ;;
+  canvas) EXTRAS+=("--extra" "server" "--extra" "wsi") ;;
 esac
 
 if [[ "${OPA_SKIP_SYNC:-0}" != "1" ]]; then
@@ -192,9 +210,10 @@ if [[ "$MODE" == "all" || "$MODE" == "api" || "$MODE" == "canvas" ]]; then
   if [[ "$MODE" == "canvas" || "$MODE" == "all" ]]; then
     CANVAS_DIR="$PROJECT_DIR/web/canvas/dist"
     if [[ ! -d "$CANVAS_DIR" ]]; then
-      say "Building React canvas (Phase 20)"
+      say "Building React canvas (Phase 20 / 20.5 / 21)"
       if command -v npm >/dev/null 2>&1; then
         info "Building web/canvas/ (logs: $LOG_DIR/canvas-build.log)"
+        info "Pulls in openseadragon (Phase 21) on first build."
         ( cd "$PROJECT_DIR/web/canvas" && npm install --no-audit --no-fund >>"$LOG_DIR/canvas-build.log" 2>&1 \
           && npm run build >>"$LOG_DIR/canvas-build.log" 2>&1 ) \
           || warn "Canvas build failed — see $LOG_DIR/canvas-build.log"
@@ -268,7 +287,10 @@ say "OpenPathAI is live — full power"
     echo "  FastAPI health      http://127.0.0.1:$API_PORT/v1/health   (no auth)"
   fi
   if [[ "$CANVAS_MOUNTED" == "1" ]]; then
-    echo "  React canvas        http://127.0.0.1:$API_PORT/             (Phase 20)"
+    echo "  React canvas        http://127.0.0.1:$API_PORT/             (Phase 20 + 20.5 + 21)"
+    echo "    Doctor:    Analyse · Slides · Datasets · Train · Cohorts · Annotate"
+    echo "    ML:        Models · Runs · Audit"
+    echo "    Power:     Pipelines (lazy) · Settings"
   elif [[ "$MODE" == "all" || "$MODE" == "canvas" ]]; then
     echo "  React canvas        (build skipped — install Node 20+ and rerun)"
   fi
@@ -285,8 +307,17 @@ say "OpenPathAI is live — full power"
   echo "    curl -H \"Authorization: Bearer \$OPENPATHAI_API_TOKEN\" \\"
   echo "         http://127.0.0.1:$API_PORT/v1/models?kind=foundation | jq '.items[].id'"
   echo
+  echo "    # Phase 21 — list registered slides"
+  echo "    curl -H \"Authorization: Bearer \$OPENPATHAI_API_TOKEN\" \\"
+  echo "         http://127.0.0.1:$API_PORT/v1/slides | jq '.total'"
+  echo
+  echo "    # Phase 21 — upload a slide (any PNG / TIFF) and get its DZI"
+  echo "    curl -H \"Authorization: Bearer \$OPENPATHAI_API_TOKEN\" \\"
+  echo "         -F file=@my_slide.tif \\"
+  echo "         http://127.0.0.1:$API_PORT/v1/slides | jq '.dzi_url'"
+  echo
   if [[ "$CANVAS_MOUNTED" == "1" ]]; then
-    echo "    open http://127.0.0.1:$API_PORT/        # Phase-20 canvas"
+    echo "    open http://127.0.0.1:$API_PORT/        # Phase-21 canvas (Slides tab → upload + viewer)"
     echo
   fi
   echo "  Logs are streaming to $LOG_DIR/  (tail -f logs/api.log  etc.)"
