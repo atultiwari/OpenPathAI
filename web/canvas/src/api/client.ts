@@ -13,6 +13,10 @@ import type {
   CohortSummary,
   ComputeHeatmapRequest,
   DatasetCard,
+  HFTokenClearResult,
+  HFTokenSetResult,
+  HFTokenStatus,
+  HFTokenTestResult,
   Health,
   HeatmapSummary,
   ModelSummary,
@@ -583,6 +587,42 @@ export class ApiClient {
 
   cohortQcPdfUrl(cohortId: string): string {
     return this.buildUrl(`/v1/cohorts/${encodeURIComponent(cohortId)}/qc.pdf`);
+  }
+
+  // ─── Phase 21.5 chunk C — Hugging Face token ───────────────────
+
+  getHfTokenStatus(options?: RequestOptions): Promise<HFTokenStatus> {
+    return this.request("GET", "/v1/credentials/huggingface", undefined, options);
+  }
+
+  setHfToken(
+    token: string,
+    options?: RequestOptions
+  ): Promise<HFTokenSetResult> {
+    return this.request(
+      "PUT",
+      "/v1/credentials/huggingface",
+      { token },
+      options
+    );
+  }
+
+  clearHfToken(options?: RequestOptions): Promise<HFTokenClearResult> {
+    return this.request(
+      "DELETE",
+      "/v1/credentials/huggingface",
+      undefined,
+      options
+    );
+  }
+
+  testHfToken(options?: RequestOptions): Promise<HFTokenTestResult> {
+    return this.request(
+      "POST",
+      "/v1/credentials/huggingface/test",
+      undefined,
+      options
+    );
   }
 }
 

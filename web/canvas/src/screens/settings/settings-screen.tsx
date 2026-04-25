@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../../api/auth-context";
 import { safeMessage } from "../../lib/safe-string";
 import { TabGuide } from "../../components/tab-guide";
+import { HFTokenCard } from "./hf-token-card";
 
 export function SettingsScreen() {
   const { baseUrl, setBaseUrl, token, setToken, client } = useAuth();
@@ -60,6 +61,8 @@ export function SettingsScreen() {
           <button onClick={() => setToken(null)}>Sign out</button>
         </div>
       </div>
+
+      <HFTokenCard />
 
       <div className="card">
         <h3>Server version</h3>

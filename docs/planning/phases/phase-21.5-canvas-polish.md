@@ -46,13 +46,14 @@ Make the v2.0 canvas usable end-to-end on a fresh laptop — broken Pipelines la
 - [x] Mounted at the top of every screen (Pipelines mounts it inside the empty-state overlay).
 - [x] Vitest coverage: 4 new cases (content shape, default render, dismiss persistence, pill re-opens).
 
-### Chunk C — Hugging Face credentials in-app *(deferred until B ships and is approved)*
-- [ ] `src/openpathai/server/routes/credentials.py` — `GET/PUT /v1/credentials/huggingface` (`~/.openpathai/secrets.json`, mode 0600, redacted in responses).
-- [ ] `src/openpathai/config/hf.py` — `resolve_token()` precedence: settings file → `HF_TOKEN` → `HUGGING_FACE_HUB_TOKEN` → `None`. Used by `foundation/uni.py`, `foundation/fallback.py`, `detection/registry.py`, `segmentation/registry.py`.
-- [ ] `web/canvas/src/screens/settings/settings-screen.tsx` — new "Hugging Face" card with token input, **Test token** button, source banner.
-- [ ] `.env.example` at repo root with `OPA_API_TOKEN`, `HF_TOKEN`, `HUGGING_FACE_HUB_TOKEN`, `OPENPATHAI_HOME`, `OLLAMA_HOST`, all `OPA_*` overrides.
-- [ ] `scripts/run-full.sh` — sources `.env` if present; prints active HF source.
-- [ ] Tests: round-trip, env precedence, redaction, missing-token graceful degrade.
+### Chunk C — Hugging Face credentials in-app *(2026-04-26 ✅)*
+- [x] `src/openpathai/server/routes/credentials.py` — `GET/PUT/DELETE /v1/credentials/huggingface` + `POST .../test`; all responses carry only `HFTokenStatus` (redacted).
+- [x] `src/openpathai/config/hf.py` — `resolve_token()` with the documented precedence; `is_token_present()`, `set_token()`, `clear_token()`, `status()`.
+- [x] `foundation.fallback.hf_token_present()` now delegates to the resolver, propagating Settings-card writes without a restart.
+- [x] `web/canvas/src/screens/settings/hf-token-card.tsx` + ApiClient methods + types; mounted on the Settings tab.
+- [x] `.env.example` at repo root.
+- [x] `scripts/run-full.sh` — sources `./.env` if present, prints active HF source at startup (token never logged).
+- [x] Tests: 11 pytest cases on the resolver, 8 on the routes, 4 vitest on the card. All gates green (137 server+config+foundation pytest, 35 vitest).
 
 ### Chunk D — First end-to-end recipe *(deferred until C ships and is approved)*
 - [ ] `pipelines/quickstart_pcam_dinov2.yaml` — 3-node pipeline (`dataset → embed → fit_linear`).
@@ -144,6 +145,12 @@ OPA_REBUILD_CANVAS=1 ./scripts/run-full.sh all
 ---
 
 ## 8. Worklog (append-only, newest on top)
+
+### 2026-04-26 · Chunk C shipped — HF token in-app + `.env.example`
+**What:** Centralised HF token resolution in `openpathai.config.hf` (settings file > `HF_TOKEN` > `HUGGING_FACE_HUB_TOKEN` > `None`). New `/v1/credentials/huggingface` routes (GET/PUT/DELETE/test) round-trip through the resolver and never echo plaintext. Settings tab grew an HF card (Save / Test / Clear) wired to the new endpoints. `foundation.fallback.hf_token_present()` now delegates to the resolver so a freshly-saved token is visible immediately. `.env.example` documents every relevant env var; `scripts/run-full.sh` sources `./.env` (parent shell wins) and prints the active HF source. Tests: 11 resolver + 8 route + 4 frontend, all green; 137/137 server-side pytest + 35/35 vitest.
+**Why:** User flagged that "HF is not active, so not a single real-world model has been tested". This makes the path from `git clone` to "I can use a gated model" exactly two clicks (Settings → paste → Test) without leaving the canvas.
+**Next:** ask for green light on Chunk D (first end-to-end recipe — PCam quickstart pipeline + docs walkthrough).
+**Blockers:** none.
 
 ### 2026-04-26 · Chunk B shipped — per-tab guides on every screen
 **What:** New `TabGuide` component + content table for all 11 tabs. Each card carries purpose, 3-step path, Python-node-behind-it, caching/audit story, docs link. Dismiss persists in `localStorage`. All screens (including audit/runs panels and the Slides custom grid) mount it; Pipelines uses the empty-state overlay so it doesn't compete with React Flow once nodes are loaded. Tests: 31/31 pass (+4). Build, lint, typecheck clean.

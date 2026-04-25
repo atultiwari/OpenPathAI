@@ -9,6 +9,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Phase 21.5 (v2.0.x) — Canvas polish, chunk C: Hugging Face token in-app + `.env.example` (2026-04-26)
+
+The HF token is no longer only an env-var concern. The canvas
+Settings tab now shows a "Hugging Face" card where a fresh user can
+paste a token, save it (server writes `~/.openpathai/secrets.json`
+mode 0600), and probe `huggingface_hub.whoami` with one click. The
+server centralises resolution: settings file > `HF_TOKEN` >
+`HUGGING_FACE_HUB_TOKEN` > `None`. `foundation.fallback.hf_token_present`
+now delegates to the resolver, so iron-rule #11 ("no silent
+fallbacks") stays accurate after a Settings save without an extra
+restart.
+
+Added — backend
+- `src/openpathai/config/hf.py` — `resolve_token()`,
+  `is_token_present()`, `status() → HFTokenStatus`, `set_token()`,
+  `clear_token()`. Plaintext tokens never leave this module; public
+  surfaces only see a `…last4` preview.
+- `src/openpathai/server/routes/credentials.py` —
+  `GET/PUT/DELETE /v1/credentials/huggingface` and
+  `POST /v1/credentials/huggingface/test`. All four route handlers
+  return only the redacted `HFTokenStatus`.
+- `tests/unit/config/test_hf_resolve.py` (11 cases) +
+  `tests/unit/server/test_credentials.py` (8 cases) covering
+  precedence, redaction, file mode 0600, the foundation.fallback
+  delegation, missing-token graceful path, and auth gating.
+
+Added — frontend
+- `web/canvas/src/screens/settings/hf-token-card.tsx` — token input,
+  Save / Test / Clear-settings buttons, source banner.
+- `ApiClient.{getHfTokenStatus,setHfToken,clearHfToken,testHfToken}`
+  + matching wire types in `api/types.ts`.
+- `web/canvas/src/test/hf-token-card.test.tsx` — 4 Vitest cases
+  (round-trip, banner, masked echo, ApiClient methods).
+
+Added — tooling
+- `.env.example` at the repo root documenting `OPA_API_TOKEN`,
+  `HF_TOKEN`, `HUGGING_FACE_HUB_TOKEN`, `OPENPATHAI_HOME`,
+  `OLLAMA_HOST`, `OPA_*` overrides. `.env` itself is
+  already-git-ignored.
+- `scripts/run-full.sh` — sources `./.env` (key=value format,
+  parent shell wins) and prints the active HF token source at
+  startup. Token itself is never logged.
+
+Changed — backend
+- `src/openpathai/foundation/fallback.py` — `hf_token_present()`
+  now delegates to `openpathai.config.hf.is_token_present()` so
+  the canvas Settings card's writes are visible without restarting
+  the process.
+
 ### Phase 21.5 (v2.0.x) — Canvas polish, chunk B: per-tab "About this screen" guide (2026-04-26)
 
 Every screen now ships an opinionated info card answering four

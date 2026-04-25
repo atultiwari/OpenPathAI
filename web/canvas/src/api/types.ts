@@ -294,3 +294,35 @@ export type SubmitCorrectionsResult = {
 
 export type TierLevel = "Easy" | "Standard" | "Expert";
 export type RunMode = "exploratory" | "diagnostic";
+
+// ─── Phase 21.5 chunk C — credentials ───────────────────────────
+
+export type HFTokenSource =
+  | "settings"
+  | "env_hf_token"
+  | "env_hub_token"
+  | "none";
+
+export type HFTokenStatus = {
+  present: boolean;
+  source: HFTokenSource;
+  token_preview: string | null;
+};
+
+export type HFTokenSetResult = {
+  saved: boolean;
+  secrets_path: string;
+  status: HFTokenStatus;
+};
+
+export type HFTokenClearResult = {
+  cleared: boolean;
+  status: HFTokenStatus;
+};
+
+export type HFTokenTestResult = {
+  ok: boolean;
+  user: string | null;
+  reason: string | null;
+  status: HFTokenStatus;
+};

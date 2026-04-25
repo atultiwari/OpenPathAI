@@ -15,10 +15,11 @@ audit row's ``metrics_json`` (``resolved_backbone_id`` +
 
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from openpathai.config import hf as _hf_config
 
 if TYPE_CHECKING:  # pragma: no cover - type-only
     from openpathai.foundation.adapter import FoundationAdapter
@@ -71,12 +72,16 @@ class FallbackDecision(BaseModel):
 
 
 def hf_token_present() -> bool:
-    """``True`` when an HF token is exposed in the environment.
+    """``True`` when an HF token is resolvable from any source.
 
-    Honours both ``HUGGINGFACE_HUB_TOKEN`` (huggingface-hub CLI
-    convention) and ``HF_TOKEN`` (transformers convention).
+    Resolution order (highest precedence first) is owned by
+    :mod:`openpathai.config.hf`:
+
+    1. ``$OPENPATHAI_HOME/secrets.json`` (set via canvas Settings card).
+    2. ``HF_TOKEN`` env var (transformers convention).
+    3. ``HUGGING_FACE_HUB_TOKEN`` env var (huggingface-hub CLI convention).
     """
-    return any(os.environ.get(k) for k in ("HUGGINGFACE_HUB_TOKEN", "HF_TOKEN"))
+    return _hf_config.is_token_present()
 
 
 def resolve_backbone(

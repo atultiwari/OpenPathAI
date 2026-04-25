@@ -129,6 +129,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         analyse,
         audit,
         cohorts,
+        credentials,
         datasets,
         health,
         heatmaps,
@@ -161,6 +162,8 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     # Phase 21 — slide viewer + heatmap overlays.
     app.include_router(slides.router, prefix="/v1")
     app.include_router(heatmaps.router, prefix="/v1")
+    # Phase 21.5 — credentials (HF token) surfaced to the canvas.
+    app.include_router(credentials.router, prefix="/v1")
 
     # Phase 20 — when --canvas-dir is set we serve the built React canvas
     # at ``/`` so the API + canvas live on a single port.

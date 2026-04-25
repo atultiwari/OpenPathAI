@@ -57,6 +57,28 @@ esac
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_DIR"
 
+# Phase 21.5 chunk C — source ./.env (key=value lines) when present so
+# users can keep HF_TOKEN, OPA_API_TOKEN, OPENPATHAI_HOME etc. out of
+# their shell rc. Lines starting with `#` and blank lines are ignored.
+# A real shell sourcing (`set -a; . .env; set +a`) would also expand
+# any commands in the file — we deliberately don't, since .env is a
+# data file, not a shell script.
+if [[ -f "$PROJECT_DIR/.env" ]]; then
+  while IFS='=' read -r _opa_key _opa_value; do
+    # strip surrounding whitespace + skip comments / blanks
+    _opa_key="${_opa_key%% *}"
+    [[ -z "$_opa_key" || "$_opa_key" == \#* ]] && continue
+    # only export if not already set in the parent environment
+    if [[ -z "${!_opa_key:-}" ]]; then
+      # strip optional surrounding quotes
+      _opa_value="${_opa_value%\"}"; _opa_value="${_opa_value#\"}"
+      _opa_value="${_opa_value%\'}"; _opa_value="${_opa_value#\'}"
+      export "$_opa_key=$_opa_value"
+    fi
+  done < "$PROJECT_DIR/.env"
+  unset _opa_key _opa_value
+fi
+
 LOG_DIR="$PROJECT_DIR/logs"
 mkdir -p "$LOG_DIR"
 
@@ -138,6 +160,20 @@ run "uv run python --version"
 info "Project:        $PROJECT_DIR"
 info "OPENPATHAI_HOME: $OPENPATHAI_HOME"
 info "Log directory:   $LOG_DIR"
+
+# Phase 21.5 chunk C — surface the active HF token source so users
+# can tell at a glance whether the canvas Settings card / .env / shell
+# env is winning. Never prints the token itself.
+if uv run python -c "from openpathai.config import hf" >/dev/null 2>&1; then
+  HF_SRC="$(uv run python -c 'from openpathai.config import hf; s = hf.status(); print(s.source)' 2>/dev/null || echo unknown)"
+  case "$HF_SRC" in
+    settings)        info "HF token source: settings file (~/.openpathai/secrets.json)" ;;
+    env_hf_token)    info "HF token source: HF_TOKEN env var" ;;
+    env_hub_token)   info "HF token source: HUGGING_FACE_HUB_TOKEN env var" ;;
+    none)            info "HF token source: none configured (gated models will fall back)" ;;
+    *)               info "HF token source: $HF_SRC" ;;
+  esac
+fi
 
 # Belt-and-braces format check — CI's ``ruff format --check`` step has
 # blocked Phase 21 once already. Surfacing it here means the user sees
