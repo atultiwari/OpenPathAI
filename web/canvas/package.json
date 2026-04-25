@@ -6,7 +6,7 @@
   "description": "OpenPathAI v2.0 React canvas — visual pipeline builder over the Phase-19 FastAPI backend.",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",

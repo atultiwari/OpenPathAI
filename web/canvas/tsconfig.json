@@ -13,6 +13,7 @@
     "exactOptionalPropertyTypes": false,
     "useDefineForClassFields": true,
     "isolatedModules": true,
+    "noEmit": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "verbatimModuleSyntax": false,

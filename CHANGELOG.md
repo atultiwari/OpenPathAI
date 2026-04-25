@@ -9,6 +9,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Phase 21.5 (v2.0.x) — Canvas polish, chunk A: Pipelines layout fix + starter templates (2026-04-26)
+
+Fixes the broken Pipelines screen surfaced after Phase 21 close (the
+`220 / 1fr / 320` inline grid referenced grid-areas that no longer
+existed in the Phase-20.5 task-shell parent, so the palette collapsed
+and the toolbar floated over a black React Flow void). The canvas now
+has a self-contained grid, a header band that owns the
+Validate / Save / Run buttons, an empty-state hint, and a "Load
+starter ▾" dropdown that ships three working templates wired to ops
+the registry actually exposes today (`demo.*`, `training.train`,
+`explain.gradcam`).
+
+Added — frontend
+- `web/canvas/src/canvas/starters.ts` — three starter pipelines
+  (Hello canvas / Train a tile classifier / Train → Grad-CAM).
+  Starters whose ops are missing from the live `/v1/nodes` catalog
+  are auto-disabled in the dropdown with a tooltip explaining the
+  missing op id, so a fresh laptop never sees a broken template.
+- `web/canvas/src/screens/pipelines/pipelines-screen.css` — scoped
+  grid that owns its own `palette / canvas / inspector` areas, plus
+  starter-popover, status pill and empty-state styles.
+- `web/canvas/src/test/pipelines-starters.test.tsx` — five new Vitest
+  cases (starter shape, edge integrity, op deduplication, live-op
+  reachability, empty-state visibility).
+
+Changed — frontend
+- `web/canvas/src/screens/pipelines/pipelines-screen.tsx` — full
+  rewrite. Header lives at the top; status moved into a single pill;
+  empty-state overlay sits inside the canvas grid cell with
+  `pointer-events: none` so React Flow stays interactive underneath.
+- `web/canvas/tsconfig.json` — `noEmit: true` (Vite owns
+  compilation; `tsc -b` was leaking sibling `.js` artifacts into
+  `src/` that ESLint then choked on).
+- `web/canvas/package.json` — `build` script now uses
+  `tsc --noEmit && vite build` instead of `tsc -b && vite build`.
+
 ### Phase 21 (v2.0 line) — OpenSeadragon viewer + tier badges + 5 refinement seams (2026-04-25)
 
 The slide-aware closer for v2.0. Phase 20 + 20.5 made the canvas

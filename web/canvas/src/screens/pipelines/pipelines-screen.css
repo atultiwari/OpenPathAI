@@ -1,0 +1,239 @@
+/* Phase 21.5 — Pipelines screen scoped layout.
+ *
+ * Replaces the broken inline 220 / 1fr / 320 grid that referenced
+ * grid-areas (palette / canvas / inspector) which no longer exist
+ * in the Phase-20.5 task-shell parent. Now the pipelines screen owns
+ * a self-contained grid that survives any parent layout. */
+
+.pipelines-screen {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr) 320px;
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    "header header header"
+    "palette canvas inspector";
+  height: 100%;
+  min-height: 0;
+}
+
+.pipelines-header {
+  grid-area: header;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-panel);
+}
+
+.pipelines-header h2 {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+
+.pipelines-header .pill {
+  font-size: 11px;
+  background: var(--color-bg);
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: var(--color-text-dim);
+  border: 1px solid var(--color-border);
+}
+
+.pipelines-header .grow {
+  flex: 1;
+}
+
+.pipelines-header .toolbar-actions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.pipelines-status-pill {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text-dim);
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pipelines-status-pill.ok {
+  color: var(--color-accent-2);
+  border-color: var(--color-accent-2);
+}
+
+.pipelines-status-pill.error {
+  color: var(--color-error);
+  border-color: var(--color-error);
+}
+
+.pipelines-palette {
+  grid-area: palette;
+  border-right: 1px solid var(--color-border);
+  background: var(--color-panel);
+  overflow: auto;
+  padding: var(--space-3);
+  min-height: 0;
+}
+
+.pipelines-canvas {
+  grid-area: canvas;
+  position: relative;
+  background: var(--color-bg);
+  overflow: hidden;
+  min-height: 0;
+}
+
+.pipelines-canvas .react-flow {
+  width: 100%;
+  height: 100%;
+}
+
+.pipelines-inspector {
+  grid-area: inspector;
+  border-left: 1px solid var(--color-border);
+  background: var(--color-panel);
+  overflow: auto;
+  padding: var(--space-4);
+  min-height: 0;
+}
+
+.pipelines-empty {
+  grid-area: canvas;
+  align-self: center;
+  justify-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  text-align: center;
+  color: var(--color-text-dim);
+  padding: var(--space-4);
+  z-index: 4;
+  max-width: 480px;
+}
+
+.pipelines-empty h3 {
+  margin: 0 0 var(--space-2);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.pipelines-empty p {
+  margin: 0 0 var(--space-3);
+  font-size: 13px;
+  max-width: 420px;
+  line-height: 1.5;
+}
+
+.pipelines-empty .hint-row {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.pipelines-empty .hint-arrow {
+  font-size: 18px;
+  color: var(--color-accent);
+}
+
+.starter-menu {
+  position: relative;
+}
+
+.starter-menu .starter-trigger {
+  cursor: pointer;
+}
+
+.starter-menu .starter-popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  padding: var(--space-2);
+  width: 320px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.starter-menu .starter-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2);
+  border-radius: var(--radius);
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  color: var(--color-text);
+  font: inherit;
+}
+
+.starter-menu .starter-row:hover:not(:disabled) {
+  background: var(--color-panel-2);
+  border-color: var(--color-border);
+}
+
+.starter-menu .starter-row:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.starter-menu .starter-row .starter-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.starter-menu .starter-row .starter-blurb {
+  font-size: 11.5px;
+  color: var(--color-text-dim);
+  line-height: 1.4;
+}
+
+.starter-tier-tag {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-radius: 999px;
+  padding: 1px 6px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text-dim);
+}
+
+.starter-tier-tag.tier-open {
+  border-color: var(--color-accent-2);
+  color: var(--color-accent-2);
+}
+
+.starter-tier-tag.tier-synthetic {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.starter-tier-tag.tier-gated {
+  border-color: var(--color-warn);
+  color: var(--color-warn);
+}
