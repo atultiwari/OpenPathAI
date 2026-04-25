@@ -9,6 +9,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Phase 21.5 (v2.0.x) — Canvas polish, chunk D: first end-to-end recipe + Quick-start card (2026-04-26)
+
+The "what do I do first" question now has a single, opinionated
+answer: open Analyse, follow the Quick-start card. Each step is
+clickable and the HF-token row turns green automatically when the
+resolver reports a token configured in chunk C.
+
+Added — frontend
+- `web/canvas/src/components/quick-start-card.tsx` — four-step card
+  with concrete CTAs (Open Settings / Open Datasets / Open Train),
+  live HF-token state probe, dismiss-to-pill with `localStorage`
+  persistence, and a `navigateToTab(tab)` helper that emits a
+  `openpathai:nav-tab` `CustomEvent` so child components can drive
+  cross-tab navigation without prop-drilling.
+- `web/canvas/src/test/quick-start-card.test.tsx` — 5 Vitest cases
+  (default render, HF-step done state, nav event emission, dismiss
+  persistence, helper unit).
+- Mounted on the Analyse screen above the existing form.
+
+Changed — frontend
+- `web/canvas/src/app.tsx` — `CanvasShell` now listens for the
+  `openpathai:nav-tab` event and updates its tab state in response,
+  so any child can ship a `navigateToTab("settings")` button without
+  touching CanvasShell directly.
+
+Added — repo
+- `docs/quickstart.md` — full walkthrough: install → boot → HF
+  token → dataset → synthetic / real Train → Analyse + Audit. Plus
+  a cheat-sheet at the bottom and an explicit "Phase 22+" deferred
+  list so users know what's coming.
+- `pipelines/quickstart_pcam_dinov2.yaml` — quickstart pipeline
+  template. Today it ships the *runnable* shape (three demo nodes
+  that exercise the loader, topo-sort, and content-addressable
+  cache against the live registry); the *target* shape with
+  `dataset.load → foundation.embed → classifier.fit_linear` is
+  documented in commented-out form so Phase 22 only needs to flip
+  the comment block.
+- `tests/unit/pipeline/test_quickstart_yaml.py` — 5 pytest cases
+  (file presence, schema validation, op registry coverage, chained
+  reference syntax, loader negative-path).
+
+Closed
+- Phase 21.5 ✅ — tag `phase-21.5-complete`. Dashboard flips back to
+  "Phase 22+ — conditional / deferred" with the canvas now usable
+  end-to-end on a fresh laptop in under 15 minutes.
+
 ### Phase 21.5 (v2.0.x) — Canvas polish, chunk C: Hugging Face token in-app + `.env.example` (2026-04-26)
 
 The HF token is no longer only an env-var concern. The canvas

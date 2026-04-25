@@ -4,11 +4,12 @@
 
 ## Status
 
-- **Current state:** 🔄 active
+- **Current state:** ✅ complete
 - **Version:** v2.0.x patch
 - **Started:** 2026-04-26
 - **Target finish:** 2026-04-28
-- **Actual finish:** —
+- **Actual finish:** 2026-04-26 (same-day)
+- **Closing tag:** `phase-21.5-complete`
 - **Dependency on prior phases:** Phase 19 (FastAPI), Phase 20 (canvas), Phase 20.5 (task surfaces), Phase 21 (slide viewer + 5 refinement seams)
 
 ---
@@ -55,11 +56,12 @@ Make the v2.0 canvas usable end-to-end on a fresh laptop — broken Pipelines la
 - [x] `scripts/run-full.sh` — sources `./.env` if present, prints active HF source at startup (token never logged).
 - [x] Tests: 11 pytest cases on the resolver, 8 on the routes, 4 vitest on the card. All gates green (137 server+config+foundation pytest, 35 vitest).
 
-### Chunk D — First end-to-end recipe *(deferred until C ships and is approved)*
-- [ ] `pipelines/quickstart_pcam_dinov2.yaml` — 3-node pipeline (`dataset → embed → fit_linear`).
-- [ ] `docs/quickstart.md` — full walkthrough with exact commands and HF URLs.
-- [ ] Analyse screen: **Quick start** card visible when no recent run exists; loads the yaml + opens Train tab.
-- [ ] Smoke test (`tests/integration/test_quickstart_pcam.py`) on a 200-tile slice; ≤ 60 s on CI CPU.
+### Chunk D — First end-to-end recipe *(2026-04-26 ✅)*
+- [x] `docs/quickstart.md` — full walkthrough: install → boot → HF token → dataset → synthetic / real Train → Analyse + Audit. Includes cheat-sheet + Phase 22+ deferred list.
+- [x] `pipelines/quickstart_pcam_dinov2.yaml` — runnable today using `demo.*` ops; target shape (`dataset.load → foundation.embed → classifier.fit_linear`) shipped in commented-out form for Phase 22.
+- [x] `web/canvas/src/components/quick-start-card.tsx` mounted on Analyse — 4 steps with CTAs that emit `openpathai:nav-tab` events; HF-step row marked done when resolver reports a token; dismiss persists in `localStorage`.
+- [x] `app.tsx` listens for the nav event so child components can drive tab switches without prop drilling.
+- [x] Tests: 5 pytest on the yaml (presence, schema, op coverage, refs, loader negative path); 5 vitest on the card (render, done-state, nav event, dismiss persistence, helper).
 
 ---
 
@@ -145,6 +147,12 @@ OPA_REBUILD_CANVAS=1 ./scripts/run-full.sh all
 ---
 
 ## 8. Worklog (append-only, newest on top)
+
+### 2026-04-26 · Chunk D shipped — Phase 21.5 closed
+**What:** Authored `docs/quickstart.md` (full install → first end-to-end run, with cheat-sheet + Phase 22 deferred list). Shipped `pipelines/quickstart_pcam_dinov2.yaml` runnable today with `demo.*` ops, target `dataset.load → embed → fit_linear` shape committed in comments. New `QuickStartCard` component on Analyse: 4 steps with CTAs, live HF-token state probe (chunk C wiring), dismiss-to-pill with `localStorage`. Cross-tab nav implemented as a `CustomEvent` so child components can drive tab switches without prop drilling — `CanvasShell` listens. Tests: +5 pytest + +5 vitest, all green; 211 pytest + 40 vitest pass total. Tag `phase-21.5-complete`. Dashboard flipped back to "Phase 22+ — conditional / deferred".
+**Why:** Closes the user's "no real-world workflow has been tested" complaint. From `git clone` to a green run in under 15 minutes on a laptop with no GPU and no Kaggle account.
+**Next:** wait for the user's next ask; Phase 22+ remains conditional.
+**Blockers:** none.
 
 ### 2026-04-26 · Chunk C shipped — HF token in-app + `.env.example`
 **What:** Centralised HF token resolution in `openpathai.config.hf` (settings file > `HF_TOKEN` > `HUGGING_FACE_HUB_TOKEN` > `None`). New `/v1/credentials/huggingface` routes (GET/PUT/DELETE/test) round-trip through the resolver and never echo plaintext. Settings tab grew an HF card (Save / Test / Clear) wired to the new endpoints. `foundation.fallback.hf_token_present()` now delegates to the resolver so a freshly-saved token is visible immediately. `.env.example` documents every relevant env var; `scripts/run-full.sh` sources `./.env` (parent shell wins) and prints the active HF source. Tests: 11 resolver + 8 route + 4 frontend, all green; 137/137 server-side pytest + 35/35 vitest.

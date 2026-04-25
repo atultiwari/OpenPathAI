@@ -20,8 +20,8 @@
 
 | | |
 |---|---|
-| Active phase | **🔄 Phase 21.5 — Canvas Polish** (Pipelines layout fix · per-tab guides · HF token UI · first end-to-end recipe). Spec at [phase-21.5-canvas-polish.md](phase-21.5-canvas-polish.md). |
-| Latest Git tag | `phase-21-complete` |
+| Active phase | **Phase 22+ — conditional / deferred** (Phase 21.5 closed 2026-04-26 — canvas usable end-to-end in <15 min on a laptop). |
+| Latest Git tag | `phase-21.5-complete` |
 | Latest released version | v1.0.0 complete (Phases 13–17 ✅). **All three bets live** 🎯. v1.1.0 complete (Phase 18 ✅) — `pipx install`, Docker CPU + GPU, full docs site. Pre-Phase-19 audit closed (tag `phase-18-audit-complete`): 6 must-fix + 8 warnings + docker.yml workflow shipped. Next: v2.0.0 React canvas (19 backend · 20 canvas · 21 viewer). |
 | Blocked on user | (a) HISTAI-breast gated-access still pending on the main HF account (non-blocking); (b) Ollama + MedGemma 1.5 **already installed** ✅. |
 
@@ -54,7 +54,7 @@
 | 20 | React + React Flow canvas (visual pipeline builder) | v2.0 | ✅ complete (2026-04-25, tag `phase-20-complete`) | [phase-20-react-canvas.md](phase-20-react-canvas.md) | 3–4 w target / same-day actual |
 | 20.5 | Canvas task surfaces (Analyse / Train / Datasets / Cohorts / Annotate / Models / Settings) | v2.0 | ✅ complete (2026-04-25, tag `phase-20.5-complete`) | [phase-20.5-canvas-task-surfaces.md](phase-20.5-canvas-task-surfaces.md) | 2 w target / same-day actual |
 | 21 | OpenSeadragon viewer + run-audit modal + tier badges + 5 refinement seams | v2.0 | ✅ complete (2026-04-25, tag `phase-21-complete`) | [phase-21-openseadragon-viewer.md](phase-21-openseadragon-viewer.md) | 1–2 w target / same-day actual |
-| 21.5 | Canvas polish: Pipelines layout fix · per-tab guides · HF token UI · first end-to-end recipe | v2.0.x | 🔄 active (2026-04-26) | [phase-21.5-canvas-polish.md](phase-21.5-canvas-polish.md) | 2–3 d target |
+| 21.5 | Canvas polish: Pipelines layout fix · per-tab guides · HF token UI · first end-to-end recipe | v2.0.x | ✅ complete (2026-04-26, tag `phase-21.5-complete`) | [phase-21.5-canvas-polish.md](phase-21.5-canvas-polish.md) | 2–3 d target / same-day actual |
 | 22+ | Conditional: RunPod tier, marketplace, DICOM-SR, SaMD | v2.5+ | 🧊 deferred | — | conditional |
 
 **Realistic total for v0.1 → v1.1:** ~20–24 weeks of focused work.

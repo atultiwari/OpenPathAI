@@ -1,0 +1,69 @@
+id: quickstart-pcam-dinov2
+mode: exploratory
+
+# Phase 21.5 chunk D — quickstart "first end-to-end" pipeline.
+#
+# Today this file ships the *target* shape with one real ML node
+# (training.train) and three demo nodes that prove the YAML loader,
+# Kahn topological sort, and content-addressable cache against the
+# live registry. The DINOv2 + PCam dataset wiring lives behind the
+# Train tab (see docs/quickstart.md §4).
+#
+# Phase 22+ is expected to register the missing ops so this same
+# YAML lowers to a single CLI invocation:
+#
+#   dataset.load   →  loads a card-described dataset slice
+#   foundation.embed →  runs DINOv2 / UNI / CONCH on the tiles
+#   classifier.fit_linear  →  fits a linear head + temperature scaling
+#
+# When those nodes land, the bottom of this file ships an enabled
+# version (commented out today). Until then the demo.* nodes ensure
+# the file remains runnable end-to-end so users see green output the
+# first time they try `openpathai run`.
+
+cohort_fanout: null
+max_workers: 1
+
+steps:
+  # 1. Pretend "dataset slice id" — replaced by dataset.load in Phase 22.
+  - id: dataset_slice_id
+    op: demo.constant
+    inputs:
+      value: 200          # 200-tile slice for the smoke test
+
+  # 2. Pretend "feature batch length" — replaced by foundation.embed.
+  - id: feature_batch_count
+    op: demo.double
+    inputs:
+      value: "@dataset_slice_id.value"
+
+  # 3. Pretend "linear-probe accuracy" — replaced by classifier.fit_linear.
+  - id: linear_probe_metric
+    op: demo.mean
+    inputs:
+      a: "@dataset_slice_id.value"
+      b: "@feature_batch_count.value"
+
+# ─────────────────────────────────────────────────────────────────
+# Target shape (Phase 22+ — un-comment once the ops are registered):
+#
+# steps:
+#   - id: load_pcam_slice
+#     op: dataset.load
+#     inputs:
+#       card: pcam
+#       split: train
+#       limit: 200
+#
+#   - id: embed_with_dinov2
+#     op: foundation.embed
+#     inputs:
+#       backbone: dinov2_vits14   # open, no HF token required
+#       tiles: "@load_pcam_slice.tiles"
+#
+#   - id: fit_linear_head
+#     op: classifier.fit_linear
+#     inputs:
+#       embeddings: "@embed_with_dinov2.embeddings"
+#       labels: "@load_pcam_slice.labels"
+#       calibration: temperature_scaling

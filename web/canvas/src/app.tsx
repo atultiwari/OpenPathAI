@@ -1,5 +1,6 @@
-import { Suspense, lazy, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { AuthProvider, useAuth } from "./api/auth-context";
+import { NAV_TAB_EVENT } from "./components/quick-start-card";
 import { AnalyseScreen } from "./screens/analyse/analyse-screen";
 import { AnnotateScreen } from "./screens/annotate/annotate-screen";
 import { CohortsScreen } from "./screens/cohorts/cohorts-screen";
@@ -158,9 +159,37 @@ function Sidebar({
   );
 }
 
+const KNOWN_TABS: ReadonlySet<TaskTab> = new Set([
+  "analyse",
+  "slides",
+  "datasets",
+  "train",
+  "cohorts",
+  "annotate",
+  "models",
+  "runs",
+  "audit",
+  "pipelines",
+  "settings",
+]);
+
 function CanvasShell() {
   const { token, setToken, baseUrl, setBaseUrl } = useAuth();
   const [tab, setTab] = useState<TaskTab>("analyse");
+
+  // Phase 21.5 chunk D — listen for cross-tab nav events emitted by
+  // the Quick-start card. Decouples nav from prop-drilling without a
+  // router.
+  useEffect(() => {
+    function onNav(event: Event) {
+      const detail = (event as CustomEvent<unknown>).detail;
+      if (typeof detail === "string" && KNOWN_TABS.has(detail as TaskTab)) {
+        setTab(detail as TaskTab);
+      }
+    }
+    window.addEventListener(NAV_TAB_EVENT, onNav);
+    return () => window.removeEventListener(NAV_TAB_EVENT, onNav);
+  }, []);
 
   if (!token) {
     return (
