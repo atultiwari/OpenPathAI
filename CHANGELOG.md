@@ -9,6 +9,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Phase 21.5 (v2.0.x) — Canvas polish, chunk B: per-tab "About this screen" guide (2026-04-26)
+
+Every screen now ships an opinionated info card answering four
+questions a brand-new user asks the first time they land on the tab:
+*what is this for, what's the 3-step path, which Python node does the
+work, what gets cached / audited*. Dismissed cards collapse to a
+small `ⓘ About <tab>` pill that re-opens the card; the dismiss flag
+persists in `localStorage` per-tab.
+
+Added — frontend
+- `web/canvas/src/components/tab-guide.tsx` — collapsible card +
+  pill. Persistence keyed by `openpathai.tabguide.<tab>.dismissed`.
+- `web/canvas/src/components/tab-guide-content.tsx` — static content
+  for all 11 tabs (Analyse · Slides · Datasets · Train · Cohorts ·
+  Annotate · Models · Runs · Audit · Pipelines · Settings). Each
+  entry: title, purpose, 3-step "what to do here", Python node,
+  caching / audit story, docs link to the originating phase spec.
+- `web/canvas/src/test/tab-guide.test.tsx` — 4 new Vitest cases
+  (content shape, default-expanded render, dismiss persists, pill
+  re-opens and clears the flag).
+
+Changed — frontend
+- All 11 screens (`analyse`, `annotate`, `audit`, `cohorts`,
+  `datasets`, `models`, `pipelines`, `runs`, `settings`, `slides`,
+  `train`) now mount `<TabGuide tab="…"/>` at the top of their
+  primary container. Pipelines mounts it inside the empty-state
+  overlay so it never competes with the React Flow surface once a
+  pipeline is loaded.
+- `web/canvas/src/screens/screens.css` — scoped styles for
+  `.tab-guide`, `.tab-guide-pill`, `.tab-guide-meta` etc. The card
+  uses a 3-px accent border-left and a meta footer with a dashed
+  separator so it reads as informational, not as another surface.
+
 ### Phase 21.5 (v2.0.x) — Canvas polish, chunk A: Pipelines layout fix + starter templates (2026-04-26)
 
 Fixes the broken Pipelines screen surfaced after Phase 21 close (the

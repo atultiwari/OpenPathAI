@@ -3,6 +3,7 @@ import { useAuth } from "../../api/auth-context";
 import type { DatasetCard } from "../../api/types";
 import { redactPayload } from "../../lib/redact";
 import { safeMessage } from "../../lib/safe-string";
+import { TabGuide } from "../../components/tab-guide";
 
 export function DatasetsScreen() {
   const { client } = useAuth();
@@ -69,6 +70,7 @@ export function DatasetsScreen() {
 
   return (
     <section className="task-content">
+      <TabGuide tab="datasets" />
       <h2>Datasets</h2>
       <p className="lede">
         Browse the OpenPathAI dataset registry — and register a folder of

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../../api/auth-context";
 import type { ModelSummary, TilePrediction } from "../../api/types";
 import { safeMessage } from "../../lib/safe-string";
+import { TabGuide } from "../../components/tab-guide";
 
 const EXPLAINERS = ["gradcam", "gradcam++", "eigencam", "attention", "ig"];
 
@@ -151,6 +152,7 @@ export function AnalyseScreen() {
 
   return (
     <section className="task-content">
+      <TabGuide tab="analyse" />
       <h2>Analyse</h2>
       <p className="lede">
         Upload a tile (PNG / JPEG / TIFF). Pick a model and an explainer; or

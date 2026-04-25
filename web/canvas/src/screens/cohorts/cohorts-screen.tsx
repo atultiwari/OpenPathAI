@@ -3,6 +3,7 @@ import { useAuth } from "../../api/auth-context";
 import type { CohortQCSummary, CohortSummary } from "../../api/types";
 import { redactPayload } from "../../lib/redact";
 import { safeMessage } from "../../lib/safe-string";
+import { TabGuide } from "../../components/tab-guide";
 
 export function CohortsScreen() {
   const { client } = useAuth();
@@ -84,6 +85,7 @@ export function CohortsScreen() {
 
   return (
     <section className="task-content">
+      <TabGuide tab="cohorts" />
       <h2>Cohorts</h2>
       <p className="lede">
         Group slides into named cohorts the pipeline executor can fan out

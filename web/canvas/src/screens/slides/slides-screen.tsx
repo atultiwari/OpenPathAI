@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../../api/auth-context";
 import { BadgeStrip } from "../../components/tier-badges";
+import { TabGuide } from "../../components/tab-guide";
 import { redactString } from "../../lib/redact";
 import type { HeatmapSummary, RunMode, SlideSummary, TierLevel } from "../../api/types";
 import { HeatmapControls } from "./heatmap-controls";
@@ -130,6 +131,7 @@ export function SlidesScreen() {
             overflow: "auto",
           }}
         >
+          <TabGuide tab="slides" />
           <div className="card dropzone">
             <h3 style={{ margin: 0 }}>Upload slide</h3>
             <input

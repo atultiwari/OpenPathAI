@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../api/auth-context";
 import { RunAuditModal } from "../components/run-audit-modal";
+import { TabGuide } from "../components/tab-guide";
 import type { RunRecord } from "../api/types";
 import { safeMessage, shortHash } from "../lib/safe-string";
 import { ManifestView } from "./manifest-view";
@@ -43,6 +44,7 @@ export function RunsPanel() {
 
   return (
     <div style={{ padding: 16 }}>
+      <TabGuide tab="runs" />
       <h2 style={{ marginTop: 0 }}>Recent runs</h2>
       {loading ? <p>Loading…</p> : null}
       {error ? <p style={{ color: "var(--color-error)" }}>{error}</p> : null}

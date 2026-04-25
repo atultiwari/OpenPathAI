@@ -3,6 +3,7 @@ import { useAuth } from "../api/auth-context";
 import type { AuditRunRow } from "../api/types";
 import { redactPayload } from "../lib/redact";
 import { safeMessage } from "../lib/safe-string";
+import { TabGuide } from "../components/tab-guide";
 
 export function AuditPanel() {
   const { client } = useAuth();
@@ -32,6 +33,7 @@ export function AuditPanel() {
 
   return (
     <div style={{ padding: 16 }}>
+      <TabGuide tab="audit" />
       <h2 style={{ marginTop: 0 }}>Audit log</h2>
       {loading ? <p>Loading…</p> : null}
       {error ? <p style={{ color: "var(--color-error)" }}>{error}</p> : null}

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../api/auth-context";
 import type { ModelSummary } from "../../api/types";
 import { safeMessage } from "../../lib/safe-string";
+import { TabGuide } from "../../components/tab-guide";
 
 const KIND_LABEL: Record<string, string> = {
   classifier: "Tier A — Classifier zoo",
@@ -50,6 +51,7 @@ export function ModelsScreen() {
 
   return (
     <section className="task-content">
+      <TabGuide tab="models" />
       <h2>Models</h2>
       <p className="lede">
         The OpenPathAI model zoo. Gated foundation models (UNI, Virchow2,

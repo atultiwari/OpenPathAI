@@ -40,10 +40,11 @@ Make the v2.0 canvas usable end-to-end on a fresh laptop — broken Pipelines la
 - [ ] Status bar moves into the header right side (small pill), no longer absolutely positioned over the canvas.
 - [ ] `web/canvas/src/screens/pipelines/pipelines-screen.css` — scoped styles for the new layout.
 
-### Chunk B — Per-tab "About this screen" guide *(deferred until A ships and is approved)*
-- [ ] `web/canvas/src/components/tab-guide.tsx` — collapsible info panel; dismiss persisted to `localStorage` per-tab.
-- [ ] Static `tabGuides` content for all 11 tabs.
-- [ ] Mounted at the top of every screen.
+### Chunk B — Per-tab "About this screen" guide *(2026-04-26 ✅)*
+- [x] `web/canvas/src/components/tab-guide.tsx` — collapsible info panel; dismiss persisted to `localStorage` per-tab.
+- [x] `web/canvas/src/components/tab-guide-content.tsx` — static content for all 11 tabs (analyse / slides / datasets / train / cohorts / annotate / models / runs / audit / pipelines / settings).
+- [x] Mounted at the top of every screen (Pipelines mounts it inside the empty-state overlay).
+- [x] Vitest coverage: 4 new cases (content shape, default render, dismiss persistence, pill re-opens).
 
 ### Chunk C — Hugging Face credentials in-app *(deferred until B ships and is approved)*
 - [ ] `src/openpathai/server/routes/credentials.py` — `GET/PUT /v1/credentials/huggingface` (`~/.openpathai/secrets.json`, mode 0600, redacted in responses).
@@ -143,6 +144,12 @@ OPA_REBUILD_CANVAS=1 ./scripts/run-full.sh all
 ---
 
 ## 8. Worklog (append-only, newest on top)
+
+### 2026-04-26 · Chunk B shipped — per-tab guides on every screen
+**What:** New `TabGuide` component + content table for all 11 tabs. Each card carries purpose, 3-step path, Python-node-behind-it, caching/audit story, docs link. Dismiss persists in `localStorage`. All screens (including audit/runs panels and the Slides custom grid) mount it; Pipelines uses the empty-state overlay so it doesn't compete with React Flow once nodes are loaded. Tests: 31/31 pass (+4). Build, lint, typecheck clean.
+**Why:** User flagged that "no info" exists on what each tab does — this turns the canvas from a black-box surface into something self-explanatory on first contact, without forcing every user into the docs site.
+**Next:** ask for green light on Chunk C (HF token in-app + `.env.example`).
+**Blockers:** none.
 
 ### 2026-04-26 · phase initialised + Chunk A started
 **What:** Phase 21.5 spec authored. Diagnosed the Pipelines layout bug — `.app-palette` and `.app-canvas` use `grid-area: palette/canvas` but those areas were dropped in the Phase 20.5 redesign that moved every screen into `.task-shell`. Inspector still rendered because it doesn't depend on the dead grid-areas. Starting Chunk A.

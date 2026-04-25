@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../../api/auth-context";
 import { safeMessage } from "../../lib/safe-string";
+import { TabGuide } from "../../components/tab-guide";
 
 export function SettingsScreen() {
   const { baseUrl, setBaseUrl, token, setToken, client } = useAuth();
@@ -29,6 +30,7 @@ export function SettingsScreen() {
 
   return (
     <section className="task-content">
+      <TabGuide tab="settings" />
       <h2>Settings</h2>
       <p className="lede">
         Per-tab settings. The bearer token lives in this tab's session

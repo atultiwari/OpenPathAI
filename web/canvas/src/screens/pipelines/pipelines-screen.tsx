@@ -12,6 +12,7 @@ import {
 import { Inspector } from "../../inspector/inspector";
 import { Palette } from "../../palette/palette";
 import { safeMessage } from "../../lib/safe-string";
+import { TabGuide } from "../../components/tab-guide";
 import "./pipelines-screen.css";
 
 type StatusBar = {
@@ -284,6 +285,16 @@ export function PipelinesScreen() {
             <span style={{ width: 24 }} />
             <span>Starter</span>
             <span className="hint-arrow">↗</span>
+          </div>
+          <div
+            style={{
+              marginTop: "var(--space-4)",
+              pointerEvents: "auto",
+              maxWidth: 640,
+              textAlign: "left",
+            }}
+          >
+            <TabGuide tab="pipelines" />
           </div>
         </div>
       ) : null}

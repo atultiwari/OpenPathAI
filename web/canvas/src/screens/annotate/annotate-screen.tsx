@@ -3,6 +3,7 @@ import { useAuth } from "../../api/auth-context";
 import type { ActiveLearningSession } from "../../api/types";
 import { redactPayload } from "../../lib/redact";
 import { safeMessage } from "../../lib/safe-string";
+import { TabGuide } from "../../components/tab-guide";
 
 const SCORERS = ["max_softmax", "entropy", "mc_dropout"];
 
@@ -69,6 +70,7 @@ export function AnnotateScreen() {
 
   return (
     <section className="task-content">
+      <TabGuide tab="annotate" />
       <h2>Annotate</h2>
       <p className="lede">
         The active-learning loop (Bet 1). Phase 20.5 ships a synthetic demo
