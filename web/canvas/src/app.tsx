@@ -6,6 +6,7 @@ import { AnnotateScreen } from "./screens/annotate/annotate-screen";
 import { CohortsScreen } from "./screens/cohorts/cohorts-screen";
 import { DatasetsScreen } from "./screens/datasets/datasets-screen";
 import { ModelsScreen } from "./screens/models/models-screen";
+import { QuickstartScreen } from "./screens/quickstart/quickstart-screen";
 import { SettingsScreen } from "./screens/settings/settings-screen";
 import { TrainScreen } from "./screens/train/train-screen";
 import { AuditPanel } from "./audit/audit-panel";
@@ -27,6 +28,7 @@ const SlidesScreen = lazy(() =>
 import "./screens/screens.css";
 
 type TaskTab =
+  | "quickstart"
   | "analyse"
   | "slides"
   | "datasets"
@@ -45,6 +47,7 @@ const TASK_TABS: {
   icon: string;
   group: "Doctor" | "ML" | "Power user";
 }[] = [
+  { id: "quickstart", label: "Quickstart", icon: "🚀", group: "Doctor" },
   { id: "analyse", label: "Analyse", icon: "🔬", group: "Doctor" },
   { id: "slides", label: "Slides", icon: "🩻", group: "Doctor" },
   { id: "datasets", label: "Datasets", icon: "🗂", group: "Doctor" },
@@ -160,6 +163,7 @@ function Sidebar({
 }
 
 const KNOWN_TABS: ReadonlySet<TaskTab> = new Set([
+  "quickstart",
   "analyse",
   "slides",
   "datasets",
@@ -175,7 +179,7 @@ const KNOWN_TABS: ReadonlySet<TaskTab> = new Set([
 
 function CanvasShell() {
   const { token, setToken, baseUrl, setBaseUrl } = useAuth();
-  const [tab, setTab] = useState<TaskTab>("analyse");
+  const [tab, setTab] = useState<TaskTab>("quickstart");
 
   // Phase 21.5 chunk D — listen for cross-tab nav events emitted by
   // the Quick-start card. Decouples nav from prop-drilling without a
@@ -219,6 +223,7 @@ function CanvasShell() {
 
       <main style={{ gridArea: "content", overflow: "auto" }}>
         <Suspense fallback={<p className="inspector-empty">Loading…</p>}>
+          {tab === "quickstart" && <QuickstartScreen />}
           {tab === "analyse" && <AnalyseScreen />}
           {tab === "slides" && <SlidesScreen />}
           {tab === "datasets" && <DatasetsScreen />}

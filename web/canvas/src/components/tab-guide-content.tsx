@@ -11,6 +11,7 @@
 // a manual. The full per-screen documentation lives under docs/.
 
 export type TabGuideId =
+  | "quickstart"
   | "analyse"
   | "slides"
   | "datasets"
@@ -34,6 +35,22 @@ export type TabGuideEntry = {
 };
 
 export const TAB_GUIDES: Record<TabGuideId, TabGuideEntry> = {
+  quickstart: {
+    title: "Quickstart",
+    purpose:
+      "Pick a template and the wizard walks you through your first end-to-end run — HF token (optional) → dataset download → train → explain. Two templates ship today: DINOv2 + Kather-CRC-5K (open) and YOLOv26 + Kather-CRC-5K (with graceful fallback to YOLOv8).",
+    steps: [
+      "Pick the DINOv2 or YOLO template (you can switch anytime).",
+      "Run each step — the wizard tells you what *you* do vs what *it* does, and where artifacts land on disk.",
+      "When the train step finishes, hop to Analyse to drop a tile and read the explanation.",
+    ],
+    pythonNode: "openpathai.data.downloaders + openpathai.training.node.train",
+    cachedAndAudited:
+      "Datasets land at $OPENPATHAI_HOME/datasets/<name>/, model weights at $OPENPATHAI_HOME/models/, checkpoints at $OPENPATHAI_HOME/checkpoints/<run_id>/. Wizard state persists in localStorage so a refresh resumes mid-flow.",
+    docsHref:
+      "https://github.com/atultiwari/OpenPathAI/blob/main/docs/quickstart.md",
+    docsLabel: "Quickstart docs",
+  },
   analyse: {
     title: "Analyse",
     purpose:

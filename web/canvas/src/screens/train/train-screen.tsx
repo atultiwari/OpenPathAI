@@ -7,6 +7,7 @@ import type {
 } from "../../api/types";
 import { safeMessage } from "../../lib/safe-string";
 import { TabGuide } from "../../components/tab-guide";
+import { StorageBanner } from "../../components/storage-banner";
 
 type DurationPreset = "Quick" | "Standard" | "Thorough";
 type Difficulty = "Easy" | "Standard" | "Expert";
@@ -108,6 +109,7 @@ export function TrainScreen() {
   return (
     <section className="task-content">
       <TabGuide tab="train" />
+      <StorageBanner paths={["checkpoints", "models"]} />
       <h2>Train</h2>
       <p className="lede">
         Pick a dataset and a model. Easy mode collapses everything to a

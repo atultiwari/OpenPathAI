@@ -140,6 +140,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         pipelines,
         runs,
         slides,
+        storage,
         train,
     )
 
@@ -164,6 +165,8 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     app.include_router(heatmaps.router, prefix="/v1")
     # Phase 21.5 — credentials (HF token) surfaced to the canvas.
     app.include_router(credentials.router, prefix="/v1")
+    # Phase 21.6 — storage paths surface.
+    app.include_router(storage.router, prefix="/v1")
 
     # Phase 20 — when --canvas-dir is set we serve the built React canvas
     # at ``/`` so the API + canvas live on a single port.

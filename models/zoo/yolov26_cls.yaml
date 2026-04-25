@@ -1,0 +1,46 @@
+name: yolov26_cls
+display_name: YOLOv26-cls (Ultralytics, AGPL-3.0) — Phase 21.6 stub
+family: yolo
+task: classification
+source:
+  framework: ultralytics
+  identifier: yolov26-cls
+  license: AGPL-3.0
+num_params_m: 12.0
+input_size: [224, 224]
+channels: 3
+preprocessing_mean: [0.0, 0.0, 0.0]
+preprocessing_std: [1.0, 1.0, 1.0]
+citation:
+  text: >
+    Ultralytics YOLOv26 (2026). Detection backbone repurposed for
+    image classification via a linear head. See iron-rule #11 for
+    fallback semantics when v26 weights are not installable.
+  url: "https://github.com/ultralytics/ultralytics"
+tier_compatibility:
+  T1: slow
+  T2: ok
+  T3: ok
+recommended_datasets: [kather_crc_5k, lc25000, mhist]
+
+training_data: >
+  Weights pretrained on COCO (detection pretraining); the classifier
+  head is linearly probed on the user's chosen dataset. OpenPathAI
+  treats the YOLOv26 backbone as a feature extractor — no v26
+  classification weights ship with the package. When YOLOv26 weights
+  are not installable, openpathai.detection.fallback resolves to
+  YOLOv8 and records both requested + resolved ids in the audit
+  manifest (Iron Rule #11). Fallback chain: yolov26 → yolov8 →
+  synthetic_detector.
+intended_use: >
+  Quickstart wizard "YOLO classifier" template. Demonstrates the
+  detection-stub fallback path documented above.
+out_of_scope_use: >
+  Not for diagnostic use without prospective validation on
+  pathologist-confirmed labels. The detection-pretrained backbone is
+  not optimised for tile classification — production deployments
+  should prefer DINOv2 (open) or UNI / Virchow (gated) backbones.
+known_biases:
+  - Inherits ImageNet/COCO natural-image domain bias.
+  - Detection backbones are not optimised for tile-level classification — expect a 3-5 pp accuracy drop vs DINOv2-small on histopathology benchmarks.
+  - Pathology-specific calibration (temperature scaling) is required before clinical use; the Train screen enables it by default.

@@ -9,6 +9,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Phase 21.6 (v2.0.x) — Quickstart Wizard + dataset download UI + storage transparency (2026-04-26)
+
+Closes the four gaps the post-Phase-21.5 screenshots flagged: the
+Quick-start card was static, the Datasets table had no download
+button, storage paths weren't surfaced anywhere, and the YOLO
+classification template the user asked for didn't exist.
+
+Added — frontend
+- New **Quickstart** tab (sidebar `🚀`, set as default landing) — a
+  multi-step smart wizard with progress bar, per-step run/skip,
+  user-actions vs wizard-actions panes, storage-path callouts, and
+  `localStorage` resume-mid-flow persistence.
+- Two ship-with templates: `tile-classifier-dinov2-kather` and
+  `yolo-classifier-yolov26-kather`. Each step probes live state
+  (HF token resolved? dataset already on disk?) and pre-marks rows
+  done before the user touches anything.
+- `web/canvas/src/screens/quickstart/{quickstart-screen.tsx,quickstart-screen.css,templates.ts}`
+  + `tests/quickstart-wizard.test.tsx` (6 cases).
+- New **Storage banner** (`web/canvas/src/components/storage-banner.tsx`)
+  mounted on Datasets / Train / Models / Analyse — shows the path
+  *that screen writes to*, click to copy.
+- New **Storage paths** card on Settings
+  (`web/canvas/src/screens/settings/storage-paths-card.tsx`) — full
+  table of every artifact category's resolved on-disk location with
+  env-var override hints.
+- `tab-guide-content` gains a `quickstart` entry; the inline
+  `QuickStartCard` on Analyse becomes a small "First time? Open the
+  Quickstart wizard →" pill.
+- Datasets table grew **Status / On-disk / Action** columns + a
+  click-to-expand detail row with method, stain, tissue, and
+  download diagnostics. Button text adapts to `download.method`
+  ("Download" / "Re-download" / "Show instructions").
+
+Added — backend
+- `POST /v1/datasets/{name}/download` — sync wrap of
+  `openpathai.data.downloaders.dispatch_download`. Response carries
+  `status`, `target_dir`, `files_written`, `bytes_written`,
+  `extra_required` (which install-time extra to add when the lazy
+  backend is missing). Manual cards return their `instructions_md`
+  instead of failing; missing backends return a structured 200 so
+  the wizard can prompt the user.
+- `GET /v1/datasets/{name}/status` — reports presence + path + file
+  count + on-disk bytes.
+- `GET /v1/storage/paths` — resolves
+  `openpathai_home / datasets / models / checkpoints / dzi /
+  audit_db / cache / secrets / hf_hub_cache / pipelines` in one
+  round-trip. Honours `$OPENPATHAI_HOME`, `$HF_HOME`,
+  `$XDG_CACHE_HOME`.
+- `tests/unit/server/test_dataset_downloads.py` (8 cases),
+  `tests/unit/server/test_storage_paths.py` (4 cases).
+
+Added — model zoo
+- `models/zoo/yolov26_cls.yaml` — YOLOv26 detection backbone
+  repurposed for classification. The card spells out the YOLOv26 →
+  YOLOv8 → synthetic_detector fallback chain in `training_data`
+  per Iron Rule #11. `ModelFamily` literal grew a `"yolo"` entry.
+- `tests/unit/models/test_yolov26_card.py` (3 cases).
+
+Closed
+- Phase 21.6 ✅ — tag `phase-21.6-complete`. Dashboard returns to
+  "Phase 22+ — conditional / deferred". Test totals: 250 pytest +
+  46 vitest. All gates green.
+
 ### Phase 21.5 (v2.0.x) — Canvas polish, chunk D: first end-to-end recipe + Quick-start card (2026-04-26)
 
 The "what do I do first" question now has a single, opinionated

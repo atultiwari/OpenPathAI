@@ -41,6 +41,7 @@ ModelFamily = Literal[
     "mil",  # CLAM / TransMIL — Phase 13
     "detection",  # Phase 14
     "segmentation",  # Phase 14
+    "yolo",  # Phase 21.6 — YOLOv8/v11/v26 detection backbones used as classifiers
     "other",
 ]
 """Rough taxonomy of model architectures. Used for GUI filtering."""

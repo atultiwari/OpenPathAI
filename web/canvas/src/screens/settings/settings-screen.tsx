@@ -3,6 +3,7 @@ import { useAuth } from "../../api/auth-context";
 import { safeMessage } from "../../lib/safe-string";
 import { TabGuide } from "../../components/tab-guide";
 import { HFTokenCard } from "./hf-token-card";
+import { StoragePathsCard } from "./storage-paths-card";
 
 export function SettingsScreen() {
   const { baseUrl, setBaseUrl, token, setToken, client } = useAuth();
@@ -63,6 +64,8 @@ export function SettingsScreen() {
       </div>
 
       <HFTokenCard />
+
+      <StoragePathsCard />
 
       <div className="card">
         <h3>Server version</h3>

@@ -13,6 +13,9 @@ import type {
   CohortSummary,
   ComputeHeatmapRequest,
   DatasetCard,
+  DatasetDownloadRequest,
+  DatasetDownloadResult,
+  DatasetStatus,
   HFTokenClearResult,
   HFTokenSetResult,
   HFTokenStatus,
@@ -30,6 +33,7 @@ import type {
   RunRecord,
   RunRequest,
   SlideSummary,
+  StoragePaths,
   SubmitCorrectionsResult,
   TilePrediction,
   TrainMetricsResponse,
@@ -623,6 +627,37 @@ export class ApiClient {
       undefined,
       options
     );
+  }
+
+  // ─── Phase 21.6 — dataset downloads + storage ─────────────────
+
+  downloadDataset(
+    name: string,
+    body: DatasetDownloadRequest = {},
+    options?: RequestOptions
+  ): Promise<DatasetDownloadResult> {
+    return this.request(
+      "POST",
+      `/v1/datasets/${encodeURIComponent(name)}/download`,
+      body,
+      options
+    );
+  }
+
+  getDatasetStatus(
+    name: string,
+    options?: RequestOptions
+  ): Promise<DatasetStatus> {
+    return this.request(
+      "GET",
+      `/v1/datasets/${encodeURIComponent(name)}/status`,
+      undefined,
+      options
+    );
+  }
+
+  getStoragePaths(options?: RequestOptions): Promise<StoragePaths> {
+    return this.request("GET", "/v1/storage/paths", undefined, options);
   }
 }
 

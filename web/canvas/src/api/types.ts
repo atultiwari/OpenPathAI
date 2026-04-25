@@ -326,3 +326,50 @@ export type HFTokenTestResult = {
   reason: string | null;
   status: HFTokenStatus;
 };
+
+// ─── Phase 21.6 — dataset download + storage paths ──────────────
+
+export type DatasetDownloadStatus =
+  | "downloaded"
+  | "manual"
+  | "missing_backend"
+  | "skipped"
+  | "error";
+
+export type DatasetDownloadResult = {
+  dataset: string;
+  status: DatasetDownloadStatus;
+  method: string;
+  target_dir: string;
+  files_written: number;
+  bytes_written: number | null;
+  message: string | null;
+  extra_required: string | null;
+};
+
+export type DatasetStatus = {
+  dataset: string;
+  present: boolean;
+  target_dir: string;
+  files: number;
+  bytes: number;
+};
+
+export type DatasetDownloadRequest = {
+  subset?: number;
+  allow_patterns?: string[];
+  dry_run?: boolean;
+};
+
+export type StoragePaths = {
+  openpathai_home: string;
+  datasets: string;
+  models: string;
+  checkpoints: string;
+  dzi: string;
+  audit_db: string;
+  cache: string;
+  secrets: string;
+  hf_hub_cache: string;
+  pipelines: string;
+};
