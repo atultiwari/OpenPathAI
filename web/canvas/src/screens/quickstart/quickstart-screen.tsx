@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../api/auth-context";
 import { TabGuide } from "../../components/tab-guide";
+import type { DatasetPlanAction } from "../../api/types";
 import { safeMessage } from "../../lib/safe-string";
 import {
   TASK_LABELS,
@@ -28,6 +29,11 @@ import { navigateToTab } from "../../components/quick-start-card";
 import "./quickstart-screen.css";
 
 const STORAGE_KEY = "openpathai.quickstart.session";
+
+type RestructureStatus = {
+  kind: "ok" | "error" | "busy";
+  message: string;
+};
 
 type StoredSession = {
   templateId: string;
@@ -105,6 +111,14 @@ export function QuickstartScreen() {
   >({});
   const [inspectingStep, setInspectingStep] = useState<string | null>(null);
   const [preflightBusy, setPreflightBusy] = useState<string | null>(null);
+  // Phase 22.1 — outcome of the most recent restructure call per step.
+  const [restructureStatus, setRestructureStatus] = useState<
+    Record<string, RestructureStatus>
+  >({});
+  // Phase 22.1 chunk D — when an LLM-proposed plan is on screen the
+  // Apply buttons stay disabled until the user explicitly ticks
+  // "I have reviewed this plan" (iron-rule #9).
+  const [llmReviewed, setLlmReviewed] = useState<Record<string, boolean>>({});
 
   const template = useMemo<WizardTemplate | null>(
     () => (session ? findTemplate(session.templateId) ?? null : null),
@@ -249,6 +263,139 @@ export function QuickstartScreen() {
       await runPreflight(step);
     },
     [runPreflight]
+  );
+
+  // Phase 22.1 — execute a planned restructure (dry-run or commit).
+  // Reads the current local_source_path + the resolved model id, calls
+  // the backend, and stashes the result so the panel can surface it.
+  const applyPlan = useCallback(
+    async (step: WizardStep, dryRun: boolean) => {
+      const verdict = preflightCache[step.id];
+      const plan = verdict?.plan;
+      if (!plan) return;
+      const folder = ((ctxState.current.local_source_path as string | undefined) ?? "").trim();
+      if (!folder) {
+        setRestructureStatus((prev) => ({
+          ...prev,
+          [step.id]: {
+            kind: "error",
+            message: "No source folder set on the analyse step.",
+          },
+        }));
+        return;
+      }
+      setRestructureStatus((prev) => ({
+        ...prev,
+        [step.id]: { kind: "busy", message: dryRun ? "Dry-running…" : "Applying…" },
+      }));
+      try {
+        const result = await client.restructureForModel(folder, plan.model_id, dryRun);
+        if (result.errors.length) {
+          setRestructureStatus((prev) => ({
+            ...prev,
+            [step.id]: {
+              kind: "error",
+              message: `Failed: ${result.errors.join("; ")}`,
+            },
+          }));
+          return;
+        }
+        if (!dryRun && result.new_root) {
+          // Re-target the wizard at the new root so subsequent steps
+          // inherit the restructured tree.
+          ctxState.current = {
+            ...ctxState.current,
+            local_source_path: result.new_root,
+          };
+          setSession((prev) => {
+            if (!prev) return prev;
+            const next = { ...prev, state: { ...ctxState.current } };
+            saveSession(next);
+            return next;
+          });
+        }
+        setRestructureStatus((prev) => ({
+          ...prev,
+          [step.id]: {
+            kind: "ok",
+            message: dryRun
+              ? `Dry-run ok: ${result.executed_actions.length} action(s) would run.`
+              : `Applied → ${result.new_root ?? result.target_path}`,
+          },
+        }));
+        await runPreflight(step);
+      } catch (err) {
+        setRestructureStatus((prev) => ({
+          ...prev,
+          [step.id]: {
+            kind: "error",
+            message: err instanceof Error ? err.message : "Restructure failed.",
+          },
+        }));
+      }
+    },
+    [client, preflightCache, runPreflight]
+  );
+
+  // Phase 22.1 chunk D — ask MedGemma for a plan when the rule-based
+  // planner returned Incompatible. Replaces the cached plan summary
+  // for this step's preflight verdict so the panel re-renders.
+  const askMedGemma = useCallback(
+    async (step: WizardStep) => {
+      const verdict = preflightCache[step.id];
+      const folder = ((ctxState.current.local_source_path as string | undefined) ?? "").trim();
+      const modelId = verdict?.plan?.model_id;
+      if (!folder || !modelId) return;
+      setRestructureStatus((prev) => ({
+        ...prev,
+        [step.id]: { kind: "busy", message: "Asking MedGemma…" },
+      }));
+      try {
+        const llmPlan = await client.planForModelViaLlm(folder, modelId);
+        const incompatible = llmPlan.actions.find((a) => a.kind === "incompatible") as
+          | { reason: string; hint: string }
+          | undefined;
+        const newPlan = {
+          model_id: llmPlan.model_id,
+          requirement: llmPlan.requirement,
+          ok: llmPlan.ok,
+          target_path: llmPlan.target_path,
+          action_summaries: llmPlan.actions
+            .filter((a) => a.kind !== "incompatible")
+            .map((a) => describeApiAction(a)),
+          bash: llmPlan.bash,
+          provenance: llmPlan.provenance,
+          notes: llmPlan.notes,
+          incompatible_reason: incompatible?.reason,
+          incompatible_hint: incompatible?.hint,
+        };
+        setPreflightCache((prev) => {
+          const cur = prev[step.id];
+          if (!cur) return prev;
+          return { ...prev, [step.id]: { ...cur, plan: newPlan } };
+        });
+        // Reset the reviewed flag every time a new LLM plan arrives.
+        setLlmReviewed((prev) => ({ ...prev, [step.id]: false }));
+        setRestructureStatus((prev) => ({
+          ...prev,
+          [step.id]: {
+            kind: llmPlan.ok ? "ok" : "error",
+            message: llmPlan.ok
+              ? "MedGemma proposed a plan — review it before applying."
+              : "MedGemma could not propose a workable plan.",
+          },
+        }));
+      } catch (err) {
+        setRestructureStatus((prev) => ({
+          ...prev,
+          [step.id]: {
+            kind: "error",
+            message: err instanceof Error ? err.message : "MedGemma call failed.",
+          },
+        }));
+      }
+    },
+    [client, preflightCache]
   );
 
   async function runStep(step: WizardStep) {
@@ -609,6 +756,16 @@ export function QuickstartScreen() {
                     verdict={preflightCache[step.id] ?? null}
                     onApplyFix={(fix) => void applyFix(step, fix.action)}
                     onRefresh={() => void runPreflight(step)}
+                    onApplyPlan={(dryRun) => void applyPlan(step, dryRun)}
+                    onAskMedGemma={() => void askMedGemma(step)}
+                    restructureStatus={restructureStatus[step.id] ?? null}
+                    llmReviewed={llmReviewed[step.id] ?? false}
+                    onMarkLlmReviewed={() =>
+                      setLlmReviewed((prev) => ({
+                        ...prev,
+                        [step.id]: true,
+                      }))
+                    }
                   />
                 ) : null}
               </div>
@@ -620,14 +777,43 @@ export function QuickstartScreen() {
   );
 }
 
+function describeApiAction(action: DatasetPlanAction): string {
+  switch (action.kind) {
+    case "make_dir":
+      return `mkdir ${action.path}`;
+    case "move_files":
+      return `mv ${action.src_glob} → ${action.dest}`;
+    case "symlink":
+      return `ln -s ${action.src} → ${action.dest}`;
+    case "make_split":
+      return `split ${action.class_dirs.length} class(es) → ${action.dest_root} (${action.train_ratio}/${action.val_ratio}/${action.test_ratio})`;
+    case "remove_pattern":
+      return `(hint) rm ${action.glob}`;
+    case "write_manifest":
+      return `write_manifest ${action.path} (${action.content_kind})`;
+    case "incompatible":
+      return `incompatible: ${action.reason}`;
+  }
+}
+
 function PreflightPanel({
   verdict,
   onApplyFix,
   onRefresh,
+  onApplyPlan,
+  onAskMedGemma,
+  restructureStatus,
+  llmReviewed,
+  onMarkLlmReviewed,
 }: {
   verdict: PreflightResult | null;
   onApplyFix: (fix: { label: string; action: FixAction }) => void;
   onRefresh: () => void;
+  onApplyPlan: (dryRun: boolean) => void;
+  onAskMedGemma: () => void;
+  restructureStatus: RestructureStatus | null;
+  llmReviewed: boolean;
+  onMarkLlmReviewed: () => void;
 }) {
   if (!verdict) {
     return (
@@ -711,7 +897,152 @@ function PreflightPanel({
           ))}
         </div>
       ) : null}
+      {verdict.plan ? (
+        <PlanSection
+          plan={verdict.plan}
+          onApplyPlan={onApplyPlan}
+          onAskMedGemma={onAskMedGemma}
+          status={restructureStatus}
+          llmReviewed={llmReviewed}
+          onMarkLlmReviewed={onMarkLlmReviewed}
+        />
+      ) : null}
     </div>
+  );
+}
+
+function PlanSection({
+  plan,
+  onApplyPlan,
+  onAskMedGemma,
+  status,
+  llmReviewed,
+  onMarkLlmReviewed,
+}: {
+  plan: NonNullable<PreflightResult["plan"]>;
+  onApplyPlan: (dryRun: boolean) => void;
+  onAskMedGemma: () => void;
+  status: RestructureStatus | null;
+  llmReviewed: boolean;
+  onMarkLlmReviewed: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const onCopy = useCallback(() => {
+    if (typeof navigator === "undefined" || !navigator.clipboard) return;
+    void navigator.clipboard.writeText(plan.bash).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }, [plan.bash]);
+
+  return (
+    <section
+      className={`qs-plan-panel ${plan.ok ? "qs-plan-ok" : "qs-plan-bad"}`}
+      aria-label="Proposed restructure"
+    >
+      <header>
+        <strong>
+          Proposed restructure for <code>{plan.model_id}</code>
+          <span className="qs-plan-prov">
+            {plan.provenance === "medgemma" ? " (MedGemma)" : ""}
+          </span>
+        </strong>
+        <span className="qs-plan-req">requires: {plan.requirement}</span>
+      </header>
+      {plan.ok ? (
+        plan.action_summaries.length === 0 ? (
+          <p className="qs-plan-empty">
+            ✓ Folder is already in the right shape — no actions needed. Training
+            will read from <code>{plan.target_path}</code>.
+          </p>
+        ) : (
+          <ul className="qs-plan-actions">
+            {plan.action_summaries.map((summary, idx) => (
+              <li key={`${summary}-${idx}`}>
+                <code>{summary}</code>
+              </li>
+            ))}
+          </ul>
+        )
+      ) : (
+        <div className="qs-plan-incompatible">
+          <strong>✗ Cannot satisfy this model.</strong>
+          {plan.incompatible_reason ? <p>{plan.incompatible_reason}</p> : null}
+          {plan.incompatible_hint ? (
+            <p className="qs-plan-hint">Hint: {plan.incompatible_hint}</p>
+          ) : null}
+        </div>
+      )}
+      {plan.notes?.length ? (
+        <ul className="qs-plan-notes">
+          {plan.notes.map((n) => (
+            <li key={n}>{n}</li>
+          ))}
+        </ul>
+      ) : null}
+      {plan.bash ? (
+        <details className="qs-plan-bash">
+          <summary>Show bash script</summary>
+          <pre>{plan.bash}</pre>
+        </details>
+      ) : null}
+      {plan.provenance === "medgemma" ? (
+        <label className="qs-plan-review">
+          <input
+            type="checkbox"
+            checked={llmReviewed}
+            onChange={(e) => {
+              if (e.target.checked) onMarkLlmReviewed();
+            }}
+          />
+          I have reviewed this MedGemma-proposed plan.
+        </label>
+      ) : null}
+      <div className="qs-plan-buttons">
+        <button type="button" onClick={onCopy} disabled={!plan.bash}>
+          {copied ? "Copied ✓" : "Copy bash"}
+        </button>
+        {plan.ok && plan.action_summaries.length > 0 ? (
+          <>
+            <button
+              type="button"
+              onClick={() => onApplyPlan(true)}
+              disabled={
+                status?.kind === "busy" ||
+                (plan.provenance === "medgemma" && !llmReviewed)
+              }
+            >
+              Apply via library (dry-run)
+            </button>
+            <button
+              type="button"
+              className="qs-fix-button"
+              onClick={() => onApplyPlan(false)}
+              disabled={
+                status?.kind === "busy" ||
+                (plan.provenance === "medgemma" && !llmReviewed)
+              }
+            >
+              Apply via library (commit)
+            </button>
+          </>
+        ) : null}
+        {!plan.ok && plan.provenance === "rule_based" ? (
+          <button
+            type="button"
+            onClick={onAskMedGemma}
+            disabled={status?.kind === "busy"}
+          >
+            Ask MedGemma
+          </button>
+        ) : null}
+      </div>
+      {status ? (
+        <p className={`qs-plan-status qs-plan-status-${status.kind}`}>
+          {status.message}
+        </p>
+      ) : null}
+    </section>
   );
 }
 

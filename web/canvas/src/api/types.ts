@@ -494,3 +494,98 @@ export type FolderAnalysis = {
   truncated: boolean;
   bytes_total: number;
 };
+
+// ─── Phase 22.1 — model-aware planner ──────────────────────────
+
+export type DatasetShapeBucket =
+  | "class_bucket"
+  | "tile_bucket"
+  | "context_bucket"
+  | "mixed"
+  | "empty"
+  | "missing"
+  | "not_a_directory";
+
+export type DatasetShapeCsvRole = "tabular_pixels" | "manifest" | "unknown";
+
+export type DatasetShapeClass = {
+  name: string;
+  image_count: number;
+};
+
+export type DatasetShapeCsv = {
+  name: string;
+  bytes_size: number;
+  column_count: number;
+  role: DatasetShapeCsvRole;
+};
+
+export type DatasetShapeTileSample = {
+  median_width: number;
+  median_height: number;
+  mode: string;
+  format: string;
+  sampled: number;
+};
+
+export type DatasetShape = {
+  path: string;
+  kind: DatasetShapeBucket;
+  image_count: number;
+  bytes_total: number;
+  extensions: string[];
+  classes: DatasetShapeClass[];
+  csvs: DatasetShapeCsv[];
+  hidden_entries: string[];
+  tile_sample: DatasetShapeTileSample | null;
+  children: DatasetShape[];
+  notes: string[];
+};
+
+export type DatasetPlanAction =
+  | { kind: "make_dir"; path: string }
+  | { kind: "move_files"; src_glob: string; dest: string }
+  | { kind: "symlink"; src: string; dest: string }
+  | {
+      kind: "make_split";
+      dest_root: string;
+      class_dirs: string[];
+      train_ratio: number;
+      val_ratio: number;
+      test_ratio: number;
+      seed: number;
+    }
+  | { kind: "remove_pattern"; glob: string }
+  | {
+      kind: "write_manifest";
+      path: string;
+      content_kind: "yolo_classes" | "imagefolder_classes";
+    }
+  | { kind: "incompatible"; reason: string; hint: string };
+
+export type DatasetPlan = {
+  model_id: string;
+  requirement:
+    | "image_folder"
+    | "image_folder_split"
+    | "yolo_cls_split"
+    | "yolo_det"
+    | "folder_unlabelled"
+    | "folder_labelled_manifest";
+  source_path: string;
+  target_path: string;
+  ok: boolean;
+  actions: DatasetPlanAction[];
+  bash: string;
+  python_invocation: string;
+  notes: string[];
+  provenance: "rule_based" | "medgemma";
+};
+
+export type DatasetRestructureResult = {
+  target_path: string;
+  dry_run: boolean;
+  executed_actions: string[];
+  errors: string[];
+  new_root: string | null;
+};

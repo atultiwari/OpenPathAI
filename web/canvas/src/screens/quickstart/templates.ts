@@ -4,6 +4,7 @@
 // is actionable without diving into other tabs.
 
 import type { ApiClient } from "../../api/client";
+import type { DatasetPlanAction } from "../../api/types";
 
 export type StepKind = "manual" | "automatic";
 
@@ -70,6 +71,28 @@ export type PreflightWarning = {
   detail?: string;
 };
 
+export type PreflightPlanSummary = {
+  /** The model id this plan was computed for. */
+  model_id: string;
+  /** Rule-based requirement bucket the model expects. */
+  requirement: string;
+  /** True if no actions are needed. */
+  ok: boolean;
+  /** Where the planner thinks training will read from. */
+  target_path: string;
+  /** One-line action summaries for quick visual scan. */
+  action_summaries: readonly string[];
+  /** Copy-pasteable bash script. */
+  bash: string;
+  /** Why the plan is not ok (only set when ok=false). */
+  incompatible_reason?: string;
+  incompatible_hint?: string;
+  /** Was this synthesised by the rule-based planner or MedGemma? */
+  provenance: "rule_based" | "medgemma";
+  /** Free-form notes from the planner. */
+  notes?: readonly string[];
+};
+
 export type PreflightResult = {
   ok: boolean;
   blockers?: readonly PreflightBlocker[];
@@ -77,6 +100,8 @@ export type PreflightResult = {
   fixes?: readonly PreflightFix[];
   /** Optional snapshot the wizard surfaces under "Step health". */
   manifest?: Record<string, string>;
+  /** Phase 22.1 — model-aware restructure plan, when relevant. */
+  plan?: PreflightPlanSummary;
 };
 
 export type StepManifest = {
@@ -162,7 +187,7 @@ export const TASK_LABELS: Record<TaskKind, string> = {
 /** Phase 22.0 chunk E — analyse the local-source folder *before*
  *  the download/register step. Surfaces the user's nested-ImageFolder
  *  case with a one-click "Use suggested path" fix. */
-function analyseFolderStep(): WizardStep {
+function analyseFolderStep(defaultModelId?: string): WizardStep {
   return {
     id: "analyse_folder",
     title: "Analyse your dataset folder",
@@ -289,15 +314,78 @@ function analyseFolderStep(): WizardStep {
       if (analysis?.suggested_root) {
         manifest.suggested_root = analysis.suggested_root;
       }
+
+      // Phase 22.1 — also call the model-aware planner when we have
+      // both a folder and a model_id (template default OR user pick),
+      // so the panel can show a "Proposed restructure" subsection.
+      let plan: PreflightPlanSummary | undefined;
+      const modelId =
+        ((ctx.state.model_id as string | undefined)?.trim() || defaultModelId) ?? "";
+      if (folder && modelId) {
+        try {
+          const p = await ctx.client.planForModel(folder, modelId);
+          plan = {
+            model_id: p.model_id,
+            requirement: p.requirement,
+            ok: p.ok,
+            target_path: p.target_path,
+            action_summaries: p.actions
+              .filter((a) => a.kind !== "incompatible")
+              .map((a) => describePlanAction(a)),
+            bash: p.bash,
+            provenance: p.provenance,
+            notes: p.notes,
+            incompatible_reason: p.actions.find((a) => a.kind === "incompatible")
+              ? (p.actions.find((a) => a.kind === "incompatible") as {
+                  reason: string;
+                }).reason
+              : undefined,
+            incompatible_hint: p.actions.find((a) => a.kind === "incompatible")
+              ? (p.actions.find((a) => a.kind === "incompatible") as {
+                  hint: string;
+                }).hint
+              : undefined,
+          };
+          if (!p.ok && p.actions[0]?.kind === "incompatible") {
+            blockers.push({
+              title: `${modelId}: ${plan.incompatible_reason}`,
+              detail: plan.incompatible_hint,
+            });
+          }
+        } catch {
+          // Planner is best-effort — don't block analyse if /plan errors.
+        }
+      }
+
       return {
         ok: blockers.length === 0,
         blockers,
         warnings,
         fixes,
         manifest,
+        plan,
       };
     },
   };
+}
+
+function describePlanAction(action: DatasetPlanAction): string {
+  switch (action.kind) {
+    case "make_dir":
+      return `mkdir ${action.path}`;
+    case "move_files":
+      return `mv ${action.src_glob} → ${action.dest}`;
+    case "symlink":
+      return `ln -s ${action.src} → ${action.dest}`;
+    case "make_split":
+      return `split ${action.class_dirs.length} class(es) → ${action.dest_root} (${action.train_ratio}/${action.val_ratio}/${action.test_ratio})`;
+    case "remove_pattern":
+      return `(hint) rm ${action.glob}`;
+    case "write_manifest":
+      return `write_manifest ${action.path} (${action.content_kind})`;
+    case "incompatible":
+      return `incompatible: ${action.reason}`;
+  }
 }
 
 function hfTokenStep(): WizardStep {
@@ -956,7 +1044,7 @@ export const TEMPLATE_TILE_CLASSIFIER: WizardTemplate = {
   modelCard: "dinov2_vits14",
   steps: [
     hfTokenStep(),
-    analyseFolderStep(),
+    analyseFolderStep("dinov2_vits14"),
     downloadDatasetStep(
       "kather_crc_5k",
       "~50 MB, CC-BY-4.0.",
@@ -979,7 +1067,7 @@ export const TEMPLATE_YOLO_CLASSIFIER: WizardTemplate = {
   modelCard: "yolov26_cls",
   steps: [
     hfTokenStep(),
-    analyseFolderStep(),
+    analyseFolderStep("yolo-classifier-yolov26"),
     downloadDatasetStep(
       "kather_crc_5k",
       "~50 MB, CC-BY-4.0.",

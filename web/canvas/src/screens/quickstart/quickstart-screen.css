@@ -596,3 +596,139 @@
   cursor: not-allowed;
   opacity: 0.5;
 }
+
+/* ───── Phase 22.1 — model-aware restructure panel ───── */
+
+.qs-plan-panel {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  border: 1px dashed var(--color-border);
+  background: var(--color-panel);
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.qs-plan-ok {
+  border-color: color-mix(in srgb, var(--color-accent) 50%, var(--color-border));
+}
+
+.qs-plan-bad {
+  border-color: color-mix(in srgb, #b91c1c 70%, var(--color-border));
+  background: color-mix(in srgb, #b91c1c 4%, var(--color-panel));
+}
+
+.qs-plan-panel header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.qs-plan-prov {
+  font-style: italic;
+  opacity: 0.7;
+  font-weight: normal;
+}
+
+.qs-plan-req {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.qs-plan-empty {
+  margin: 0;
+  color: var(--color-text);
+  opacity: 0.85;
+}
+
+.qs-plan-actions,
+.qs-plan-notes {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.qs-plan-incompatible {
+  color: #b91c1c;
+  display: grid;
+  gap: 4px;
+}
+
+.qs-plan-hint {
+  margin: 0;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.qs-plan-bash summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--color-text);
+}
+
+.qs-plan-bash pre {
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--color-text) 8%, transparent);
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow-x: auto;
+}
+
+.qs-plan-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.qs-plan-buttons button {
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.qs-plan-buttons button:hover {
+  border-color: var(--color-accent);
+}
+
+.qs-plan-buttons .qs-fix-button {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-on-accent, #fff);
+}
+
+.qs-plan-status {
+  margin: 0;
+  font-size: 12px;
+}
+
+.qs-plan-status-busy {
+  opacity: 0.75;
+}
+
+.qs-plan-status-ok {
+  color: color-mix(in srgb, var(--color-accent) 80%, var(--color-text));
+}
+
+.qs-plan-status-error {
+  color: #b91c1c;
+}
+
+.qs-plan-review {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-text);
+  opacity: 0.85;
+}

@@ -15,6 +15,9 @@ import type {
   DatasetCard,
   DatasetDownloadRequest,
   DatasetDownloadResult,
+  DatasetPlan,
+  DatasetRestructureResult,
+  DatasetShape,
   DatasetStatus,
   EmbedFolderRequest,
   EmbedFolderResult,
@@ -727,6 +730,55 @@ export class ApiClient {
     options?: RequestOptions
   ): Promise<FolderAnalysis> {
     return this.request("POST", "/v1/datasets/analyse", { path }, options);
+  }
+
+  // ─── Phase 22.1 — model-aware planner ──────────────────────────
+
+  inspectFolder(
+    path: string,
+    options?: RequestOptions
+  ): Promise<DatasetShape> {
+    return this.request("POST", "/v1/datasets/inspect", { path }, options);
+  }
+
+  planForModel(
+    path: string,
+    modelId: string,
+    options?: RequestOptions
+  ): Promise<DatasetPlan> {
+    return this.request(
+      "POST",
+      "/v1/datasets/plan",
+      { path, model_id: modelId },
+      options
+    );
+  }
+
+  planForModelViaLlm(
+    path: string,
+    modelId: string,
+    options?: RequestOptions
+  ): Promise<DatasetPlan> {
+    return this.request(
+      "POST",
+      "/v1/datasets/plan-llm",
+      { path, model_id: modelId },
+      options
+    );
+  }
+
+  restructureForModel(
+    path: string,
+    modelId: string,
+    dryRun: boolean,
+    options?: RequestOptions
+  ): Promise<DatasetRestructureResult> {
+    return this.request(
+      "POST",
+      "/v1/datasets/restructure",
+      { path, model_id: modelId, dry_run: dryRun },
+      options
+    );
   }
 }
 

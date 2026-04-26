@@ -5,7 +5,10 @@ from __future__ import annotations
 
 import contextlib
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from openpathai.data.shape import DatasetShape
 
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
@@ -17,7 +20,13 @@ __all__ = [
     "AnalyseFolderResult",
     "DatasetDownloadRequest",
     "DatasetDownloadResult",
+    "DatasetPlanRequest",
+    "DatasetPlanResponse",
+    "DatasetRestructureRequest",
+    "DatasetRestructureResult",
+    "DatasetShapeResponse",
     "DatasetStatus",
+    "InspectFolderRequest",
     "RegisterFolderRequest",
     "router",
 ]
@@ -74,6 +83,106 @@ class AnalyseFolderResult(BaseModel):
     warnings: tuple[str, ...] = ()
     truncated: bool = False
     bytes_total: int = 0
+
+
+class InspectFolderRequest(BaseModel):
+    """``POST /v1/datasets/inspect`` payload (Phase 22.1)."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    path: str = Field(min_length=1)
+
+
+class _ClassEntry(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    name: str
+    image_count: int
+
+
+class _CsvEntry(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    name: str
+    bytes_size: int
+    column_count: int
+    role: str
+
+
+class _TileSampleEntry(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    median_width: int
+    median_height: int
+    mode: str
+    format: str
+    sampled: int
+
+
+class DatasetShapeResponse(BaseModel):
+    """Mirrors :class:`openpathai.data.shape.DatasetShape` over the
+    wire. ``children`` is a recursive list — kept shallow (one level
+    of recursion in the inspector) but typed as the same model so
+    callers can render a tree."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    path: str
+    kind: str
+    image_count: int
+    bytes_total: int
+    extensions: tuple[str, ...] = ()
+    classes: tuple[_ClassEntry, ...] = ()
+    csvs: tuple[_CsvEntry, ...] = ()
+    hidden_entries: tuple[str, ...] = ()
+    tile_sample: _TileSampleEntry | None = None
+    children: tuple[DatasetShapeResponse, ...] = ()
+    notes: tuple[str, ...] = ()
+
+
+class DatasetPlanRequest(BaseModel):
+    """``POST /v1/datasets/plan`` payload (Phase 22.1)."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    path: str = Field(min_length=1)
+    model_id: str = Field(min_length=1)
+
+
+class _ActionEntry(BaseModel):
+    """Loose action wire shape — one of MakeDir, MoveFiles, Symlink,
+    MakeSplit, RemovePattern, WriteManifest, Incompatible. Discriminated
+    by ``kind`` so the frontend can switch on it directly."""
+
+    model_config = ConfigDict(frozen=True, extra="allow")
+    kind: str
+
+
+class DatasetPlanResponse(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    model_id: str
+    requirement: str
+    source_path: str
+    target_path: str
+    ok: bool
+    actions: tuple[_ActionEntry, ...] = ()
+    bash: str = ""
+    python_invocation: str = ""
+    notes: tuple[str, ...] = ()
+    provenance: str = "rule_based"
+
+
+class DatasetRestructureRequest(BaseModel):
+    """``POST /v1/datasets/restructure`` payload."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    path: str = Field(min_length=1)
+    model_id: str = Field(min_length=1)
+    dry_run: bool = True
+
+
+class DatasetRestructureResult(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    target_path: str
+    dry_run: bool
+    executed_actions: tuple[str, ...] = ()
+    errors: tuple[str, ...] = ()
+    new_root: str | None = None
 
 
 class DatasetDownloadRequest(BaseModel):
@@ -245,6 +354,139 @@ async def analyse_dataset_folder(body: AnalyseFolderRequest) -> AnalyseFolderRes
         warnings=report.warnings,
         truncated=report.truncated,
         bytes_total=report.bytes_total,
+    )
+
+
+# Phase 22.1 chunk A — richer inspector returning a typed DatasetShape
+# tree. The wizard's planner step calls this *instead of* /analyse when
+# it needs structural understanding (sibling buckets, CSV semantics,
+# sampled tile dims), not just an ImageFolder yes/no.
+@router.post(
+    "/inspect",
+    summary="Inspect a folder and return a typed DatasetShape tree",
+    response_model=DatasetShapeResponse,
+)
+async def inspect_dataset_folder(body: InspectFolderRequest) -> DatasetShapeResponse:
+    from openpathai.data.shape import inspect_folder
+
+    shape = inspect_folder(body.path)
+    return _shape_to_response(shape)
+
+
+def _shape_to_response(shape: DatasetShape) -> DatasetShapeResponse:
+    return DatasetShapeResponse(
+        path=shape.path,
+        kind=shape.kind,
+        image_count=shape.image_count,
+        bytes_total=shape.bytes_total,
+        extensions=shape.extensions,
+        classes=tuple(_ClassEntry(name=c.name, image_count=c.image_count) for c in shape.classes),
+        csvs=tuple(
+            _CsvEntry(
+                name=c.name,
+                bytes_size=c.bytes_size,
+                column_count=c.column_count,
+                role=c.role,
+            )
+            for c in shape.csvs
+        ),
+        hidden_entries=shape.hidden_entries,
+        tile_sample=(
+            _TileSampleEntry(
+                median_width=shape.tile_sample.median_width,
+                median_height=shape.tile_sample.median_height,
+                mode=shape.tile_sample.mode,
+                format=shape.tile_sample.format,
+                sampled=shape.tile_sample.sampled,
+            )
+            if shape.tile_sample is not None
+            else None
+        ),
+        children=tuple(_shape_to_response(c) for c in shape.children),
+        notes=shape.notes,
+    )
+
+
+# Phase 22.1 chunk C — model-aware planner. /plan returns a typed
+# DatasetPlan (rule-based, offline); /restructure executes it. Both
+# routes refuse to touch the user's source bytes — restructure builds
+# its output under a sibling ``__yolo_cls_split`` dir using symlinks.
+@router.post(
+    "/plan",
+    summary="Plan how to restructure a folder for a given model",
+    response_model=DatasetPlanResponse,
+)
+async def plan_dataset_restructure(body: DatasetPlanRequest) -> DatasetPlanResponse:
+    from openpathai.data.advise import plan_for_model
+    from openpathai.data.shape import inspect_folder
+
+    shape = inspect_folder(body.path)
+    plan = plan_for_model(shape, body.model_id)
+    return _plan_to_response(plan)
+
+
+@router.post(
+    "/plan-llm",
+    summary="Propose a restructure plan via the local MedGemma backend",
+    response_model=DatasetPlanResponse,
+)
+async def plan_dataset_via_llm(body: DatasetPlanRequest) -> DatasetPlanResponse:
+    """Phase 22.1 chunk D — MedGemma fallback. Sends a metadata-only
+    prompt (no image bytes, no PHI) to the local Ollama / LM Studio
+    backend resolved via :func:`detect_default_backend`. Returned plan
+    is tagged ``provenance="medgemma"``; iron-rule #9 is enforced at
+    the UI (the Apply button stays disabled until the user reviews)."""
+    from openpathai.data.advise_llm import propose_plan_via_llm
+    from openpathai.data.shape import inspect_folder
+
+    shape = inspect_folder(body.path)
+    plan = propose_plan_via_llm(shape, body.model_id)
+    return _plan_to_response(plan)
+
+
+@router.post(
+    "/restructure",
+    summary="Execute (or dry-run) a previously planned restructure",
+    response_model=DatasetRestructureResult,
+)
+async def restructure_dataset(
+    body: DatasetRestructureRequest,
+) -> DatasetRestructureResult:
+    from openpathai.data.advise import apply_plan, plan_for_model
+    from openpathai.data.shape import inspect_folder
+
+    shape = inspect_folder(body.path)
+    plan = plan_for_model(shape, body.model_id)
+    if not plan.ok:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=plan.actions[0].reason if plan.actions else "Plan is not ok.",
+        )
+    result = apply_plan(plan, dry_run=body.dry_run)
+    return DatasetRestructureResult(
+        target_path=result.target_path,
+        dry_run=result.dry_run,
+        executed_actions=result.executed_actions,
+        errors=result.errors,
+        new_root=result.new_root,
+    )
+
+
+def _plan_to_response(plan: Any) -> DatasetPlanResponse:
+    from dataclasses import asdict
+
+    actions = tuple(_ActionEntry.model_validate(asdict(a)) for a in plan.actions)
+    return DatasetPlanResponse(
+        model_id=plan.model_id,
+        requirement=plan.requirement,
+        source_path=plan.source_path,
+        target_path=plan.target_path,
+        ok=plan.ok,
+        actions=actions,
+        bash=plan.bash,
+        python_invocation=plan.python_invocation,
+        notes=plan.notes,
+        provenance=plan.provenance,
     )
 
 

@@ -20,8 +20,8 @@
 
 | | |
 |---|---|
-| Active phase | **None — awaiting next user authorisation.** Phase 22.0 closed 2026-04-26. Phase 22+ (capability tier) remains conditional / deferred. |
-| Latest Git tag | `phase-22.0-complete` |
+| Active phase | **None — awaiting next user authorisation.** Phase 22.1 closed 2026-04-26. Phase 22+ (capability tier) remains conditional / deferred. |
+| Latest Git tag | `phase-22.1-complete` |
 | Latest released version | v1.0.0 complete (Phases 13–17 ✅). **All three bets live** 🎯. v1.1.0 complete (Phase 18 ✅) — `pipx install`, Docker CPU + GPU, full docs site. Pre-Phase-19 audit closed (tag `phase-18-audit-complete`): 6 must-fix + 8 warnings + docker.yml workflow shipped. Next: v2.0.0 React canvas (19 backend · 20 canvas · 21 viewer). |
 | Blocked on user | (a) HISTAI-breast gated-access still pending on the main HF account (non-blocking); (b) Ollama + MedGemma 1.5 **already installed** ✅. |
 
@@ -61,6 +61,7 @@
 | 21.8 | Make Models real — foundation backbones as Train targets · per-model download/status routes · Models table actions · token-aware modal · wizard model picker | v2.0.x | ✅ complete (2026-04-26, tag `phase-21.8-complete`) | [phase-21.8-models-real.md](phase-21.8-models-real.md) | 1–2 d target / same-day actual |
 | 21.9 | Task-shaped Quickstart — DINOv2 224↔518 fix · per-model size catalogue · gated stub treatment · 5 task-shaped templates (classification / embeddings / detection / segmentation / zero-shot) | v2.0.x | ✅ complete (2026-04-26, tag `phase-21.9-complete`) | [phase-21.9-task-templates.md](phase-21.9-task-templates.md) | 1 d target / same-day actual |
 | 22.0 | Preflight + dataset analyser + fix-it loop — dataset structure analyser · step preflight contracts · per-step manifest read-back · inline fix-it panels · applied across templates | v2.0.x | ✅ complete (2026-04-26, tag `phase-22.0-complete`) | [phase-22.0-preflight-and-analyser.md](phase-22.0-preflight-and-analyser.md) | 1 d target / same-day actual |
+| 22.1 | Model-aware dataset planner — DatasetShape (tile_bucket / context_bucket / class_bucket + CSV roles + tile dim sampling) · per-adapter DatasetRequirement · typed Action plan + bash render · wizard Restructure panel · MedGemma metadata-only fallback | v2.0.x | ✅ complete (2026-04-26, tag `phase-22.1-complete`) | [phase-22.1-dataset-planner.md](phase-22.1-dataset-planner.md) | 1 d target / same-day actual |
 | 22+ | Conditional: RunPod tier, marketplace, DICOM-SR, SaMD | v2.5+ | 🧊 deferred | — | conditional |
 
 **Realistic total for v0.1 → v1.1:** ~20–24 weeks of focused work.

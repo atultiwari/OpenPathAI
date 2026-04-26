@@ -9,6 +9,94 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Phase 22.1 (v2.0.x) — Model-aware dataset planner + MedGemma fallback (2026-04-26)
+
+Direct response to the user feedback after Phase 22.0 ("the project
+should be mature enough to … analyse the structure of the dataset, then
+depending on the type of model selection … suggest the correct folder
+structure along with some bash script or commands … or take help of
+ollama and medgemma to analyse"). Phase 22.1 promotes the wizard from
+"is the folder shaped right?" to "given THIS folder and THIS model,
+here's the exact plan to make it train" — with copy-pasteable bash, a
+one-click apply, and an opt-in MedGemma fallback for ambiguous cases.
+
+Chunk A — Richer analyser (`DatasetShape`)
+* New `openpathai.data.shape.inspect_folder()` returns a typed
+  `DatasetShape` tree. Distinguishes **tile_bucket** (≥ 50 small files)
+  from **context_bucket** (≤ 50 large files — the Kather
+  `larger_images_10` pattern) from **class_bucket** (≥ 2 image-bearing
+  subdirs — the canonical ImageFolder shape).
+* CSV header peek (one full row via `readline`, no byte cap) classifies
+  each CSV as `tabular_pixels` / `manifest` / `unknown`. HMNIST
+  `pixelNNNN,…,label` headers + numeric data rows now resolve to
+  `tabular_pixels` correctly.
+* Tile-metadata sampling (PIL header peek, no pixel decode) reports
+  median width / height / mode / format on the bucket.
+* New `POST /v1/datasets/inspect` route surfaces the full shape tree.
+* Single-subdir parents are demoted to children so e.g. the Kather
+  parent is `empty` with two children — inner `class_bucket` (5000
+  tiles, 8 classes) and sibling `context_bucket` (10 large TIFFs).
+
+Chunk B — Model→shape compatibility planner
+* New `openpathai.data.advise.plan_for_model(shape, model_id)` returns
+  a typed `DatasetPlan`.
+* `model_requirement(model_id)` resolves a model id to one of
+  `image_folder` / `image_folder_split` / `yolo_cls_split` / `yolo_det`
+  / `folder_unlabelled` / `folder_labelled_manifest`.
+* `Action` discriminated union: `MakeDir`, `MoveFiles`, `Symlink`,
+  `MakeSplit`, `RemovePattern`, `WriteManifest`, `Incompatible`.
+* `render_bash(actions)` produces an idempotent, copy-pasteable script
+  with `set -euo pipefail` and `mkdir -p` / `ln -sf` patterns.
+* `apply_plan(plan, dry_run=...)` materialises actions transactionally;
+  splits are deterministic at `seed=0` and link tiles into
+  `train/val/test/<class>/` so source bytes are never moved.
+
+Chunk C — Wizard surfaces the plan inline
+* New `POST /v1/datasets/plan` returns the `DatasetPlan` JSON.
+* New `POST /v1/datasets/restructure` executes the plan (dry-run or
+  commit) and returns `{executed_actions, errors, new_root}`. On commit
+  the wizard re-targets `local_source_path` to `new_root` so subsequent
+  steps inherit the restructured tree.
+* `analyseFolderStep()` now also calls `/datasets/plan` for the
+  current model id. The Inspect panel grows a "Proposed restructure"
+  section with manifest, action list, copy-pasteable bash details,
+  `Copy bash`, `Apply via library (dry-run)`, and `Apply via library
+  (commit)` buttons.
+* `trainStep` preflight inherits the analyse manifest as before; the
+  `train` step's blocker shows the exact bash to run.
+
+Chunk D — MedGemma fallback for ambiguous cases
+* New `openpathai.data.advise_llm.propose_plan_via_llm(shape, model_id)`.
+  Sends a **metadata-only** prompt (folder tree, file sizes, CSV column
+  names, sampled tile dim) — never image bytes, never PHI, never
+  filenames beyond the user-supplied root — to the local Ollama / LM
+  Studio backend resolved via `detect_default_backend`.
+* `parse_llm_plan()` schema-validates the JSON response against
+  `DatasetPlan`; any parse / unknown-action / backend failure returns
+  an `Incompatible` plan tagged `provenance="medgemma"` so the wizard
+  can render the failure inline.
+* New `POST /v1/datasets/plan-llm` route exposes the fallback.
+* The wizard surfaces an `Ask MedGemma` button **only** when the
+  rule-based planner returned `Incompatible`. LLM-proposed plans
+  display a `provenance: medgemma` tag and Apply buttons stay
+  **disabled** until the user ticks "I have reviewed this
+  MedGemma-proposed plan" (iron-rule #9).
+
+Acceptance verification (the same Kather case Phase 22.0 locked):
+1. Point the wizard at the parent folder.
+2. Pick `tile-classifier-dinov2`: plan returns `ok=True, actions=()` —
+   training reads from the inner `Kather_texture_2016_image_tiles_5000`.
+3. Pick `yolo-classifier-yolov26`: plan returns `MakeDir + MakeSplit`
+   actions; `Apply via library (commit)` materialises
+   `Kather_texture_2016_image_tiles_5000__yolo_cls_split/{train,val,test}/{01_TUMOR,…}/*.tif`
+   as symlinks.
+4. Pick `yolo-detector-yolov26`: plan returns `Incompatible("no bbox
+   labels")`; `Ask MedGemma` becomes available; LLM-proposed plan
+   requires explicit review tick before Apply enables.
+
+Quality gates: 1096 backend pytest + 60 frontend vitest + ruff + ruff
+format + tsc --noEmit + eslint + vite build all clean.
+
 ### Phase 22.0 (v2.0.x) — Wizard preflight + dataset analyser + fix-it loop (2026-04-26)
 
 Direct response to the user audit: "the templates should have been such
