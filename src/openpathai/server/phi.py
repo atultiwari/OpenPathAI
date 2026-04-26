@@ -18,8 +18,10 @@ This module exposes both the scalar helpers + the middleware.
 from __future__ import annotations
 
 import hashlib
+import os
 import re
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Any
 
 from openpathai.safety.audit.phi import hash_filename, redact_manifest_path, strip_phi
@@ -28,6 +30,7 @@ __all__ = [
     "PHI_PATH_REGEX",
     "hash_filename",
     "hash_patient_id",
+    "library_whitelist_prefixes",
     "redact_manifest_path",
     "redact_response_payload",
     "strip_phi",
@@ -95,8 +98,37 @@ def _redact_match(path_str: str) -> str:
     return f"{basename}#{parent_hash}"
 
 
+def library_whitelist_prefixes() -> tuple[str, ...]:
+    """Phase 21.7 chunk B — paths the canvas legitimately needs to read.
+
+    These directories contain library-managed cache / config / artifact
+    bytes that are never PHI. Surfacing them unredacted lets the user
+    actually copy a path from the wizard or Settings into a shell.
+
+    The list is computed per-call so test fixtures that monkeypatch
+    ``OPENPATHAI_HOME`` / ``HF_HOME`` see the change immediately.
+    """
+    home = Path(os.environ.get("OPENPATHAI_HOME", Path.home() / ".openpathai")).resolve()
+    hf_home_env = os.environ.get("HF_HOME")
+    hf_root = Path(hf_home_env).resolve() if hf_home_env else Path.home() / ".cache" / "huggingface"
+    xdg_env = os.environ.get("XDG_CACHE_HOME")
+    xdg_hf = Path(xdg_env).resolve() / "huggingface" if xdg_env else None
+    prefixes = [str(home), str(hf_root)]
+    if xdg_hf is not None:
+        prefixes.append(str(xdg_hf))
+    return tuple(prefixes)
+
+
 def _redact_string(value: str) -> str:
     # Short-circuit when nothing matches — the common case.
     if not PHI_PATH_REGEX.search(value):
         return value
-    return PHI_PATH_REGEX.sub(lambda m: _redact_match(m.group(0)), value)
+    whitelist = library_whitelist_prefixes()
+    return PHI_PATH_REGEX.sub(
+        lambda m: (
+            m.group(0)
+            if any(m.group(0).startswith(prefix) for prefix in whitelist)
+            else _redact_match(m.group(0))
+        ),
+        value,
+    )

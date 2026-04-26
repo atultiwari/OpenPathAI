@@ -69,6 +69,11 @@ class DatasetDownloadResult(BaseModel):
     bytes_written: int | None = None
     message: str | None = None
     extra_required: str | None = None
+    # Phase 21.7 chunk C — when the user supplies a local_source_path,
+    # the route also calls register_folder() and surfaces the new card
+    # name here so the wizard's train step can submit against bytes
+    # that actually exist on disk.
+    registered_card: str | None = None
 
 
 class DatasetStatus(BaseModel):
@@ -315,6 +320,57 @@ async def download_dataset(dataset_id: str, body: DatasetDownloadRequest) -> Dat
         ) from exc
 
     wire_status = "manual" if result.skipped and method == "manual" else "downloaded"
+
+    # Phase 21.7 chunk C — when the user pointed at a local folder, also
+    # write a `method='local'` card so the registry exposes the bytes
+    # the user just supplied. The new card name is `<original>_local` so
+    # the original Zenodo / Kaggle / HF card is preserved untouched.
+    registered_card: str | None = None
+    if body.local_source_path and result.method == "local":
+        try:
+            from openpathai.data import registry as _registry_mod
+            from openpathai.data.local import register_folder
+            from openpathai.data.registry import default_registry
+
+            local_card = register_folder(
+                Path(body.local_source_path),
+                name=f"{card.name}_local",
+                tissue=list(card.tissue),
+                # Phase 21.7 chunk C — let register_folder infer classes
+                # from the folder layout. Forcing the original card's
+                # class list would reject any folder whose subdir names
+                # don't match (which is the common case when the user
+                # downloaded a slim subset).
+                classes=None,
+                display_name=(card.display_name or card.name) + " (local source)",
+                license=card.license or "user-supplied",
+                stain=card.stain or "H&E",
+                overwrite=True,
+            )
+            registered_card = local_card.name
+            # Force the next default_registry() call to re-scan disk so
+            # the new YAML is visible to other routes (Train) immediately.
+            _registry_mod._DEFAULT_REGISTRY = None
+            _ = default_registry()
+        except Exception as exc:
+            # Auto-registration is a convenience — if it fails (e.g. the
+            # folder isn't an ImageFolder layout) the symlink is still
+            # in place; surface the reason in the message so the user
+            # can fall back to manual `Datasets → Register` flow.
+            return DatasetDownloadResult(
+                dataset=card.name,
+                status=wire_status,
+                method=result.method,
+                target_dir=str(result.target_dir),
+                files_written=result.files_written,
+                bytes_written=result.bytes_written,
+                message=(
+                    (result.message or "")
+                    + f"\nNote: auto-register as a local card failed: {exc}. "
+                    "Use Datasets → Register custom dataset to register manually."
+                ),
+            )
+
     return DatasetDownloadResult(
         dataset=card.name,
         status=wire_status,
@@ -323,4 +379,5 @@ async def download_dataset(dataset_id: str, body: DatasetDownloadRequest) -> Dat
         files_written=result.files_written,
         bytes_written=result.bytes_written,
         message=result.message,
+        registered_card=registered_card,
     )

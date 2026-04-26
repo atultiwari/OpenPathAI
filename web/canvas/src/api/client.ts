@@ -16,6 +16,7 @@ import type {
   DatasetDownloadRequest,
   DatasetDownloadResult,
   DatasetStatus,
+  ExtrasResponse,
   HFTokenClearResult,
   HFTokenSetResult,
   HFTokenStatus,
@@ -658,6 +659,12 @@ export class ApiClient {
 
   getStoragePaths(options?: RequestOptions): Promise<StoragePaths> {
     return this.request("GET", "/v1/storage/paths", undefined, options);
+  }
+
+  // ─── Phase 21.7 chunk D — extras status ──────────────────────
+
+  getExtras(options?: RequestOptions): Promise<ExtrasResponse> {
+    return this.request("GET", "/v1/extras", undefined, options);
   }
 }
 

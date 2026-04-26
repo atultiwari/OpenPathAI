@@ -370,16 +370,25 @@ export function QuickstartScreen() {
                   <p className="qs-step-message">{result.message}</p>
                 ) : null}
 
+                {result.artifacts?.install_cmd ? (
+                  <InstallHint command={result.artifacts.install_cmd} />
+                ) : null}
+                {result.artifacts?.install_extra && !result.artifacts?.install_cmd ? (
+                  <InstallHint command={`uv sync --extra ${result.artifacts.install_extra.split(' ')[0].replace(/\[|\]/g, '')}`} />
+                ) : null}
+
                 {result.artifacts ? (
                   <dl className="qs-artifacts">
-                    {Object.entries(result.artifacts).map(([k, v]) => (
-                      <div key={k}>
-                        <dt>{k}</dt>
-                        <dd>
-                          <code>{v}</code>
-                        </dd>
-                      </div>
-                    ))}
+                    {Object.entries(result.artifacts)
+                      .filter(([k]) => k !== "install_cmd" && k !== "install_extra")
+                      .map(([k, v]) => (
+                        <div key={k}>
+                          <dt>{k}</dt>
+                          <dd>
+                            <code>{v}</code>
+                          </dd>
+                        </div>
+                      ))}
                   </dl>
                 ) : null}
 
@@ -433,6 +442,29 @@ export function QuickstartScreen() {
         })}
       </ol>
     </section>
+  );
+}
+
+function InstallHint({ command }: { command: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="qs-install-hint" role="status">
+      <strong>Install the missing extra:</strong>
+      <code>{command}</code>
+      <button
+        type="button"
+        onClick={() => {
+          if (typeof navigator !== "undefined" && navigator.clipboard) {
+            void navigator.clipboard.writeText(command).then(() => {
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1200);
+            });
+          }
+        }}
+      >
+        {copied ? "Copied" : "Copy"}
+      </button>
+    </div>
   );
 }
 

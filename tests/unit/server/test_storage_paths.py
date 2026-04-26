@@ -72,3 +72,46 @@ def test_hf_hub_cache_honours_hf_home_env(
 
 def test_storage_paths_requires_auth(client: TestClient) -> None:
     assert client.get("/v1/storage/paths").status_code in (401, 403)
+
+
+def test_phi_middleware_whitelists_library_paths(
+    client: TestClient, auth_headers: dict[str, str], settings
+) -> None:
+    """Phase 21.7 chunk B regression — paths under $OPENPATHAI_HOME
+    must round-trip *unredacted* so the user can copy them into a
+    shell. Before the whitelist landed, an absolute path under
+    /Users/<name>/... was rewritten to ``<basename>#<hash>`` even
+    when the home was a tmp dir under /Users/me/.../tests."""
+    body = client.get("/v1/storage/paths", headers=auth_headers).json()
+    home = str(settings.openpathai_home)
+    for key, value in body.items():
+        assert "#" not in value, f"{key}={value!r} got PHI-redacted"
+        if key == "openpathai_home":
+            assert value == home
+        elif key in {
+            "datasets",
+            "models",
+            "checkpoints",
+            "dzi",
+            "cache",
+            "pipelines",
+            "audit_db",
+            "secrets",
+        }:
+            assert value.startswith(home), f"{key}={value!r} not under {home}"
+
+
+def test_phi_middleware_still_redacts_user_home_paths_outside_whitelist(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Whitelist must not become a wildcard — a real /Users/.../Documents
+    path (outside OPENPATHAI_HOME and HF_HOME) still gets redacted."""
+    from openpathai.server.phi import _redact_string
+
+    monkeypatch.setenv("OPENPATHAI_HOME", "/var/folders/xy/openpathai-test")
+    monkeypatch.setenv("HF_HOME", "/var/folders/xy/hf-test")
+    sensitive = "/Users/dr-smith/Documents/patient_x.dcm"
+    redacted = _redact_string(sensitive)
+    assert "patient_x.dcm" in redacted
+    assert "#" in redacted
+    assert "/Users/dr-smith" not in redacted

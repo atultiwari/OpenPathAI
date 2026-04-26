@@ -9,6 +9,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Phase 21.7 (v2.0.x) — Make the Quickstart wizard real (2026-04-26)
+
+Closes the four placeholders that made the wizard *look* green while
+the underlying run errored or trained on random tensors:
+
+Chunk A — Real `_real_train` + wizard polling
+- `src/openpathai/server/routes/train.py::_real_train` no longer creates
+  16 random tensors. It resolves `req.dataset` against the registry,
+  builds a `LocalDatasetTileDataset` from the symlinked folder, splits
+  80/20, runs `LightningTrainer.fit` with epochs from
+  `duration_preset` (Quick=2, Standard=10, Thorough=30), and writes the
+  best checkpoint to `$OPENPATHAI_HOME/checkpoints/<run_id>/`.
+- Quick preset subsamples to 256 random tiles so the laptop CPU
+  finishes in 2-3 min instead of 10+.
+- Missing `[train]`/`[data]` extras → structured `mode='missing_backend'`
+  + `install_cmd` envelope (no more bare 500). Non-local cards →
+  `mode='missing_local_card'` with the wizard recovery path inline.
+- Wizard's train step now polls `/v1/train/runs/{id}/metrics` every
+  1.5 s and only flips to **DONE** on `status=success`. On `error`,
+  the wizard surfaces the run's `install_cmd` (when present) as a
+  copy-able shell command instead of dumping the raw error text.
+
+Chunk B — PHI middleware whitelist
+- `src/openpathai/server/phi.py::library_whitelist_prefixes()` exposes
+  `$OPENPATHAI_HOME` + `$HF_HOME` (+ `$XDG_CACHE_HOME/huggingface`)
+  as path prefixes the redaction middleware skips. The wizard /
+  Settings now show real, copy-able paths instead of strings like
+  `kather_crc_5k#1d86b5af`. PHI-shaped paths outside the whitelist
+  are still redacted.
+
+Chunk C — Auto-register local-source datasets
+- `POST /v1/datasets/{name}/download?local_source_path=...` now also
+  calls `register_folder()` on the symlinked tree and surfaces the
+  new card name as `registered_card: "<original>_local"`. Wizard's
+  download step records the new id in `ctx.state.datasetCard`; train
+  step submits against it instead of the original Zenodo / Kaggle
+  card. The original card is left untouched.
+
+Chunk D — Extras-status + install hints
+- New `GET /v1/extras` returns `{ name, installed, install_cmd,
+  description }` for `[server | data | train | wsi | explain | safety
+  | kaggle | gui | mlflow]`.
+- Wizard renders an inline "Install the missing extra" panel with a
+  copy-button + the exact shell command, so a fresh-laptop user goes
+  from "extra missing" to a working install in two clicks.
+
+Tests: +14 (2 train + 2 PHI + 1 auto-register + 5 extras + 4
+download/storage). Total: 337 pytest + 50 vitest, all gates green
+(`ruff check`, `ruff format --check`, `pyright src/openpathai/server
+src/openpathai/config`, `tsc --noEmit`, `eslint .`, `vite build`).
+
+Closed
+- Phase 21.7 ✅ — tag `phase-21.7-complete`. Dashboard returns to
+  "Phase 22+ — conditional / deferred". The Quickstart wizard now
+  actually fits a model on the user's local dataset, polls the run,
+  and reports DONE only when DONE.
+
 ### Phase 21.6.1 (v2.0.x) — Wizard fixes: Zenodo backend, download overrides, train duration selector, manual confirms (2026-04-26)
 
 Three concrete bugs from the Phase 21.6 close screenshots:

@@ -176,17 +176,36 @@ function downloadDatasetStep(
           };
         }
         if (result.status === "missing_backend") {
-          return {
+          const out: StepResult = {
             status: "error",
             message:
               result.message ??
               "Server is missing the required extra (e.g. install with [train]).",
           };
+          if (result.extra_required) {
+            out.artifacts = { install_extra: result.extra_required };
+          }
+          return out;
         }
+        // Phase 21.7 chunk C — when the route auto-registered a
+        // local-method card, store the new id so the train step
+        // submits against the user's bytes instead of the original
+        // (Zenodo / Kaggle / HF) card.
+        if (result.registered_card) {
+          ctx.state.datasetCard = result.registered_card;
+        }
+        const cardLabel = result.registered_card
+          ? ` Auto-registered as card '${result.registered_card}'.`
+          : "";
         return {
           status: "done",
-          message: `Downloaded ${result.files_written} file(s) to ${result.target_dir}.`,
-          artifacts: { target_dir: result.target_dir },
+          message: `Downloaded ${result.files_written} file(s) to ${result.target_dir}.${cardLabel}`,
+          artifacts: {
+            target_dir: result.target_dir,
+            ...(result.registered_card
+              ? { registered_card: result.registered_card }
+              : {}),
+          },
         };
       } catch (err: unknown) {
         return {
@@ -251,28 +270,96 @@ function trainStep(card: string, model: string): WizardStep {
         "Quick";
       const synthetic = ctx.state.use_synthetic !== false;
       const strict = ctx.state.strict_model === true;
+      // Phase 21.7 chunk C — when the download step auto-registered a
+      // local-source card, prefer that id over the template default
+      // so real training reads from the user's bytes.
+      const datasetId =
+        (ctx.state.datasetCard as string | undefined)?.trim() || card;
+
+      let submitted;
       try {
-        const submitted = await ctx.client.submitTrain({
-          dataset: card,
+        submitted = await ctx.client.submitTrain({
+          dataset: datasetId,
           model,
           synthetic,
           duration_preset: duration,
         });
-        ctx.state.runId = submitted.run_id;
-        const tag = `${duration}${synthetic ? " · synthetic" : ""}${
-          strict ? " · strict" : ""
-        }`;
-        return {
-          status: submitted.status === "error" ? "error" : "done",
-          message: `Run ${submitted.run_id.slice(0, 12)} ${submitted.status} (${tag}).`,
-          artifacts: { run_id: submitted.run_id },
-        };
       } catch (err: unknown) {
         return {
           status: "error",
           message: err instanceof Error ? err.message : "Train submit failed.",
         };
       }
+
+      ctx.state.runId = submitted.run_id;
+      const tag = `${duration}${synthetic ? " · synthetic" : ""}${
+        strict ? " · strict" : ""
+      }`;
+
+      // Phase 21.7 chunk A — poll until the run actually finishes, so
+      // the wizard never reports DONE on a queued / errored run again.
+      const POLL_MS = 1500;
+      const MAX_WAIT_MS = 10 * 60 * 1000;
+      const started = Date.now();
+      while (Date.now() - started < MAX_WAIT_MS) {
+        let metrics;
+        try {
+          metrics = await ctx.client.getTrainMetrics(submitted.run_id);
+        } catch (err: unknown) {
+          return {
+            status: "error",
+            message:
+              err instanceof Error ? err.message : "Failed to poll run metrics.",
+          };
+        }
+        if (metrics.status === "success") {
+          const result = (metrics.result ?? {}) as Record<string, unknown>;
+          const tilesUsed = result.tiles_used as number | undefined;
+          const datasetPath = result.dataset_path as string | undefined;
+          const mode = metrics.mode ?? "synthetic";
+          const checkpointPath = result.checkpoint_path as string | undefined;
+          const bestAcc =
+            metrics.best?.val_accuracy != null
+              ? ` · val_acc=${(metrics.best.val_accuracy * 100).toFixed(1)}%`
+              : "";
+          return {
+            status: "done",
+            message: `Run ${submitted.run_id.slice(0, 12)} ✅ ${mode} (${tag})${bestAcc}.`,
+            artifacts: {
+              run_id: submitted.run_id,
+              ...(datasetPath ? { dataset: datasetPath } : {}),
+              ...(tilesUsed != null ? { tiles_used: String(tilesUsed) } : {}),
+              ...(checkpointPath ? { checkpoint: checkpointPath } : {}),
+              ...(metrics.epochs && metrics.epochs.length
+                ? { epochs: String(metrics.epochs.length) }
+                : {}),
+            },
+          };
+        }
+        if (metrics.status === "error" || metrics.status === "cancelled") {
+          const installHint = metrics.install_cmd
+            ? `  Install: ${metrics.install_cmd}`
+            : "";
+          return {
+            status: "error",
+            message: `Run ${submitted.run_id.slice(0, 12)} failed: ${
+              metrics.error ?? "unknown error"
+            }${installHint}`,
+            artifacts: {
+              run_id: submitted.run_id,
+              ...(metrics.install_cmd
+                ? { install_cmd: metrics.install_cmd }
+                : {}),
+            },
+          };
+        }
+        await new Promise((r) => setTimeout(r, POLL_MS));
+      }
+      return {
+        status: "error",
+        message: `Run ${submitted.run_id.slice(0, 12)} did not finish in 10 min — check the Runs tab.`,
+        artifacts: { run_id: submitted.run_id },
+      };
     },
   };
 }

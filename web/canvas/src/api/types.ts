@@ -222,7 +222,14 @@ export type TrainMetricsResponse = {
   result?: Record<string, unknown>;
   epochs?: TrainEpochPoint[];
   best?: { epoch: number; val_accuracy: number };
-  mode?: "synthetic" | "lightning";
+  // Phase 21.7 chunk A — real path adds new mode tags + structured
+  // install hints when the [train] extra is missing.
+  mode?:
+    | "synthetic"
+    | "lightning"
+    | "missing_backend"
+    | "missing_local_card";
+  install_cmd?: string;
 };
 
 export type TrainEpochPoint = {
@@ -345,6 +352,11 @@ export type DatasetDownloadResult = {
   bytes_written: number | null;
   message: string | null;
   extra_required: string | null;
+  // Phase 21.7 chunk C — when local_source_path is supplied, the
+  // route auto-registers a `<original>_local` card and surfaces it
+  // here so the wizard's train step can submit against bytes that
+  // actually exist on disk.
+  registered_card: string | null;
 };
 
 export type DatasetStatus = {
@@ -375,4 +387,18 @@ export type StoragePaths = {
   secrets: string;
   hf_hub_cache: string;
   pipelines: string;
+};
+
+// ─── Phase 21.7 chunk D — extras status ────────────────────────
+
+export type ExtraStatus = {
+  name: string;
+  installed: boolean;
+  install_cmd: string;
+  description: string;
+};
+
+export type ExtrasResponse = {
+  items: ExtraStatus[];
+  total: number;
 };
