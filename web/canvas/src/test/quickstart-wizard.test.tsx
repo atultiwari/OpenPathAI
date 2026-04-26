@@ -273,8 +273,20 @@ describe("<QuickstartScreen>", () => {
       </AuthProvider>
     );
 
-    const runBtns = await screen.findAllByRole("button", { name: /^run$/i });
-    fireEvent.click(runBtns[0]);
+    // Phase 22.0 chunk E — the analyse step now precedes download; pick
+    // the Run button inside the download step's row by walking from
+    // the step title.
+    const downloadTitle = await screen.findByText(
+      /^Download dataset · kather_crc_5k$/i
+    );
+    const downloadStep = downloadTitle.closest("li");
+    expect(downloadStep).not.toBeNull();
+    const downloadRun = downloadStep!.querySelector(
+      "button"
+    ) as HTMLButtonElement;
+    // The first button inside the step is the Run button.
+    expect(downloadRun.textContent).toMatch(/^Run/i);
+    fireEvent.click(downloadRun);
 
     await waitFor(() => {
       expect(downloadCalls).toBe(1);
@@ -340,10 +352,18 @@ describe("<QuickstartScreen>", () => {
       </AuthProvider>
     );
 
-    // Find the Download step's Run button (first "Run" in document).
-    const runBtn = await screen.findAllByRole("button", { name: /^run$/i });
-    expect(runBtn.length).toBeGreaterThanOrEqual(1);
-    fireEvent.click(runBtn[0]);
+    // Phase 22.0 chunk E — analyse step now precedes download. Click
+    // the Run button inside the download step's row specifically.
+    const downloadTitle = await screen.findByText(
+      /^Download dataset · kather_crc_5k$/i
+    );
+    const downloadStep = downloadTitle.closest("li");
+    expect(downloadStep).not.toBeNull();
+    const downloadRun = downloadStep!.querySelector(
+      "button"
+    ) as HTMLButtonElement;
+    expect(downloadRun.textContent).toMatch(/^Run/i);
+    fireEvent.click(downloadRun);
 
     await waitFor(() => {
       expect(downloadCalls).toBe(1);

@@ -13,6 +13,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from openpathai.server.auth import AuthDependency
 
 __all__ = [
+    "AnalyseFolderRequest",
+    "AnalyseFolderResult",
     "DatasetDownloadRequest",
     "DatasetDownloadResult",
     "DatasetStatus",
@@ -34,6 +36,44 @@ class RegisterFolderRequest(BaseModel):
     license: str = "user-supplied"
     stain: str = "H&E"
     overwrite: bool = False
+
+
+class AnalyseFolderRequest(BaseModel):
+    """``POST /v1/datasets/analyse`` payload."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    path: str = Field(min_length=1)
+
+
+class AnalyseFolderClass(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    name: str
+    count: int
+
+
+class AnalyseFolderResult(BaseModel):
+    """``POST /v1/datasets/analyse`` response. Mirrors
+    :class:`openpathai.data.analyse.AnalysisReport` so the canvas
+    wizard can render the report verbatim and decide whether to
+    proceed."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    path: str
+    exists: bool
+    is_directory: bool
+    layout: str
+    image_count: int
+    class_count: int
+    classes: tuple[AnalyseFolderClass, ...] = ()
+    extensions: tuple[str, ...] = ()
+    hidden_entries: tuple[str, ...] = ()
+    non_image_files: tuple[str, ...] = ()
+    suggested_root: str | None = None
+    warnings: tuple[str, ...] = ()
+    truncated: bool = False
+    bytes_total: int = 0
 
 
 class DatasetDownloadRequest(BaseModel):
@@ -176,6 +216,36 @@ async def register_folder(body: RegisterFolderRequest) -> dict[str, Any]:
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
         ) from exc
     return _dump_card(card)
+
+
+# Phase 22.0 chunk A — folder analyser. Surfaced *before* register/symlink
+# so the wizard can refuse to proceed against a folder that
+# register_folder would silently turn into an empty card.
+@router.post(
+    "/analyse",
+    summary="Walk a folder and report its layout / classes / warnings",
+    response_model=AnalyseFolderResult,
+)
+async def analyse_dataset_folder(body: AnalyseFolderRequest) -> AnalyseFolderResult:
+    from openpathai.data.analyse import analyse_folder
+
+    report = analyse_folder(body.path)
+    return AnalyseFolderResult(
+        path=report.path,
+        exists=report.exists,
+        is_directory=report.is_directory,
+        layout=report.layout,
+        image_count=report.image_count,
+        class_count=report.class_count,
+        classes=tuple(AnalyseFolderClass(name=c.name, count=c.count) for c in report.classes),
+        extensions=report.extensions,
+        hidden_entries=report.hidden_entries,
+        non_image_files=report.non_image_files,
+        suggested_root=report.suggested_root,
+        warnings=report.warnings,
+        truncated=report.truncated,
+        bytes_total=report.bytes_total,
+    )
 
 
 # ─── Phase 21.6 chunk B — on-demand downloads + status ──────────

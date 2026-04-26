@@ -42,6 +42,49 @@ export type ManualChoice = {
   message?: string;
 };
 
+// ─── Phase 22.0 chunk B/D — preflight contracts + fix-it actions ──
+
+/**
+ * Discriminated-union of fix actions a preflight blocker can suggest.
+ * Wizard executes the action then re-runs the preflight.
+ */
+export type FixAction =
+  | { kind: "set_state"; key: string; value: unknown }
+  | { kind: "navigate_tab"; tab: string }
+  | { kind: "open_url"; url: string }
+  | { kind: "rerun_step"; step_id: string }
+  | { kind: "noop"; message: string };
+
+export type PreflightFix = {
+  label: string;
+  action: FixAction;
+};
+
+export type PreflightBlocker = {
+  title: string;
+  detail?: string;
+};
+
+export type PreflightWarning = {
+  title: string;
+  detail?: string;
+};
+
+export type PreflightResult = {
+  ok: boolean;
+  blockers?: readonly PreflightBlocker[];
+  warnings?: readonly PreflightWarning[];
+  fixes?: readonly PreflightFix[];
+  /** Optional snapshot the wizard surfaces under "Step health". */
+  manifest?: Record<string, string>;
+};
+
+export type StepManifest = {
+  artifacts: Record<string, string>;
+  warnings: readonly string[];
+  completed_at: string;
+};
+
 export type WizardStep = {
   id: string;
   title: string;
@@ -65,6 +108,12 @@ export type WizardStep = {
   /** Manual steps with no `run`: surface one button per choice that
    *  marks the step done and merges `choice.state` into ctx.state. */
   manualChoices?: readonly ManualChoice[];
+  /**
+   * Phase 22.0 chunk B — preflight contract. Runs before `run()` /
+   * `manualChoices` are surfaced. When `ok=false`, the wizard refuses
+   * to advance and surfaces blockers + apply-fix buttons.
+   */
+  preflight?: (ctx: WizardContext) => Promise<PreflightResult>;
 };
 
 export type WizardContext = {
@@ -109,6 +158,147 @@ export const TASK_LABELS: Record<TaskKind, string> = {
 };
 
 // ─── Shared step builders ───────────────────────────────────────
+
+/** Phase 22.0 chunk E — analyse the local-source folder *before*
+ *  the download/register step. Surfaces the user's nested-ImageFolder
+ *  case with a one-click "Use suggested path" fix. */
+function analyseFolderStep(): WizardStep {
+  return {
+    id: "analyse_folder",
+    title: "Analyse your dataset folder",
+    blurb:
+      "Walks the folder you'll register in the next step and reports its layout (ImageFolder / nested / flat / mixed) plus per-class counts. Catches the common 'I picked the parent folder' mistake before training inherits an empty card.",
+    kind: "automatic",
+    userActions: [
+      "Type the absolute path to your local dataset folder.",
+      "Click Run. If the wizard suggests a different root (because it found an ImageFolder one level down), apply the fix.",
+    ],
+    wizardActions: [
+      "POST /v1/datasets/analyse — walks the folder, returns layout + classes + warnings.",
+      "Writes the resolved path into ctx.state.local_source_path so the download step picks it up automatically.",
+    ],
+    storagePathHint: "(read-only — analyser doesn't touch disk)",
+    controls: [
+      {
+        id: "local_source_path",
+        kind: "text",
+        label: "Local source folder (absolute path)",
+        placeholder: "/abs/path/to/dataset",
+        help:
+          "ImageFolder layout: <root>/<class_name>/<image>.png. The analyser will tell you when the layout is one level deeper than you think.",
+      },
+    ],
+    run: async (ctx) => {
+      const folder = (ctx.state.local_source_path as string | undefined)?.trim();
+      if (!folder) {
+        return {
+          status: "error",
+          message: "Set the source folder above before clicking Run.",
+        };
+      }
+      try {
+        const report = await ctx.client.analyseFolder(folder);
+        ctx.state.dataset_analysis = report as unknown as Record<string, unknown>;
+        const baseArtifacts: Record<string, string> = {
+          layout: report.layout,
+          classes: String(report.class_count),
+          images: String(report.image_count),
+        };
+        if (report.suggested_root) {
+          baseArtifacts.suggested_root = report.suggested_root;
+        }
+        if (report.layout === "image_folder") {
+          return {
+            status: "done",
+            message: `✓ ImageFolder · ${report.class_count} classes · ${report.image_count} images.`,
+            artifacts: baseArtifacts,
+          };
+        }
+        if (report.layout === "nested_image_folder" && report.suggested_root) {
+          return {
+            status: "error",
+            message: `Folder layout is '${report.layout}'. The wizard suggests using ${report.suggested_root} instead — open Inspect to apply the fix.`,
+            artifacts: baseArtifacts,
+          };
+        }
+        return {
+          status: "error",
+          message: `Folder layout is '${report.layout}' — not usable for training. Inspect for details.`,
+          artifacts: baseArtifacts,
+        };
+      } catch (err) {
+        return {
+          status: "error",
+          message: err instanceof Error ? err.message : "Analyse failed.",
+        };
+      }
+    },
+    preflight: async (ctx) => {
+      const folder = (ctx.state.local_source_path as string | undefined)?.trim();
+      const blockers: { title: string; detail?: string }[] = [];
+      if (!folder) {
+        blockers.push({
+          title: "No source folder set",
+          detail:
+            "Type the absolute path to the folder you want to use as your dataset.",
+        });
+      }
+      const analysis = ctx.state.dataset_analysis as
+        | { layout?: string; suggested_root?: string | null; class_count?: number; image_count?: number; warnings?: string[] }
+        | undefined;
+      const fixes: { label: string; action: FixAction }[] = [];
+      const warnings: { title: string; detail?: string }[] = [];
+      if (analysis) {
+        if (analysis.layout === "nested_image_folder" && analysis.suggested_root) {
+          blockers.push({
+            title: "Folder is nested",
+            detail: `An ImageFolder layout was found one level down at ${analysis.suggested_root}. Apply the fix to use that path instead.`,
+          });
+          fixes.push({
+            label: `Use suggested path: ${analysis.suggested_root}`,
+            action: {
+              kind: "set_state",
+              key: "local_source_path",
+              value: analysis.suggested_root,
+            },
+          });
+        }
+        if (
+          analysis.layout &&
+          !["image_folder", "nested_image_folder"].includes(analysis.layout)
+        ) {
+          blockers.push({
+            title: `Layout '${analysis.layout}' not usable`,
+            detail:
+              "OpenPathAI's classifier path needs an ImageFolder layout (one subdir per class). Re-organise the folder or pick a different root.",
+          });
+        }
+        if ((analysis.warnings ?? []).length) {
+          for (const w of analysis.warnings ?? []) {
+            warnings.push({ title: w });
+          }
+        }
+      }
+      const manifest: Record<string, string> = analysis
+        ? {
+            layout: String(analysis.layout ?? "unknown"),
+            classes: String(analysis.class_count ?? "?"),
+            images: String(analysis.image_count ?? "?"),
+          }
+        : { local_source_path: folder ?? "(not set)" };
+      if (analysis?.suggested_root) {
+        manifest.suggested_root = analysis.suggested_root;
+      }
+      return {
+        ok: blockers.length === 0,
+        blockers,
+        warnings,
+        fixes,
+        manifest,
+      };
+    },
+  };
+}
 
 function hfTokenStep(): WizardStep {
   return {
@@ -283,6 +473,105 @@ function trainStep(card: string, model: string): WizardStep {
       "Streams epoch metrics; best checkpoint is kept under the path below.",
     ],
     storagePathHint: "$OPENPATHAI_HOME/checkpoints/<run_id>/",
+    preflight: async (ctx) => {
+      const synthetic = ctx.state.use_synthetic !== false;
+      const blockers: { title: string; detail?: string }[] = [];
+      const warnings: { title: string; detail?: string }[] = [];
+      const fixes: { label: string; action: FixAction }[] = [];
+
+      const datasetId =
+        (ctx.state.datasetCard as string | undefined)?.trim() || card;
+      const modelId =
+        (ctx.state.model_id as string | undefined)?.trim() || model;
+
+      // Real-mode dataset checks. Synthetic mode bypasses dataset entirely.
+      if (!synthetic) {
+        const analysis = ctx.state.dataset_analysis as
+          | { layout?: string; class_count?: number; image_count?: number }
+          | undefined;
+        if (!analysis) {
+          warnings.push({
+            title: "Dataset not analysed yet",
+            detail:
+              "Real-mode training works best after the Analyse step is green. Continue if you trust the source folder, or run Analyse first.",
+          });
+          fixes.push({
+            label: "Re-run analyse step first",
+            action: { kind: "rerun_step", step_id: "analyse_folder" },
+          });
+        } else if ((analysis.class_count ?? 0) < 2) {
+          blockers.push({
+            title: "Dataset has < 2 classes",
+            detail: `Analyser reported ${analysis.class_count ?? 0} classes. Classification needs at least 2.`,
+          });
+          fixes.push({
+            label: "Re-run analyse step",
+            action: { kind: "rerun_step", step_id: "analyse_folder" },
+          });
+        } else if ((analysis.image_count ?? 0) === 0) {
+          blockers.push({
+            title: "Dataset has 0 images",
+            detail:
+              "The analyser found no readable images under the chosen folder. Pick a different root.",
+          });
+        }
+      }
+
+      // Model checks: query /v1/models?id=... isn't ideal — easier to
+      // probe the local cache via getModelStatus. Gated + no token =
+      // blocker.
+      try {
+        const models = await ctx.client.listModels({ limit: 500 });
+        const row = models.items.find((m) => m.id === modelId);
+        if (!row) {
+          blockers.push({
+            title: `Model '${modelId}' not registered`,
+            detail:
+              "Pick a registered model from /v1/models. The wizard's Backbone dropdown lists every option.",
+          });
+        } else if (row.gated) {
+          const tokenStatus = await ctx.client.getHfTokenStatus();
+          if (!tokenStatus.present) {
+            blockers.push({
+              title: `Model '${modelId}' is gated — no Hugging Face token configured`,
+              detail:
+                "Configure a token under Settings → Hugging Face after requesting access on the upstream HF page.",
+            });
+            fixes.push({
+              label: "Open Settings → Hugging Face",
+              action: { kind: "navigate_tab", tab: "settings" },
+            });
+            if (row.hf_repo) {
+              fixes.push({
+                label: `Request access at huggingface.co/${row.hf_repo}`,
+                action: {
+                  kind: "open_url",
+                  url: `https://huggingface.co/${row.hf_repo}`,
+                },
+              });
+            }
+          }
+        }
+      } catch {
+        warnings.push({
+          title: "Could not validate the model registry",
+          detail:
+            "Skipped registry check (server unreachable). Train will surface the real error if it fails.",
+        });
+      }
+
+      return {
+        ok: blockers.length === 0,
+        blockers,
+        warnings,
+        fixes,
+        manifest: {
+          dataset: datasetId,
+          model: modelId,
+          mode: synthetic ? "synthetic" : "real",
+        },
+      };
+    },
     controls: [
       // Phase 21.8 chunk D — model picker. Default reflects the
       // template's recommended backbone; the user can swap to any
@@ -667,6 +956,7 @@ export const TEMPLATE_TILE_CLASSIFIER: WizardTemplate = {
   modelCard: "dinov2_vits14",
   steps: [
     hfTokenStep(),
+    analyseFolderStep(),
     downloadDatasetStep(
       "kather_crc_5k",
       "~50 MB, CC-BY-4.0.",
@@ -689,6 +979,7 @@ export const TEMPLATE_YOLO_CLASSIFIER: WizardTemplate = {
   modelCard: "yolov26_cls",
   steps: [
     hfTokenStep(),
+    analyseFolderStep(),
     downloadDatasetStep(
       "kather_crc_5k",
       "~50 MB, CC-BY-4.0.",

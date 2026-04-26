@@ -19,6 +19,7 @@ import type {
   EmbedFolderRequest,
   EmbedFolderResult,
   ExtrasResponse,
+  FolderAnalysis,
   HFTokenClearResult,
   HFTokenSetResult,
   HFTokenStatus,
@@ -717,6 +718,15 @@ export class ApiClient {
     options?: RequestOptions
   ): Promise<EmbedFolderResult> {
     return this.request("POST", "/v1/foundation/embed-folder", body, options);
+  }
+
+  // ─── Phase 22.0 chunk A — folder analyser ────────────────────
+
+  analyseFolder(
+    path: string,
+    options?: RequestOptions
+  ): Promise<FolderAnalysis> {
+    return this.request("POST", "/v1/datasets/analyse", { path }, options);
   }
 }
 

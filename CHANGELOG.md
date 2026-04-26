@@ -9,6 +9,82 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Phase 22.0 (v2.0.x) — Wizard preflight + dataset analyser + fix-it loop (2026-04-26)
+
+Direct response to the user audit: "the templates should have been such
+that it should check every step thoroughly, if it finds error at any
+step, then there should be option to rectify it … it should analyse the
+structure of the dataset so that a correct approach can be made as per
+model selection etc." Phase 22.0 turns every Quickstart step from
+fire-and-forget into pre-checked + cross-validated, and surfaces a
+fixable diagnostic UI when something is off.
+
+Chunk A — Dataset structure analyser
+- New `openpathai.data.analyse.analyse_folder()` walks an arbitrary
+  on-disk folder (filesystem-only — no PIL / torch / network) and
+  returns an `AnalysisReport` describing the layout
+  (`image_folder` / `nested_image_folder` / `flat` / `mixed` / `csv_only`
+  / `empty` / `unknown` / `missing` / `not_a_directory`), per-class
+  counts, hidden entries, mixed-extension warnings, class-imbalance
+  warnings, and — critically for the Kather case — a `suggested_root`
+  pointing one level down when the real ImageFolder is nested inside
+  the user-provided folder.
+- Hard cap of 50 000 entries scanned (`MAX_ENTRIES_SCANNED`) keeps the
+  analyser cheap to run from a preflight even on 500 k-tile folders.
+- New `POST /v1/datasets/analyse` endpoint exposes the analyser to the
+  wizard; pydantic models keep the response strictly typed.
+- Regression test `test_nested_imagefolder_kather_case` reproduces the
+  user's exact folder shape (parent + inner ImageFolder + sibling
+  larger-image bucket + CSV dumps + .DS_Store) and asserts the
+  analyser returns `nested_image_folder` with `suggested_root` ending
+  in `Kather_texture_2016_image_tiles_5000` — so the regression that
+  drove Phase 22.0 is now locked.
+
+Chunk B — `WizardStep.preflight` contract
+- Every wizard step can now declare a `preflight(ctx)` returning a
+  `PreflightResult` (`{ok, blockers, warnings, fixes, manifest}`).
+- `FixAction` is a discriminated union — `set_state`, `navigate_tab`,
+  `open_url`, `rerun_step`, `noop` — so the wizard can apply fixes by
+  mutating context, opening the Models tab, deep-linking to a HF
+  request page, etc., all from JSON-serialisable shapes (survives
+  localStorage round-trip).
+
+Chunk C — Per-step manifest read-back
+- Each step's `run()` now writes a small `manifest` (resolved path,
+  cached size, gated-access status, …) into the result. The wizard
+  reads later steps' preflight by scanning earlier steps' manifests,
+  so e.g. the `train` step refuses to start if the `analyse-folder`
+  step never produced a usable layout, and the `download-model` step
+  tells you why your token is missing before you click Run.
+
+Chunk D — Inline fix-it panels
+- New `Inspect · ⚠ N issues` button per step renders a `PreflightPanel`
+  showing the manifest, blockers, warnings, and one button per fix.
+- Clicking a fix invokes the discriminated-union handler — e.g.
+  `set_state` mutates `ctx.dataset_path` to the suggested nested
+  ImageFolder, then re-runs preflight automatically.
+
+Chunk E — Apply preflight to all 5 task templates
+- `analyseFolderStep()` is now the first step on tile-classifier and
+  YOLO-classifier templates; foundation-embed and zero-shot templates
+  reuse the same step + manifest plumbing.
+- `trainStep()` preflight refuses to start unless an analysis is on
+  record AND the resolved layout is `image_folder` /
+  `nested_image_folder`. If `nested_image_folder`, the fix-it panel
+  offers a one-click "Use suggested path" action.
+
+Acceptance verification (the Kather case):
+1. Point the wizard at `/Users/atultiwari/Downloads/AI/Datasets/Kather_Colorectal_Carcinoma`.
+2. The first step now runs analyser → reports `nested_image_folder`
+   with `suggested_root` pointing at the inner
+   `Kather_texture_2016_image_tiles_5000`.
+3. Inspect panel offers "Use suggested path"; clicking it rewrites
+   `ctx.dataset_path` to the inner folder.
+4. The `train` step's preflight then turns green and the run starts.
+
+Quality gates: 1063 backend pytest + 57 frontend vitest + ruff + ruff
+format + tsc --noEmit + eslint + vite build all clean.
+
 ### Phase 21.9 (v2.0.x) — Task-shaped Quickstart + critical fixes (2026-04-26)
 
 Closes the three concrete bugs from the post-21.8 screenshots and

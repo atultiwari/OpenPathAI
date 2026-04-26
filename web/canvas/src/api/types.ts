@@ -461,3 +461,36 @@ export type EmbedFolderResult = {
   message: string | null;
   install_cmd: string | null;
 };
+
+// ─── Phase 22.0 chunk A — folder analyser ──────────────────────
+
+export type FolderAnalysisClass = {
+  name: string;
+  count: number;
+};
+
+export type FolderAnalysis = {
+  path: string;
+  exists: boolean;
+  is_directory: boolean;
+  layout:
+    | "image_folder"
+    | "nested_image_folder"
+    | "flat"
+    | "mixed"
+    | "csv_only"
+    | "empty"
+    | "unknown"
+    | "missing"
+    | "not_a_directory";
+  image_count: number;
+  class_count: number;
+  classes: FolderAnalysisClass[];
+  extensions: string[];
+  hidden_entries: string[];
+  non_image_files: string[];
+  suggested_root: string | null;
+  warnings: string[];
+  truncated: boolean;
+  bytes_total: number;
+};

@@ -490,3 +490,109 @@
 .qs-install-hint button:hover {
   border-color: var(--color-accent);
 }
+
+/* ───── Phase 22.0 — preflight panel ───── */
+
+.qs-preflight-panel {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-panel);
+  display: grid;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.qs-preflight-ok {
+  border-color: color-mix(in srgb, var(--color-accent) 60%, var(--color-border));
+}
+
+.qs-preflight-bad {
+  border-color: color-mix(in srgb, #d97706 70%, var(--color-border));
+  background: color-mix(in srgb, #d97706 4%, var(--color-panel));
+}
+
+.qs-preflight-empty {
+  margin: 0;
+  color: var(--color-text-muted, var(--color-text));
+  opacity: 0.75;
+}
+
+.qs-preflight-refresh {
+  justify-self: end;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 2px 10px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.qs-preflight-refresh:hover {
+  border-color: var(--color-accent);
+}
+
+.qs-preflight-manifest {
+  margin: 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 12px;
+  font-size: 12px;
+}
+
+.qs-preflight-manifest dt {
+  font-weight: 600;
+  color: var(--color-text);
+  opacity: 0.7;
+}
+
+.qs-preflight-manifest dd {
+  margin: 0;
+  word-break: break-all;
+}
+
+.qs-preflight-blockers,
+.qs-preflight-warnings {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+}
+
+.qs-preflight-blockers li {
+  color: #b45309;
+}
+
+.qs-preflight-warnings li {
+  color: var(--color-text);
+  opacity: 0.85;
+}
+
+.qs-preflight-fixes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.qs-fix-button {
+  background: var(--color-accent);
+  color: var(--color-on-accent, #fff);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius);
+  padding: 4px 12px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.qs-fix-button:hover {
+  filter: brightness(1.05);
+}
+
+.qs-fix-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}

@@ -14,7 +14,9 @@ import {
   WIZARD_TEMPLATES,
   findTemplate,
   templatesByTask,
+  type FixAction,
   type ManualChoice,
+  type PreflightResult,
   type StepControl,
   type StepResult,
   type StepStatus,
@@ -22,6 +24,7 @@ import {
   type WizardStep,
   type WizardTemplate,
 } from "./templates";
+import { navigateToTab } from "../../components/quick-start-card";
 import "./quickstart-screen.css";
 
 const STORAGE_KEY = "openpathai.quickstart.session";
@@ -95,6 +98,13 @@ export function QuickstartScreen() {
   const [error, setError] = useState<string | null>(null);
   const [busyStep, setBusyStep] = useState<string | null>(null);
   const ctxState = useRef<Record<string, unknown>>(session?.state ?? {});
+  // Phase 22.0 chunk B/C — per-step preflight + which rows the user
+  // has explicitly opened the inspect panel on.
+  const [preflightCache, setPreflightCache] = useState<
+    Record<string, PreflightResult>
+  >({});
+  const [inspectingStep, setInspectingStep] = useState<string | null>(null);
+  const [preflightBusy, setPreflightBusy] = useState<string | null>(null);
 
   const template = useMemo<WizardTemplate | null>(
     () => (session ? findTemplate(session.templateId) ?? null : null),
@@ -170,10 +180,102 @@ export function QuickstartScreen() {
     setError(null);
   }
 
+  // Phase 22.0 chunk B — preflight runner. Returns the latest result
+  // and caches it so the row can render the verdict without re-fetching.
+  const runPreflight = useCallback(
+    async (step: WizardStep): Promise<PreflightResult | null> => {
+      if (!template || !step.preflight) return null;
+      setPreflightBusy(step.id);
+      try {
+        const result = await step.preflight({
+          client,
+          template,
+          state: ctxState.current,
+        });
+        setPreflightCache((prev) => ({ ...prev, [step.id]: result }));
+        return result;
+      } catch (err) {
+        const result: PreflightResult = {
+          ok: false,
+          blockers: [
+            {
+              title: "Preflight failed",
+              detail: err instanceof Error ? err.message : String(err),
+            },
+          ],
+        };
+        setPreflightCache((prev) => ({ ...prev, [step.id]: result }));
+        return result;
+      } finally {
+        setPreflightBusy(null);
+      }
+    },
+    [client, template]
+  );
+
+  // Phase 22.0 chunk D — execute a serialisable fix action.
+  const applyFix = useCallback(
+    async (step: WizardStep, action: FixAction) => {
+      switch (action.kind) {
+        case "set_state":
+          ctxState.current = {
+            ...ctxState.current,
+            [action.key]: action.value,
+          };
+          // Persist + propagate.
+          setSession((prev) => {
+            if (!prev) return prev;
+            const next = { ...prev, state: { ...ctxState.current } };
+            saveSession(next);
+            return next;
+          });
+          break;
+        case "navigate_tab":
+          navigateToTab(action.tab);
+          return;
+        case "open_url":
+          if (typeof window !== "undefined") {
+            window.open(action.url, "_blank", "noopener,noreferrer");
+          }
+          return;
+        case "rerun_step":
+          // The action's target step is the one we're currently
+          // inspecting; just re-run preflight.
+          break;
+        case "noop":
+          // intentionally no-op; message conveyed in the label
+          break;
+      }
+      await runPreflight(step);
+    },
+    [runPreflight]
+  );
+
   async function runStep(step: WizardStep) {
     if (!template || !step.run) return;
     setBusyStep(step.id);
     setError(null);
+
+    // Phase 22.0 chunk B — refuse to run if preflight blocks. The row
+    // surfaces the blockers + fixes inline; the user clicks Inspect to
+    // see them.
+    if (step.preflight) {
+      const verdict = await runPreflight(step);
+      if (verdict && !verdict.ok) {
+        setBusyStep(null);
+        setInspectingStep(step.id);
+        const summary = verdict.blockers
+          ? verdict.blockers.map((b) => b.title).join(" · ")
+          : "Preflight failed.";
+        updateResults(step.id, {
+          status: "error",
+          message: `Preflight blocked the run: ${summary}`,
+        });
+        setError(`Preflight blocked: ${summary}`);
+        return;
+      }
+    }
+
     updateResults(step.id, { status: "running" });
     try {
       const result = await step.run({
@@ -461,6 +563,36 @@ export function QuickstartScreen() {
                         </button>
                       ))
                     : null}
+                  {step.preflight ? (
+                    (() => {
+                      const verdict = preflightCache[step.id];
+                      const issueCount =
+                        (verdict?.blockers?.length ?? 0) +
+                        (verdict?.warnings?.length ?? 0);
+                      const label =
+                        verdict == null
+                          ? "Inspect"
+                          : verdict.ok
+                          ? `Inspect · ✓ preflight`
+                          : `Inspect · ⚠ ${issueCount} issue${issueCount === 1 ? "" : "s"}`;
+                      return (
+                        <button
+                          type="button"
+                          className={
+                            verdict && !verdict.ok ? undefined : "qs-skip"
+                          }
+                          onClick={async () => {
+                            if (!verdict) await runPreflight(step);
+                            setInspectingStep((curr) =>
+                              curr === step.id ? null : step.id
+                            );
+                          }}
+                        >
+                          {preflightBusy === step.id ? "Checking…" : label}
+                        </button>
+                      );
+                    })()
+                  ) : null}
                   {step.skippable && !isDone ? (
                     <button
                       type="button"
@@ -471,12 +603,115 @@ export function QuickstartScreen() {
                     </button>
                   ) : null}
                 </div>
+
+                {step.preflight && inspectingStep === step.id ? (
+                  <PreflightPanel
+                    verdict={preflightCache[step.id] ?? null}
+                    onApplyFix={(fix) => void applyFix(step, fix.action)}
+                    onRefresh={() => void runPreflight(step)}
+                  />
+                ) : null}
               </div>
             </li>
           );
         })}
       </ol>
     </section>
+  );
+}
+
+function PreflightPanel({
+  verdict,
+  onApplyFix,
+  onRefresh,
+}: {
+  verdict: PreflightResult | null;
+  onApplyFix: (fix: { label: string; action: FixAction }) => void;
+  onRefresh: () => void;
+}) {
+  if (!verdict) {
+    return (
+      <div className="qs-preflight-panel">
+        <p className="qs-preflight-empty">
+          Click "Inspect" to run the preflight checks for this step.
+        </p>
+        <button type="button" onClick={onRefresh}>
+          Run preflight
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div
+      className={`qs-preflight-panel ${
+        verdict.ok ? "qs-preflight-ok" : "qs-preflight-bad"
+      }`}
+      role="region"
+      aria-label="Step preflight"
+    >
+      <header>
+        <strong>
+          {verdict.ok
+            ? "✓ Preflight passed"
+            : `⚠ Preflight blocked the run (${verdict.blockers?.length ?? 0} issue${
+                (verdict.blockers?.length ?? 0) === 1 ? "" : "s"
+              })`}
+        </strong>
+        <button
+          type="button"
+          onClick={onRefresh}
+          className="qs-preflight-refresh"
+        >
+          Re-check
+        </button>
+      </header>
+      {verdict.manifest ? (
+        <dl className="qs-preflight-manifest">
+          {Object.entries(verdict.manifest).map(([k, v]) => (
+            <div key={k}>
+              <dt>{k}</dt>
+              <dd>
+                <code>{v}</code>
+              </dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+      {verdict.blockers?.length ? (
+        <ul className="qs-preflight-blockers">
+          {verdict.blockers.map((b) => (
+            <li key={b.title}>
+              <strong>✗ {b.title}</strong>
+              {b.detail ? <span>{b.detail}</span> : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {verdict.warnings?.length ? (
+        <ul className="qs-preflight-warnings">
+          {verdict.warnings.map((w) => (
+            <li key={w.title}>
+              <strong>⚠ {w.title}</strong>
+              {w.detail ? <span>{w.detail}</span> : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {verdict.fixes?.length ? (
+        <div className="qs-preflight-fixes">
+          {verdict.fixes.map((f) => (
+            <button
+              key={f.label}
+              type="button"
+              onClick={() => onApplyFix(f)}
+              className="qs-fix-button"
+            >
+              ↩ {f.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
