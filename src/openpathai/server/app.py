@@ -88,6 +88,21 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
             content=body,
         )
 
+    # Phase 22.1 — routes whose responses round-trip user-supplied
+    # paths (analyser, planner, restructure). These are user-owned
+    # filesystem paths, not PHI. Redacting them with the basename#hash
+    # pattern would break the wizard's "Apply suggested path" loop —
+    # the user would receive a pseudo-name they cannot copy back into
+    # any tool. Iron-rule #8 is satisfied because the filenames
+    # entering on the request are the same ones returning out.
+    _phi_bypass_path_prefixes: tuple[str, ...] = (
+        "/v1/datasets/analyse",
+        "/v1/datasets/inspect",
+        "/v1/datasets/plan",
+        "/v1/datasets/plan-llm",
+        "/v1/datasets/restructure",
+    )
+
     @app.middleware("http")
     async def _phi_redaction_middleware(request: Request, call_next):
         response = await call_next(request)
@@ -95,6 +110,8 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         # pass through unchanged.
         content_type = response.headers.get("content-type", "")
         if not content_type.startswith("application/json"):
+            return response
+        if any(request.url.path.startswith(prefix) for prefix in _phi_bypass_path_prefixes):
             return response
         body_chunks: list[bytes] = []
         async for chunk in response.body_iterator:  # type: ignore[attr-defined]

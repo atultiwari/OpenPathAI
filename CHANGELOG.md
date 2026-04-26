@@ -9,6 +9,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Phase 22.1.1 (v2.0.x) — Same-day patch: PHI bypass + stale preflight + use /inspect (2026-04-26)
+
+User screenshot of Phase 22.1 surfaced three regressions:
+
+1. **PHI middleware was hashing `suggested_root`.** Any path starting
+   with `/Users/`, `/home/`, or `/root/` outside `OPENPATHAI_HOME` /
+   `HF_HOME` got rewritten to `basename#hash`. So the wizard received
+   `Kather_texture_2016_image_tiles_5000#ca06bccc` and "Apply
+   suggested path" set the source to a pseudo-name training could not
+   open.
+   - Fix: response middleware now bypasses redaction on `/v1/datasets/
+     {analyse,inspect,plan,plan-llm,restructure}` — these routes
+     round-trip user-supplied filesystem paths, not PHI.
+   - Regression: `test_inspect_response_paths_are_not_phi_redacted` +
+     same for `/analyse`. Real path comes back exactly, `#` never
+     appears.
+
+2. **Cached preflight verdict went stale after Run.** Preflight ran
+   before `dataset_analysis` was set, returned `ok=true`, was cached;
+   re-clicking Inspect didn't re-run. Result: "Preflight passed"
+   shown next to a step with status ERROR.
+   - Fix: `runStep()` now drops the cached preflight entry on
+     completion so the next Inspect re-runs against fresh ctx.state.
+
+3. **Wizard still used the old `/analyse` semantics in its run().**
+   That endpoint reported the Kather parent as `nested_image_folder`
+   with "1 class · 10 images" (the sibling `larger_images_10` bucket)
+   and a single suggested_root.
+   - Fix: `analyseFolderStep().run()` now calls `/v1/datasets/inspect`
+     and surfaces the typed shape tree. The Kather parent now reads
+     `parent_kind=empty, children=2` with `usable_root` pointing at
+     the inner `class_bucket` (`5000 images, 8 classes, 150x150 RGB
+     TIFF`) and `context_bucket` flagged as siblings, not training
+     tiles. Train preflight reads `dataset_shape` instead of the
+     legacy `dataset_analysis`.
+
+Quality gates: 1098 backend pytest + 60 frontend vitest + ruff +
+ruff format + tsc --noEmit + eslint + vite build all clean.
+
 ### Phase 22.1 (v2.0.x) — Model-aware dataset planner + MedGemma fallback (2026-04-26)
 
 Direct response to the user feedback after Phase 22.0 ("the project

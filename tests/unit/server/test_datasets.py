@@ -48,6 +48,34 @@ def test_inspect_returns_shape_tree(
     assert {c["name"] for c in body["classes"]} == {"a", "b"}
 
 
+def test_inspect_response_paths_are_not_phi_redacted(
+    client: TestClient, auth_headers: dict[str, str], tmp_path
+) -> None:
+    """Phase 22.1 regression: PHI middleware was rewriting the
+    ``path`` and child paths returned by /inspect to ``basename#hash``,
+    breaking the wizard's "Apply suggested path" loop. The bypass list
+    in the middleware must keep these round-trippable."""
+    _make_two_class_imagefolder(tmp_path)
+    r = client.post("/v1/datasets/inspect", json={"path": str(tmp_path)}, headers=auth_headers)
+    assert r.status_code == 200
+    body = r.json()
+    # Real path comes back exactly — no `#hash` suffix.
+    assert body["path"] == str(tmp_path.resolve())
+    assert "#" not in body["path"]
+
+
+def test_analyse_response_paths_are_not_phi_redacted(
+    client: TestClient, auth_headers: dict[str, str], tmp_path
+) -> None:
+    """Same regression for the legacy /analyse route."""
+    _make_two_class_imagefolder(tmp_path)
+    r = client.post("/v1/datasets/analyse", json={"path": str(tmp_path)}, headers=auth_headers)
+    assert r.status_code == 200
+    body = r.json()
+    assert body["path"] == str(tmp_path.resolve())
+    assert "#" not in body["path"]
+
+
 def test_plan_for_classifier_returns_ok(
     client: TestClient, auth_headers: dict[str, str], tmp_path
 ) -> None:

@@ -434,6 +434,15 @@ export function QuickstartScreen() {
       if (result.status === "error" && result.message) {
         setError(result.message);
       }
+      // Phase 22.1 fix — invalidate cached preflight so the next
+      // Inspect re-runs against the new ctx.state.dataset_analysis
+      // instead of showing a stale "Preflight passed" verdict.
+      if (step.preflight) {
+        setPreflightCache((prev) => {
+          const { [step.id]: _drop, ...rest } = prev;
+          return rest;
+        });
+      }
     } catch (err) {
       const message = safeMessage(err);
       updateResults(step.id, { status: "error", message });

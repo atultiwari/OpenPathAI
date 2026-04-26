@@ -35,26 +35,23 @@ describe("Phase 22.1 — model-aware plan in the analyse step preflight", () => 
 
     globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
-      if (url.endsWith("/v1/datasets/analyse") && init?.method === "POST") {
+      if (url.endsWith("/v1/datasets/inspect") && init?.method === "POST") {
         const body = JSON.parse(init.body as string) as { path: string };
         return mockJson({
           path: body.path,
-          exists: true,
-          is_directory: true,
-          layout: "image_folder",
+          kind: "class_bucket",
           image_count: 6,
-          class_count: 2,
-          classes: [
-            { name: "a", count: 3 },
-            { name: "b", count: 3 },
-          ],
-          extensions: [".png"],
-          hidden_entries: [],
-          non_image_files: [],
-          suggested_root: null,
-          warnings: [],
-          truncated: false,
           bytes_total: 0,
+          extensions: [".png"],
+          classes: [
+            { name: "a", image_count: 3 },
+            { name: "b", image_count: 3 },
+          ],
+          csvs: [],
+          hidden_entries: [],
+          tile_sample: { median_width: 32, median_height: 32, mode: "RGB", format: "PNG", sampled: 5 },
+          children: [],
+          notes: [],
         });
       }
       if (url.endsWith("/v1/datasets/plan") && init?.method === "POST") {
@@ -171,25 +168,22 @@ describe("Phase 22.1 — model-aware plan in the analyse step preflight", () => 
   it("Plan section renders the Incompatible reason when the planner returns ok=false", async () => {
     globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
-      if (url.endsWith("/v1/datasets/analyse") && init?.method === "POST") {
+      if (url.endsWith("/v1/datasets/inspect") && init?.method === "POST") {
         return mockJson({
           path: "/data/Kather",
-          exists: true,
-          is_directory: true,
-          layout: "image_folder",
+          kind: "class_bucket",
           image_count: 6,
-          class_count: 2,
-          classes: [
-            { name: "a", count: 3 },
-            { name: "b", count: 3 },
-          ],
-          extensions: [".png"],
-          hidden_entries: [],
-          non_image_files: [],
-          suggested_root: null,
-          warnings: [],
-          truncated: false,
           bytes_total: 0,
+          extensions: [".png"],
+          classes: [
+            { name: "a", image_count: 3 },
+            { name: "b", image_count: 3 },
+          ],
+          csvs: [],
+          hidden_entries: [],
+          tile_sample: { median_width: 32, median_height: 32, mode: "RGB", format: "PNG", sampled: 5 },
+          children: [],
+          notes: [],
         });
       }
       if (url.endsWith("/v1/datasets/plan") && init?.method === "POST") {
@@ -266,25 +260,22 @@ describe("Phase 22.1 — model-aware plan in the analyse step preflight", () => 
     let llmCalls = 0;
     globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
-      if (url.endsWith("/v1/datasets/analyse") && init?.method === "POST") {
+      if (url.endsWith("/v1/datasets/inspect") && init?.method === "POST") {
         return mockJson({
           path: "/data/Kather",
-          exists: true,
-          is_directory: true,
-          layout: "image_folder",
+          kind: "class_bucket",
           image_count: 6,
-          class_count: 2,
-          classes: [
-            { name: "a", count: 3 },
-            { name: "b", count: 3 },
-          ],
-          extensions: [".png"],
-          hidden_entries: [],
-          non_image_files: [],
-          suggested_root: null,
-          warnings: [],
-          truncated: false,
           bytes_total: 0,
+          extensions: [".png"],
+          classes: [
+            { name: "a", image_count: 3 },
+            { name: "b", image_count: 3 },
+          ],
+          csvs: [],
+          hidden_entries: [],
+          tile_sample: { median_width: 32, median_height: 32, mode: "RGB", format: "PNG", sampled: 5 },
+          children: [],
+          notes: [],
         });
       }
       if (url.endsWith("/v1/datasets/plan") && init?.method === "POST") {

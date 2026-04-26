@@ -41,32 +41,50 @@ it("train step has a preflight contract", () => {
 });
 
 describe("analyse step + fix-it", () => {
-  it("Run on the analyse step posts the user's path to /v1/datasets/analyse and surfaces the suggested_root fix", async () => {
-    let analyseCalls = 0;
+  it("Run on the analyse step posts the user's path to /v1/datasets/inspect and surfaces the inner ImageFolder", async () => {
+    let inspectCalls = 0;
     let receivedPath: string | null = null;
     globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
-      if (url.endsWith("/v1/datasets/analyse") && init?.method === "POST") {
-        analyseCalls += 1;
+      if (url.endsWith("/v1/datasets/inspect") && init?.method === "POST") {
+        inspectCalls += 1;
         const body = JSON.parse(init.body as string) as { path: string };
         receivedPath = body.path;
         return mockJson({
           path: body.path,
-          exists: true,
-          is_directory: true,
-          layout: "nested_image_folder",
+          kind: "empty",
           image_count: 0,
-          class_count: 0,
-          classes: [],
-          extensions: [],
-          hidden_entries: [".DS_Store"],
-          non_image_files: ["hmnist_28_28_RGB.csv"],
-          suggested_root: "/Users/me/data/Kather/Kather_texture_2016_image_tiles_5000",
-          warnings: [
-            "ImageFolder layout detected one level down. The wizard will use the suggested_root if you accept it.",
-          ],
-          truncated: false,
           bytes_total: 0,
+          extensions: [],
+          classes: [],
+          csvs: [],
+          hidden_entries: [".DS_Store"],
+          tile_sample: null,
+          notes: [],
+          children: [
+            {
+              path: "/Users/me/data/Kather/Kather_texture_2016_image_tiles_5000",
+              kind: "class_bucket",
+              image_count: 5000,
+              bytes_total: 0,
+              extensions: [".tif"],
+              classes: [
+                { name: "01_TUMOR", image_count: 625 },
+                { name: "02_STROMA", image_count: 625 },
+              ],
+              csvs: [],
+              hidden_entries: [],
+              tile_sample: {
+                median_width: 150,
+                median_height: 150,
+                mode: "RGB",
+                format: "TIFF",
+                sampled: 5,
+              },
+              children: [],
+              notes: [],
+            },
+          ],
         });
       }
       if (url.endsWith("/v1/credentials/huggingface")) {
@@ -110,10 +128,10 @@ describe("analyse step + fix-it", () => {
     fireEvent.click(runBtn);
 
     await waitFor(() => {
-      expect(analyseCalls).toBe(1);
+      expect(inspectCalls).toBe(1);
       expect(receivedPath).toBe("/Users/me/data/Kather");
-      // The Run output surfaces the suggested_root somewhere on the
-      // page (banner + step message both include it).
+      // The Run output surfaces the inner ImageFolder somewhere on the
+      // page (banner + step message both include the path).
       const matches = screen.getAllByText(/Kather_texture_2016_image_tiles_5000/i);
       expect(matches.length).toBeGreaterThan(0);
     });
@@ -185,9 +203,9 @@ describe("analyse step + fix-it", () => {
     fireEvent.click(inspectBtn!);
 
     await waitFor(() => {
-      // The preflight surfaces the "Dataset not analysed yet" warning.
+      // The preflight surfaces the "Dataset not inspected yet" warning.
       expect(
-        screen.getByText(/Dataset not analysed yet/i)
+        screen.getByText(/Dataset not inspected yet/i)
       ).toBeInTheDocument();
     });
   });

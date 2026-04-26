@@ -199,10 +199,10 @@ function analyseFolderStep(defaultModelId?: string): WizardStep {
       "Click Run. If the wizard suggests a different root (because it found an ImageFolder one level down), apply the fix.",
     ],
     wizardActions: [
-      "POST /v1/datasets/analyse — walks the folder, returns layout + classes + warnings.",
-      "Writes the resolved path into ctx.state.local_source_path so the download step picks it up automatically.",
+      "POST /v1/datasets/inspect — walks the folder, returns the typed shape (class_bucket / tile_bucket / context_bucket) + per-CSV roles + sampled tile dim.",
+      "If the parent contains an inner ImageFolder, writes that path into ctx.state.local_source_path so the rest of the wizard picks it up.",
     ],
-    storagePathHint: "(read-only — analyser doesn't touch disk)",
+    storagePathHint: "(read-only — inspector doesn't touch disk)",
     controls: [
       {
         id: "local_source_path",
@@ -210,7 +210,7 @@ function analyseFolderStep(defaultModelId?: string): WizardStep {
         label: "Local source folder (absolute path)",
         placeholder: "/abs/path/to/dataset",
         help:
-          "ImageFolder layout: <root>/<class_name>/<image>.png. The analyser will tell you when the layout is one level deeper than you think.",
+          "ImageFolder layout: <root>/<class_name>/<image>.png. The inspector will tell you when the layout is one level deeper than you think.",
       },
     ],
     run: async (ctx) => {
@@ -222,39 +222,63 @@ function analyseFolderStep(defaultModelId?: string): WizardStep {
         };
       }
       try {
-        const report = await ctx.client.analyseFolder(folder);
-        ctx.state.dataset_analysis = report as unknown as Record<string, unknown>;
+        const shape = await ctx.client.inspectFolder(folder);
+        ctx.state.dataset_shape = shape as unknown as Record<string, unknown>;
+
+        const innerClassBucket = shape.children.find((c) => c.kind === "class_bucket");
+        const contextChild = shape.children.find((c) => c.kind === "context_bucket");
+        const isUsableSelf =
+          shape.kind === "class_bucket" && shape.classes.length >= 2;
+        const usable = isUsableSelf
+          ? shape
+          : innerClassBucket && innerClassBucket.classes.length >= 2
+            ? innerClassBucket
+            : null;
+
         const baseArtifacts: Record<string, string> = {
-          layout: report.layout,
-          classes: String(report.class_count),
-          images: String(report.image_count),
+          parent_kind: shape.kind,
+          parent_image_count: String(shape.image_count),
+          children: String(shape.children.length),
         };
-        if (report.suggested_root) {
-          baseArtifacts.suggested_root = report.suggested_root;
+        if (usable) {
+          baseArtifacts.usable_root = usable.path;
+          baseArtifacts.usable_kind = usable.kind;
+          baseArtifacts.classes = String(usable.classes.length);
+          baseArtifacts.images = String(usable.image_count);
+          if (usable.tile_sample) {
+            baseArtifacts.tile_size = `${usable.tile_sample.median_width}x${usable.tile_sample.median_height} ${usable.tile_sample.mode} ${usable.tile_sample.format}`;
+          }
         }
-        if (report.layout === "image_folder") {
+        if (contextChild) {
+          baseArtifacts.context_bucket = `${contextChild.path} (${contextChild.image_count} large images — siblings, not training tiles)`;
+        }
+        if (shape.csvs.length) {
+          baseArtifacts.csvs = `${shape.csvs.length} (${shape.csvs.map((c) => c.role).join(", ")})`;
+        }
+
+        if (isUsableSelf) {
           return {
             status: "done",
-            message: `✓ ImageFolder · ${report.class_count} classes · ${report.image_count} images.`,
+            message: `✓ ImageFolder · ${shape.classes.length} classes · ${shape.image_count} images.`,
             artifacts: baseArtifacts,
           };
         }
-        if (report.layout === "nested_image_folder" && report.suggested_root) {
+        if (usable) {
           return {
             status: "error",
-            message: `Folder layout is '${report.layout}'. The wizard suggests using ${report.suggested_root} instead — open Inspect to apply the fix.`,
+            message: `Found an inner ImageFolder at ${usable.path} (${usable.classes.length} classes · ${usable.image_count} images). The folder you selected is itself ${shape.kind}; open Inspect to apply the suggested path.`,
             artifacts: baseArtifacts,
           };
         }
         return {
           status: "error",
-          message: `Folder layout is '${report.layout}' — not usable for training. Inspect for details.`,
+          message: `No usable ImageFolder under ${shape.path}. Parent is ${shape.kind}; ${shape.children.length} child shape(s) found, none class-shaped. Inspect for details.`,
           artifacts: baseArtifacts,
         };
       } catch (err) {
         return {
           status: "error",
-          message: err instanceof Error ? err.message : "Analyse failed.",
+          message: err instanceof Error ? err.message : "Inspect failed.",
         };
       }
     },
@@ -268,51 +292,63 @@ function analyseFolderStep(defaultModelId?: string): WizardStep {
             "Type the absolute path to the folder you want to use as your dataset.",
         });
       }
-      const analysis = ctx.state.dataset_analysis as
-        | { layout?: string; suggested_root?: string | null; class_count?: number; image_count?: number; warnings?: string[] }
+      const shape = ctx.state.dataset_shape as
+        | {
+            kind?: string;
+            path?: string;
+            image_count?: number;
+            classes?: { name: string; image_count: number }[];
+            children?: {
+              kind: string;
+              path: string;
+              image_count: number;
+              classes: { name: string; image_count: number }[];
+            }[];
+            csvs?: { name: string; role: string }[];
+            notes?: string[];
+          }
         | undefined;
       const fixes: { label: string; action: FixAction }[] = [];
       const warnings: { title: string; detail?: string }[] = [];
-      if (analysis) {
-        if (analysis.layout === "nested_image_folder" && analysis.suggested_root) {
+
+      const innerClassBucket = shape?.children?.find((c) => c.kind === "class_bucket");
+      const isUsableSelf = shape?.kind === "class_bucket" && (shape.classes?.length ?? 0) >= 2;
+      if (shape && !isUsableSelf) {
+        if (innerClassBucket && innerClassBucket.classes.length >= 2) {
           blockers.push({
             title: "Folder is nested",
-            detail: `An ImageFolder layout was found one level down at ${analysis.suggested_root}. Apply the fix to use that path instead.`,
+            detail: `An ImageFolder layout was found one level down at ${innerClassBucket.path} (${innerClassBucket.classes.length} classes · ${innerClassBucket.image_count} images). Apply the fix to use that path instead.`,
           });
           fixes.push({
-            label: `Use suggested path: ${analysis.suggested_root}`,
+            label: `Use suggested path: ${innerClassBucket.path}`,
             action: {
               kind: "set_state",
               key: "local_source_path",
-              value: analysis.suggested_root,
+              value: innerClassBucket.path,
             },
           });
-        }
-        if (
-          analysis.layout &&
-          !["image_folder", "nested_image_folder"].includes(analysis.layout)
-        ) {
+        } else {
           blockers.push({
-            title: `Layout '${analysis.layout}' not usable`,
+            title: `Layout '${shape.kind ?? "unknown"}' not usable`,
             detail:
-              "OpenPathAI's classifier path needs an ImageFolder layout (one subdir per class). Re-organise the folder or pick a different root.",
+              "Classifier flows need an ImageFolder layout (≥ 2 subdirs each containing tiles). Re-organise the folder or pick a different root.",
           });
         }
-        if ((analysis.warnings ?? []).length) {
-          for (const w of analysis.warnings ?? []) {
-            warnings.push({ title: w });
-          }
-        }
       }
-      const manifest: Record<string, string> = analysis
+      for (const note of shape?.notes ?? []) {
+        warnings.push({ title: note });
+      }
+
+      const manifest: Record<string, string> = shape
         ? {
-            layout: String(analysis.layout ?? "unknown"),
-            classes: String(analysis.class_count ?? "?"),
-            images: String(analysis.image_count ?? "?"),
+            kind: String(shape.kind ?? "unknown"),
+            classes: String(shape.classes?.length ?? 0),
+            images: String(shape.image_count ?? 0),
+            children: String(shape.children?.length ?? 0),
           }
         : { local_source_path: folder ?? "(not set)" };
-      if (analysis?.suggested_root) {
-        manifest.suggested_root = analysis.suggested_root;
+      if (innerClassBucket) {
+        manifest.suggested_root = innerClassBucket.path;
       }
 
       // Phase 22.1 — also call the model-aware planner when we have
@@ -574,12 +610,23 @@ function trainStep(card: string, model: string): WizardStep {
 
       // Real-mode dataset checks. Synthetic mode bypasses dataset entirely.
       if (!synthetic) {
-        const analysis = ctx.state.dataset_analysis as
-          | { layout?: string; class_count?: number; image_count?: number }
+        const shape = ctx.state.dataset_shape as
+          | {
+              kind?: string;
+              image_count?: number;
+              classes?: { name: string }[];
+              children?: { kind: string; classes: { name: string }[]; image_count: number }[];
+            }
           | undefined;
-        if (!analysis) {
+        const usable =
+          shape?.kind === "class_bucket" && (shape.classes?.length ?? 0) >= 2
+            ? shape
+            : shape?.children?.find(
+                (c) => c.kind === "class_bucket" && c.classes.length >= 2
+              );
+        if (!shape) {
           warnings.push({
-            title: "Dataset not analysed yet",
+            title: "Dataset not inspected yet",
             detail:
               "Real-mode training works best after the Analyse step is green. Continue if you trust the source folder, or run Analyse first.",
           });
@@ -587,20 +634,21 @@ function trainStep(card: string, model: string): WizardStep {
             label: "Re-run analyse step first",
             action: { kind: "rerun_step", step_id: "analyse_folder" },
           });
-        } else if ((analysis.class_count ?? 0) < 2) {
+        } else if (!usable) {
           blockers.push({
-            title: "Dataset has < 2 classes",
-            detail: `Analyser reported ${analysis.class_count ?? 0} classes. Classification needs at least 2.`,
+            title: "No usable ImageFolder found",
+            detail:
+              "The inspector did not find a class-shaped subdir with ≥ 2 classes. Re-run the Analyse step and apply any suggested path.",
           });
           fixes.push({
             label: "Re-run analyse step",
             action: { kind: "rerun_step", step_id: "analyse_folder" },
           });
-        } else if ((analysis.image_count ?? 0) === 0) {
+        } else if ((usable.image_count ?? 0) === 0) {
           blockers.push({
             title: "Dataset has 0 images",
             detail:
-              "The analyser found no readable images under the chosen folder. Pick a different root.",
+              "The inspector found no readable images under the chosen folder. Pick a different root.",
           });
         }
       }
