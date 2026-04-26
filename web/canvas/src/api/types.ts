@@ -438,3 +438,26 @@ export type ModelDownloadResult = {
   resolved_id: string | null;
   fallback_reason: string | null;
 };
+
+// ─── Phase 21.9 chunk B — foundation embed-folder ──────────────
+
+export type EmbedFolderRequest = {
+  source_folder: string;
+  backbone?: string;
+  output_format?: "parquet" | "csv";
+  tile_cap?: number;
+};
+
+export type EmbedFolderResult = {
+  run_id: string;
+  source_folder: string;
+  output_path: string;
+  output_format: string;
+  tiles: number;
+  embedding_dim: number;
+  backbone: string;
+  resolved_backbone_id: string;
+  fallback_reason: string;
+  message: string | null;
+  install_cmd: string | null;
+};

@@ -343,19 +343,61 @@ async def get_model_status(model_id: str) -> ModelStatus:
     return _local_status_for_row(_resolve_model_row(model_id))
 
 
+# Phase 21.9 chunk A2 — process-lifetime cache for HF size lookups so
+# even when an adapter doesn't declare ``size_bytes`` we only round-trip
+# once per model per server boot.
+_SIZE_ESTIMATE_CACHE: dict[str, ModelSizeEstimate] = {}
+
+
+def _adapter_declared_size(model_id: str) -> int | None:
+    """Look up the ``size_bytes`` class attr on the foundation /
+    detection / segmentation adapter for ``model_id``. Returns
+    ``None`` when the adapter doesn't declare one (or doesn't exist)."""
+    for resolver in (_foundation_adapter, _detection_adapter):
+        adapter = resolver(model_id)
+        if adapter is None:
+            continue
+        candidate = getattr(adapter, "size_bytes", 0)
+        if isinstance(candidate, int) and candidate > 0:
+            return candidate
+    return None
+
+
 @router.get(
     "/{model_id}/size-estimate",
-    summary="Estimate the on-disk size of a model via the HF hub metadata",
+    summary="Estimate the on-disk size of a model (adapter-declared first, HF metadata fallback)",
     response_model=ModelSizeEstimate,
 )
 async def get_model_size_estimate(model_id: str) -> ModelSizeEstimate:
+    cached = _SIZE_ESTIMATE_CACHE.get(model_id)
+    if cached is not None:
+        return cached
+
     row = _resolve_model_row(model_id)
+
+    # Adapter-declared size — instant, no network. Phase 21.9 chunk A2
+    # makes this the primary path so the Models tab paints sizes the
+    # moment the rows arrive.
+    declared = _adapter_declared_size(model_id)
+    if declared is not None:
+        result = ModelSizeEstimate(
+            model_id=model_id,
+            hf_repo=row.hf_repo,
+            size_bytes=declared,
+            reason="adapter-declared",
+        )
+        _SIZE_ESTIMATE_CACHE[model_id] = result
+        return result
+
     if not row.hf_repo:
-        return ModelSizeEstimate(
+        result = ModelSizeEstimate(
             model_id=model_id,
             hf_repo=None,
             reason="model has no hf_repo declared",
         )
+        _SIZE_ESTIMATE_CACHE[model_id] = result
+        return result
+
     try:
         from huggingface_hub import HfApi  # type: ignore[import-not-found]
     except ImportError:
@@ -382,18 +424,22 @@ async def get_model_size_estimate(model_id: str) -> ModelSizeEstimate:
         if isinstance(size, int):
             sizes.append(size)
     if not sizes:
-        return ModelSizeEstimate(
+        result = ModelSizeEstimate(
             model_id=model_id,
             hf_repo=row.hf_repo,
             file_count=len(siblings),
             reason="HF API did not return per-file sizes",
         )
-    return ModelSizeEstimate(
+        _SIZE_ESTIMATE_CACHE[model_id] = result
+        return result
+    result = ModelSizeEstimate(
         model_id=model_id,
         hf_repo=row.hf_repo,
         size_bytes=sum(sizes),
         file_count=len(siblings),
     )
+    _SIZE_ESTIMATE_CACHE[model_id] = result
+    return result
 
 
 def _foundation_adapter(model_id: str) -> Any | None:
@@ -458,13 +504,44 @@ async def download_model(model_id: str) -> ModelDownloadResult:
             install_cmd="uv sync --extra train",
         )
     except Exception as exc:
-        msg = str(exc)
-        gated_hint = "gated" in msg.lower() or "401" in msg or "403" in msg
+        # Phase 21.9 chunk A3 — classify gated failures by type. The
+        # foundation stubs raise ``GatedAccessError`` (a ``RuntimeError``
+        # subclass) on ``.build()`` regardless of their message, so the
+        # legacy text-matching path missed them. Catch by type first;
+        # fall back to text-matching for adapters that wrap upstream
+        # 401/403 errors as plain RuntimeErrors.
+        from openpathai.foundation.fallback import GatedAccessError
+
+        is_gated = isinstance(exc, GatedAccessError)
+        if not is_gated:
+            msg_lower = str(exc).lower()
+            is_gated = (
+                "gated" in msg_lower
+                or "401" in msg_lower
+                or "403" in msg_lower
+                or "request access" in msg_lower
+            )
+
+        if is_gated and row.hf_repo:
+            message = (
+                f"{row.id} is gated. Request access at "
+                f"https://huggingface.co/{row.hf_repo} and configure your "
+                "HF token under Settings → Hugging Face."
+            )
+        elif is_gated:
+            message = (
+                f"{row.id} is gated. Configure your HF token under "
+                "Settings → Hugging Face after requesting access on the "
+                "upstream page."
+            )
+        else:
+            message = str(exc)
+
         return ModelDownloadResult(
             model_id=model_id,
-            status="gated" if gated_hint else "error",
+            status="gated" if is_gated else "error",
             target_dir=None,
-            message=msg,
+            message=message,
             install_cmd=None,
             resolved_id=getattr(adapter, "id", None),
         )

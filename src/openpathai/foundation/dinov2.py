@@ -42,6 +42,8 @@ class DINOv2SmallAdapter:
     tier_compatibility: frozenset[str] = frozenset({"T1", "T2", "T3"})
     vram_gb: float = 1.5
     license: str = "Apache-2.0"
+    # Phase 21.9 chunk A2 — known weight size (timm safetensors).
+    size_bytes: int = 168_000_000  # ~168 MB
     citation: str = (
         "Oquab et al., 'DINOv2: Learning Robust Visual Features without "
         "Supervision' (2023). arXiv:2304.07193."
@@ -53,33 +55,89 @@ class DINOv2SmallAdapter:
     # ─── FoundationAdapter API ─────────────────────────────────────
 
     def build(self, pretrained: bool = True) -> Any:
+        """Build the DINOv2 backbone.
+
+        The LVD-142M weight that timm ships under
+        ``vit_small_patch14_dinov2.lvd142m`` was pretrained at the
+        native 518x518 resolution (37x37 patches at patch=14). Loading
+        it without ``img_size=224`` yields a ``RuntimeError`` the moment
+        we feed it a 224 tile (Phase 21.9/A1). We therefore prefer the
+        flagged build that interpolates the position embeddings down to
+        224, falling back to the native size only when the timm version
+        is too old to support the flags.
+        """
         import torch
 
+        target_h, _target_w = self.input_size
+        module: Any = None
         try:
             import timm
-
-            module = timm.create_model(
-                "vit_small_patch14_dinov2",
-                pretrained=pretrained,
-                num_classes=0,  # embedding mode: drop the classifier head
-            )
-        except (ImportError, RuntimeError) as exc:  # pragma: no cover — timm edge cases
-            # Fall back to torch.hub for environments without
-            # timm-pinned DINOv2 weights. Narrow the catch so that
-            # programming errors (TypeError, etc.) still bubble up.
-            _log.info(
-                "timm DINOv2 build failed (%s); falling back to torch.hub.",
-                exc,
-            )
-            hub_module = torch.hub.load(  # type: ignore[no-untyped-call]
-                "facebookresearch/dinov2",
-                "dinov2_vits14",
-                pretrained=pretrained,
-                trust_repo="check",
-            )
-            module = hub_module
-        module.eval()  # type: ignore[attr-defined]
+        except ImportError as exc:  # pragma: no cover — torch.hub fallback
+            _log.info("timm not importable (%s); falling back to torch.hub.", exc)
+            module = self._build_torch_hub(pretrained=pretrained)
+        else:
+            # Preferred path: build at the user's tile size with
+            # interpolated position embeddings. ``dynamic_img_size`` lets
+            # the model accept any (H, W) at forward time too — useful
+            # for pipelines that don't pre-resize.
+            try:
+                module = timm.create_model(
+                    "vit_small_patch14_dinov2",
+                    pretrained=pretrained,
+                    num_classes=0,
+                    img_size=target_h,
+                    dynamic_img_size=True,
+                )
+            except TypeError:
+                # Older timm: dynamic_img_size unsupported. Try img_size only.
+                try:
+                    module = timm.create_model(
+                        "vit_small_patch14_dinov2",
+                        pretrained=pretrained,
+                        num_classes=0,
+                        img_size=target_h,
+                    )
+                except (TypeError, RuntimeError) as exc:
+                    _log.info(
+                        "timm img_size build failed (%s); falling back to native 518.",
+                        exc,
+                    )
+                    module = self._build_native_518(pretrained=pretrained, torch=torch)
+            except RuntimeError as exc:  # pragma: no cover - weight load errors
+                _log.info(
+                    "timm dynamic_img_size build failed (%s); falling back to torch.hub.",
+                    exc,
+                )
+                module = self._build_torch_hub(pretrained=pretrained)
+        module.eval()
         self._module = module
+        return module
+
+    def _build_torch_hub(self, *, pretrained: bool) -> Any:  # pragma: no cover - hub-only
+        import torch
+
+        return torch.hub.load(  # type: ignore[no-untyped-call]
+            "facebookresearch/dinov2",
+            "dinov2_vits14",
+            pretrained=pretrained,
+            trust_repo="check",
+        )
+
+    def _build_native_518(self, *, pretrained: bool, torch: Any) -> Any:  # pragma: no cover - rare
+        """Final fallback: build at the native 518 resolution.
+
+        Marks ``self._native_size`` so :meth:`embed` can resize the
+        input tile to 518 before forward. Keeps the input pipeline
+        agnostic of the pretraining resolution.
+        """
+        import timm
+
+        module = timm.create_model(
+            "vit_small_patch14_dinov2",
+            pretrained=pretrained,
+            num_classes=0,
+        )
+        self._native_size = (518, 518)
         return module
 
     def preprocess(self, image: Any) -> Any:
@@ -117,6 +175,19 @@ class DINOv2SmallAdapter:
                 images = self.preprocess(images)
             if images.ndim == 3:
                 images = images.unsqueeze(0)
+            # Phase 21.9/A1 — when we fell all the way back to the
+            # native 518 build, resize on the fly so the caller's
+            # 224 tiles still go through.
+            native = getattr(self, "_native_size", None)
+            if native is not None:
+                target_h, target_w = native
+                if images.shape[-2] != target_h or images.shape[-1] != target_w:
+                    images = torch.nn.functional.interpolate(
+                        images,
+                        size=(int(target_h), int(target_w)),
+                        mode="bilinear",
+                        align_corners=False,
+                    )
             features = module(images)
             if isinstance(features, (tuple, list)):
                 features = features[0]

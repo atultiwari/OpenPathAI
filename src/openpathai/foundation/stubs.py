@@ -50,6 +50,11 @@ class _GatedStub:
     vram_gb: float = 4.0
     license: str = "CC-BY-NC-4.0"
     citation: str = ""
+    # Phase 21.9 chunk A2 — known weight size sourced from the upstream
+    # HF repo. Lets the size-estimate route render instantly without
+    # round-tripping the HF API on every Models tab open. Subclasses
+    # override per-model. Kept in bytes so the wire format is uniform.
+    size_bytes: int = 0
 
     def build(self, pretrained: bool = True) -> Any:
         raise GatedAccessError(
@@ -81,6 +86,7 @@ class UNI2HStub(_GatedStub):
     hf_repo = "MahmoodLab/UNI2-h"
     embedding_dim = 1536
     vram_gb = 10.0
+    size_bytes = 2_500_000_000  # ~2.5 GB
     citation = "Chen et al., 'UNI2-h: scaling pathology foundation models' (MahmoodLab, 2024)."
 
 
@@ -90,6 +96,7 @@ class CONCHStub(_GatedStub):
     hf_repo = "MahmoodLab/CONCH"
     embedding_dim = 512
     vram_gb = 3.0
+    size_bytes = 766_000_000  # ~766 MB (matches HF repo size)
     citation = (
         "Lu et al., 'A visual-language foundation model for "
         "computational pathology' (Nature Medicine, 2024)."
@@ -102,6 +109,7 @@ class Virchow2Stub(_GatedStub):
     hf_repo = "paige-ai/Virchow2"
     embedding_dim = 1280
     vram_gb = 10.0
+    size_bytes = 4_700_000_000  # ~4.7 GB
     citation = (
         "Zimmermann et al., 'Virchow2: Scaling Self-Supervised "
         "Mixed-Magnification Models in Pathology' (2024)."
@@ -114,6 +122,7 @@ class ProvGigaPathStub(_GatedStub):
     hf_repo = "prov-gigapath/prov-gigapath"
     embedding_dim = 1536
     vram_gb = 12.0
+    size_bytes = 4_900_000_000  # ~4.9 GB
     citation = (
         "Xu et al., 'A whole-slide foundation model for digital "
         "pathology from real-world data' (Nature, 2024)."
@@ -127,4 +136,5 @@ class HibouStub(_GatedStub):
     embedding_dim = 768
     vram_gb = 3.0
     license = "Apache-2.0"
+    size_bytes = 327_000_000  # ~327 MB
     citation = "HistAI, 'Hibou: A Family of Foundational Vision Transformers for Pathology' (2024)."

@@ -16,6 +16,8 @@ import type {
   DatasetDownloadRequest,
   DatasetDownloadResult,
   DatasetStatus,
+  EmbedFolderRequest,
+  EmbedFolderResult,
   ExtrasResponse,
   HFTokenClearResult,
   HFTokenSetResult,
@@ -706,6 +708,15 @@ export class ApiClient {
       undefined,
       options
     );
+  }
+
+  // ─── Phase 21.9 chunk B — foundation embed-folder ────────────
+
+  embedFolder(
+    body: EmbedFolderRequest,
+    options?: RequestOptions
+  ): Promise<EmbedFolderResult> {
+    return this.request("POST", "/v1/foundation/embed-folder", body, options);
   }
 }
 

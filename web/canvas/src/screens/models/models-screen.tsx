@@ -130,18 +130,60 @@ export function ModelsScreen() {
     };
   }, [items, client]);
 
-  // Pull HF size estimates lazily for every row that has an hf_repo.
+  // Pull size estimates for every row. Phase 21.9 chunk A2: cache in
+  // localStorage with a 7-day TTL so re-opening the Models tab is
+  // zero network calls. The backend's adapter-declared sizes are
+  // authoritative — we still re-validate after the TTL expires in
+  // case adapters get re-tuned.
   useEffect(() => {
     if (!items.length) return;
+    const TTL_MS = 7 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
     let cancelled = false;
+
+    // First pass: hydrate from cache so the UI paints instantly.
+    const hydrated: Record<string, ModelSizeEstimate> = {};
+    const stale: typeof items = [];
+    for (const m of items) {
+      try {
+        const raw = window.localStorage.getItem(
+          `openpathai.model_size_estimate.${m.id}`
+        );
+        if (raw) {
+          const parsed = JSON.parse(raw) as {
+            cached_at: number;
+            value: ModelSizeEstimate;
+          };
+          if (parsed.cached_at && now - parsed.cached_at < TTL_MS) {
+            hydrated[m.id] = parsed.value;
+            continue;
+          }
+        }
+      } catch {
+        // ignore corrupt entries
+      }
+      stale.push(m);
+    }
+    if (Object.keys(hydrated).length) {
+      setSizeEstimates((prev) => ({ ...hydrated, ...prev }));
+    }
+
+    // Second pass: fetch the stale ones in the background.
     (async () => {
-      for (const m of items) {
+      for (const m of stale) {
         if (cancelled) return;
-        if (!m.hf_repo) continue;
         try {
           const est = await client.getModelSizeEstimate(m.id);
           if (cancelled) return;
           setSizeEstimates((prev) => ({ ...prev, [m.id]: est }));
+          try {
+            window.localStorage.setItem(
+              `openpathai.model_size_estimate.${m.id}`,
+              JSON.stringify({ cached_at: Date.now(), value: est })
+            );
+          } catch {
+            // localStorage full / disabled — keep going
+          }
         } catch {
           // network unreachable / API down — UI shows "—"
         }

@@ -20,8 +20,8 @@
 
 | | |
 |---|---|
-| Active phase | **Phase 22+ — conditional / deferred** (Phase 21.8 closed 2026-04-26 — Models tab actually downloads, foundation backbones train via linear probe, detail modal reflects live HF token). |
-| Latest Git tag | `phase-21.8-complete` |
+| Active phase | **Phase 22+ — conditional / deferred** (Phase 21.9 closed 2026-04-26 — DINOv2 224↔518 fixed, model-size catalogue cached, gated stubs surface honestly, 5 task-shaped templates ship). |
+| Latest Git tag | `phase-21.9-complete` |
 | Latest released version | v1.0.0 complete (Phases 13–17 ✅). **All three bets live** 🎯. v1.1.0 complete (Phase 18 ✅) — `pipx install`, Docker CPU + GPU, full docs site. Pre-Phase-19 audit closed (tag `phase-18-audit-complete`): 6 must-fix + 8 warnings + docker.yml workflow shipped. Next: v2.0.0 React canvas (19 backend · 20 canvas · 21 viewer). |
 | Blocked on user | (a) HISTAI-breast gated-access still pending on the main HF account (non-blocking); (b) Ollama + MedGemma 1.5 **already installed** ✅. |
 
@@ -59,6 +59,7 @@
 | 21.6.1 | Wizard fixes — Zenodo backend · download overrides (URL / HF mirror / local folder) · train duration selector · YOLO strict-vs-fallback confirm | v2.0.x | ✅ complete (2026-04-26, tag `phase-21.6.1-complete`) | (in CHANGELOG) | same-day patch |
 | 21.7 | Make the wizard real — real `_real_train` on local datasets · wizard polls run status · PHI middleware whitelist · auto-register local-source datasets · extras hints | v2.0.x | ✅ complete (2026-04-26, tag `phase-21.7-complete`) | [phase-21.7-real-wizard.md](phase-21.7-real-wizard.md) | 1–2 d target / same-day actual |
 | 21.8 | Make Models real — foundation backbones as Train targets · per-model download/status routes · Models table actions · token-aware modal · wizard model picker | v2.0.x | ✅ complete (2026-04-26, tag `phase-21.8-complete`) | [phase-21.8-models-real.md](phase-21.8-models-real.md) | 1–2 d target / same-day actual |
+| 21.9 | Task-shaped Quickstart — DINOv2 224↔518 fix · per-model size catalogue · gated stub treatment · 5 task-shaped templates (classification / embeddings / detection / segmentation / zero-shot) | v2.0.x | ✅ complete (2026-04-26, tag `phase-21.9-complete`) | [phase-21.9-task-templates.md](phase-21.9-task-templates.md) | 1 d target / same-day actual |
 | 22+ | Conditional: RunPod tier, marketplace, DICOM-SR, SaMD | v2.5+ | 🧊 deferred | — | conditional |
 
 **Realistic total for v0.1 → v1.1:** ~20–24 weeks of focused work.

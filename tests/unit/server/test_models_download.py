@@ -68,34 +68,56 @@ def test_size_estimate_handles_missing_hf_repo(
     assert "no hf_repo" in (body["reason"] or "")
 
 
-def test_size_estimate_uses_hf_api_when_available(
+def test_size_estimate_prefers_adapter_declared_size(
     client: TestClient,
     auth_headers: dict[str, str],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Stub HfApi to avoid network. Sum of sibling sizes is returned."""
+    """Phase 21.9 chunk A2 — adapter-declared ``size_bytes`` wins over
+    HF round-trips. Patch HfApi to a sentinel that fails the test if
+    it's ever called."""
     pytest.importorskip("huggingface_hub")
     import huggingface_hub
 
-    class _Sib:
-        def __init__(self, size: int) -> None:
-            self.size = size
+    from openpathai.server.routes import models as _models
 
-    class _Info:
-        siblings = (_Sib(1024 * 1024 * 100), _Sib(1024 * 256))
+    _models._SIZE_ESTIMATE_CACHE.clear()
 
-    class _FakeApi:
-        def model_info(
-            self, repo: str, *, token: Any = None, files_metadata: bool = False
-        ) -> _Info:
-            assert "dinov2" in repo
-            return _Info()
+    class _ExplodingApi:
+        def model_info(self, *_a: Any, **_kw: Any) -> Any:
+            raise AssertionError(
+                "HfApi.model_info must not be called when adapter declares size_bytes"
+            )
 
-    monkeypatch.setattr(huggingface_hub, "HfApi", _FakeApi)
+    monkeypatch.setattr(huggingface_hub, "HfApi", _ExplodingApi)
 
     body = client.get("/v1/models/dinov2_vits14/size-estimate", headers=auth_headers).json()
-    assert body["size_bytes"] == 1024 * 1024 * 100 + 1024 * 256
-    assert body["file_count"] == 2
+    assert body["reason"] == "adapter-declared"
+    assert body["size_bytes"] == 168_000_000
+
+
+def test_size_estimate_caches_within_a_process(
+    client: TestClient,
+    auth_headers: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Second call must hit the in-process cache, not re-resolve the adapter."""
+    from openpathai.server.routes import models as _models
+
+    _models._SIZE_ESTIMATE_CACHE.clear()
+    calls = {"n": 0}
+    original = _models._adapter_declared_size
+
+    def _counting(model_id: str) -> int | None:
+        calls["n"] += 1
+        return original(model_id)
+
+    monkeypatch.setattr(_models, "_adapter_declared_size", _counting)
+
+    client.get("/v1/models/dinov2_vits14/size-estimate", headers=auth_headers)
+    client.get("/v1/models/dinov2_vits14/size-estimate", headers=auth_headers)
+    client.get("/v1/models/dinov2_vits14/size-estimate", headers=auth_headers)
+    assert calls["n"] == 1, "size-estimate route must hit the cache after the first call"
 
 
 def test_download_model_short_circuits_on_already_present(
@@ -167,3 +189,16 @@ def test_download_model_routes_require_auth(client: TestClient) -> None:
     assert client.get("/v1/models/dinov2_vits14/status").status_code in (401, 403)
     assert client.post("/v1/models/dinov2_vits14/download").status_code in (401, 403)
     assert client.get("/v1/models/dinov2_vits14/size-estimate").status_code in (401, 403)
+
+
+def test_download_gated_stub_returns_gated_status(
+    client: TestClient,
+    auth_headers: dict[str, str],
+) -> None:
+    """Phase 21.9 chunk A3 — Hibou (and the other gated stubs) raise
+    ``GatedAccessError`` regardless of message text. The download route
+    must classify by exception type, not by string-matching, and surface
+    a helpful "Request access at ..." message."""
+    body = client.post("/v1/models/hibou/download", headers=auth_headers).json()
+    assert body["status"] == "gated"
+    assert "huggingface.co/histai/hibou-B" in (body["message"] or "")

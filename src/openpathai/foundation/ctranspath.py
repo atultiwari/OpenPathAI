@@ -37,6 +37,9 @@ class CTransPathAdapter:
     tier_compatibility: frozenset[str] = frozenset({"T1", "T2", "T3"})
     vram_gb: float = 2.0
     license: str = "GPL-3.0 (upstream weights license)"
+    # Phase 21.9 chunk A2 — Swin-Tiny ~110 MB; weights are user-supplied
+    # (no HF repo) so this is a guidance value rather than a download size.
+    size_bytes: int = 110_000_000  # ~110 MB
     citation: str = (
         "Wang et al., 'Transformer-based unsupervised contrastive "
         "learning for histopathological image classification' "

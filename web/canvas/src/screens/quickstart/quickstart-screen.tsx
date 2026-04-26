@@ -10,8 +10,10 @@ import { useAuth } from "../../api/auth-context";
 import { TabGuide } from "../../components/tab-guide";
 import { safeMessage } from "../../lib/safe-string";
 import {
+  TASK_LABELS,
   WIZARD_TEMPLATES,
   findTemplate,
+  templatesByTask,
   type ManualChoice,
   type StepControl,
   type StepResult,
@@ -231,51 +233,75 @@ export function QuickstartScreen() {
         <TabGuide tab="quickstart" />
         <h2>Quickstart wizard</h2>
         <p className="lede">
-          Pick a template to walk through your first end-to-end run. Each
-          template downloads the dataset, fits a model, and lands a
-          prediction in the audit DB. Storage paths are surfaced at every
-          step so you always know where artifacts live.
+          Pick a task, then a template. Each template walks you through
+          the dataset / model setup, the run itself, and where the
+          artifacts land on disk. {WIZARD_TEMPLATES.length} templates
+          ship across {templatesByTask().length} task types.
         </p>
 
-        <div className="qs-template-grid">
-          {WIZARD_TEMPLATES.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              className="qs-template-card"
-              onClick={() => pickTemplate(t)}
+        {templatesByTask().map(({ task, templates }) => (
+          <div key={task} style={{ marginBottom: "var(--space-5)" }}>
+            <h3
+              style={{
+                margin: "0 0 var(--space-2)",
+                fontSize: 13,
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+                color: "var(--color-text-dim)",
+              }}
             >
-              <div className="qs-template-head">
-                <strong>{t.label}</strong>
-                <span className={`qs-tier qs-tier-${t.tier}`}>{t.tier}</span>
-              </div>
-              <p>{t.blurb}</p>
-              <dl className="qs-template-meta">
-                <div>
-                  <dt>Dataset</dt>
-                  <dd>
-                    <code>{t.datasetCard}</code>
-                  </dd>
-                </div>
-                <div>
-                  <dt>Model</dt>
-                  <dd>
-                    <code>{t.modelCard}</code>
-                  </dd>
-                </div>
-                <div>
-                  <dt>Steps</dt>
-                  <dd>{t.steps.length}</dd>
-                </div>
-                <div>
-                  <dt>Est.</dt>
-                  <dd>~{t.estimatedMinutes} min</dd>
-                </div>
-              </dl>
-              <span className="qs-template-cta">Start →</span>
-            </button>
-          ))}
-        </div>
+              {TASK_LABELS[task]} · {templates.length}
+            </h3>
+            <div className="qs-template-grid">
+              {templates.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  className="qs-template-card"
+                  onClick={() => pickTemplate(t)}
+                >
+                  <div className="qs-template-head">
+                    <strong>{t.label}</strong>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      {t.preview ? (
+                        <span className="qs-tier qs-tier-synthetic">
+                          preview
+                        </span>
+                      ) : null}
+                      <span className={`qs-tier qs-tier-${t.tier}`}>
+                        {t.tier}
+                      </span>
+                    </div>
+                  </div>
+                  <p>{t.blurb}</p>
+                  <dl className="qs-template-meta">
+                    <div>
+                      <dt>Dataset</dt>
+                      <dd>
+                        <code>{t.datasetCard}</code>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Model</dt>
+                      <dd>
+                        <code>{t.modelCard}</code>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Steps</dt>
+                      <dd>{t.steps.length}</dd>
+                    </div>
+                    <div>
+                      <dt>Est.</dt>
+                      <dd>~{t.estimatedMinutes} min</dd>
+                    </div>
+                  </dl>
+                  <span className="qs-template-cta">Start →</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
       </section>
     );
   }

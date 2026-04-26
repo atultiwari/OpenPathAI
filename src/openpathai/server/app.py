@@ -132,6 +132,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         credentials,
         datasets,
         extras,
+        foundation,
         health,
         heatmaps,
         manifest,
@@ -170,6 +171,8 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     app.include_router(storage.router, prefix="/v1")
     # Phase 21.7 — optional-extras status.
     app.include_router(extras.router, prefix="/v1")
+    # Phase 21.9 — foundation embed-folder.
+    app.include_router(foundation.router, prefix="/v1")
 
     # Phase 20 — when --canvas-dir is set we serve the built React canvas
     # at ``/`` so the API + canvas live on a single port.

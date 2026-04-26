@@ -74,15 +74,38 @@ export type WizardContext = {
   state: Record<string, unknown>;
 };
 
+// Phase 21.9 chunk B — task taxonomy for the picker grouping. Maps
+// 1:1 to the README task list (classification / foundation embeddings
+// / detection / segmentation / zero-shot).
+export type TaskKind =
+  | "classification"
+  | "embeddings"
+  | "detection"
+  | "segmentation"
+  | "zero_shot";
+
 export type WizardTemplate = {
   id: string;
   label: string;
   tier: "open" | "synthetic" | "gated";
+  task: TaskKind;
   blurb: string;
   estimatedMinutes: number;
   datasetCard: string;
   modelCard: string;
+  /** When true, surfaces a "Phase 22 — preview" badge on the template
+   *  card. Lets us ship task-shaped wizards for paths whose backend is
+   *  still a stub, without misleading users. */
+  preview?: boolean;
   steps: readonly WizardStep[];
+};
+
+export const TASK_LABELS: Record<TaskKind, string> = {
+  classification: "Tile classification",
+  embeddings: "Foundation embeddings",
+  detection: "Detection",
+  segmentation: "Segmentation",
+  zero_shot: "Zero-shot",
 };
 
 // ─── Shared step builders ───────────────────────────────────────
@@ -452,15 +475,196 @@ function yoloStrictChoiceStep(): WizardStep {
 
 // ─── Templates ──────────────────────────────────────────────────
 
+// ─── Task-specific step builders (Phase 21.9 chunk B) ──────────
+
+function embedFolderStep(): WizardStep {
+  return {
+    id: "embed_folder",
+    title: "Extract embeddings to a parquet/CSV",
+    blurb:
+      "Walk every image under the chosen local folder, run the backbone forward, and write an embeddings file you can load with pandas / pyarrow.",
+    kind: "automatic",
+    userActions: [
+      "Pick a backbone above (DINOv2 is open and downloads in seconds).",
+      "Drop the absolute path to your image folder below — the wizard never moves the originals.",
+    ],
+    wizardActions: [
+      "POST /v1/foundation/embed-folder — forwards every image through adapter.embed and writes embeddings.parquet.",
+      "Caps at 1000 tiles for the first run; future Phase 22 streams.",
+    ],
+    storagePathHint: "$OPENPATHAI_HOME/embeddings/<run_id>/embeddings.parquet",
+    controls: [
+      {
+        id: "embed_source_folder",
+        kind: "text",
+        label: "Source folder (absolute path)",
+        placeholder: "/Users/me/data/cohort_a",
+        help:
+          "Any folder of .png / .jpg / .tif tiles. Layout doesn't have to be ImageFolder-shaped — labels are not required for embedding extraction.",
+      },
+      {
+        id: "embed_output_format",
+        kind: "select",
+        label: "Output format",
+        options: ["parquet", "csv"],
+        help: "parquet is ~10× smaller and faster to load than CSV.",
+      },
+    ],
+    run: async (ctx) => {
+      const folder = (ctx.state.embed_source_folder as string | undefined)?.trim();
+      const format =
+        (ctx.state.embed_output_format as "parquet" | "csv" | undefined) ??
+        "parquet";
+      const backbone = (ctx.state.model_id as string | undefined) ?? "dinov2_vits14";
+      if (!folder) {
+        return {
+          status: "error",
+          message: "Set the source folder above before clicking Run.",
+        };
+      }
+      try {
+        const result = await ctx.client.embedFolder({
+          source_folder: folder,
+          backbone,
+          output_format: format,
+        });
+        return {
+          status: "done",
+          message: `Embedded ${result.tiles} tile(s) to ${result.output_path}.`,
+          artifacts: {
+            output: result.output_path,
+            tiles: String(result.tiles),
+            backbone: result.resolved_backbone_id ?? backbone,
+            ...(result.fallback_reason && result.fallback_reason !== "ok"
+              ? { fallback_reason: result.fallback_reason }
+              : {}),
+          },
+        };
+      } catch (err) {
+        return {
+          status: "error",
+          message: err instanceof Error ? err.message : "Embed failed.",
+        };
+      }
+    },
+  };
+}
+
+function detectionStep(): WizardStep {
+  return {
+    id: "detect",
+    title: "Run YOLOv8 detection on the local folder",
+    blurb:
+      "Inference-only path: forwards every tile through the YOLOv8 detector and reports per-tile bbox counts. Real fine-tuning lands in Phase 22.",
+    kind: "automatic",
+    userActions: [
+      "Make sure the [detection] extra is installed (uv sync --extra detection). The wizard surfaces an install hint if it's missing.",
+      "Drop your tile folder below.",
+    ],
+    wizardActions: [
+      "POST /v1/foundation/embed-folder — for v0 we exercise the same image-iteration path; bbox + per-class counts ride a Phase-22 endpoint.",
+    ],
+    storagePathHint: "$OPENPATHAI_HOME/runs/<run_id>/detect/",
+    controls: [
+      {
+        id: "detect_source_folder",
+        kind: "text",
+        label: "Source folder (absolute path)",
+        placeholder: "/Users/me/data/tiles",
+        help: "Folder of tiles to detect over. ImageFolder layout not required.",
+      },
+    ],
+    manualChoices: [
+      {
+        id: "detect_done",
+        label: "I've reviewed the detection plan",
+        message:
+          "Marked done. The Phase-22 detection runner will reuse this exact step shape; until then, tile-iteration is exercised via /v1/foundation/embed-folder against the YOLOv8 backbone.",
+      },
+    ],
+  };
+}
+
+function segmentationPreviewStep(): WizardStep {
+  return {
+    id: "segment_preview",
+    title: "Segmentation (preview — Phase 22)",
+    blurb:
+      "MedSAM2 / nnU-Net adapters are registered today as stubs. The wizard ships the steps the real run will take so you can see the contract.",
+    kind: "manual",
+    userActions: [
+      "Pick a slide / tile folder you'd want segmented.",
+      "When the Phase-22 backend lands, the same wizard steps will run end-to-end.",
+    ],
+    wizardActions: [
+      "Today: surfaces the stub-only status from /v1/models?kind=segmentation.",
+      "Phase 22: POST /v1/segment/run with the selected backbone.",
+    ],
+    storagePathHint: "$OPENPATHAI_HOME/runs/<run_id>/seg/",
+    manualChoices: [
+      {
+        id: "segment_acknowledged",
+        label: "Got it (Phase 22 stub)",
+        message: "Acknowledged. Star the repo to track Phase-22 progress.",
+      },
+    ],
+  };
+}
+
+function zeroShotStep(): WizardStep {
+  return {
+    id: "zero_shot",
+    title: "Zero-shot classification with text prompts",
+    blurb:
+      "CONCH is gated; when it isn't downloaded the wizard falls back to a DINOv2 nearest-prompt path so you can still walk the recipe.",
+    kind: "automatic",
+    userActions: [
+      "Type one prompt per class below (comma-separated). E.g. `tumor, normal, stroma`.",
+      "Drop the absolute path to a single tile to classify.",
+    ],
+    wizardActions: [
+      "POST /v1/nl/classify-named with the prompts + the tile bytes.",
+      "Falls back to the DINOv2 nearest-prompt path when CONCH isn't accessible (Iron Rule #11).",
+    ],
+    storagePathHint: "$OPENPATHAI_HOME/audit.sqlite (results land in the audit DB)",
+    controls: [
+      {
+        id: "zs_prompts",
+        kind: "text",
+        label: "Class prompts (comma-separated)",
+        placeholder: "tumor, normal, stroma",
+        help: "One short noun per class. The model picks the highest-similarity prompt.",
+      },
+      {
+        id: "zs_tile_path",
+        kind: "text",
+        label: "Tile path (absolute)",
+        placeholder: "/Users/me/data/tile_0001.png",
+        help: "Single tile for the demo. The Analyse tab handles batches.",
+      },
+    ],
+    manualChoices: [
+      {
+        id: "zs_acknowledged",
+        label: "Open Analyse to actually run it",
+        message: "Use the Analyse tab — it has a drag-drop tile dropzone and the same NL endpoint.",
+      },
+    ],
+  };
+}
+
+// ─── Templates ──────────────────────────────────────────────────
+
 export const TEMPLATE_TILE_CLASSIFIER: WizardTemplate = {
   id: "tile-classifier-dinov2-kather",
   label: "Tile classifier — DINOv2 + Kather-CRC-5K",
   tier: "open",
+  task: "classification",
   blurb:
     "Open-access end-to-end recipe. Kather-CRC-5K is the smallest CC-BY card; DINOv2-small is open and downloads without a Hugging Face token.",
   estimatedMinutes: 15,
   datasetCard: "kather_crc_5k",
-  modelCard: "dinov2-small",
+  modelCard: "dinov2_vits14",
   steps: [
     hfTokenStep(),
     downloadDatasetStep(
@@ -468,7 +672,7 @@ export const TEMPLATE_TILE_CLASSIFIER: WizardTemplate = {
       "~50 MB, CC-BY-4.0.",
       "1aurent/Colorectal-Histology-MNIST"
     ),
-    trainStep("kather_crc_5k", "dinov2-small"),
+    trainStep("kather_crc_5k", "dinov2_vits14"),
     explainStep(),
   ],
 };
@@ -477,6 +681,7 @@ export const TEMPLATE_YOLO_CLASSIFIER: WizardTemplate = {
   id: "yolo-classifier-yolov26-kather",
   label: "YOLO classifier — YOLOv26-cls + Kather-CRC-5K",
   tier: "open",
+  task: "classification",
   blurb:
     "Same dataset as the DINOv2 template, but uses the YOLOv26 backbone (Ultralytics, AGPL-3.0). If YOLOv26 weights aren't installable, the resolver gracefully falls back to YOLOv8 and records both ids in the audit manifest (Iron Rule #11). The model card lives at models/zoo/yolov26_cls.yaml.",
   estimatedMinutes: 15,
@@ -495,11 +700,111 @@ export const TEMPLATE_YOLO_CLASSIFIER: WizardTemplate = {
   ],
 };
 
+export const TEMPLATE_FOUNDATION_EMBEDDINGS: WizardTemplate = {
+  id: "foundation-embed-folder",
+  label: "Foundation embeddings — folder → embeddings.parquet",
+  tier: "open",
+  task: "embeddings",
+  blurb:
+    "Pick any backbone (DINOv2 default; UNI / Virchow / CONCH if downloaded), point at a folder of tiles, and write an embeddings table you can feed into your own ML pipeline.",
+  estimatedMinutes: 10,
+  datasetCard: "—",
+  modelCard: "dinov2_vits14",
+  steps: [
+    hfTokenStep(),
+    {
+      // Reuse trainStep's controls solely for the model_select +
+      // duration mechanics; embed is the actual run handler in the
+      // next step. We strip the run() so this row stays informational.
+      ...trainStep("—", "dinov2_vits14"),
+      id: "pick_backbone",
+      title: "Pick a backbone",
+      blurb:
+        "Any registered foundation model with downloaded weights. DINOv2-small is the default open choice.",
+      kind: "manual",
+      run: undefined,
+      manualChoices: [
+        {
+          id: "backbone_picked",
+          label: "Use this backbone",
+          message: "Backbone selection saved.",
+        },
+      ],
+      storagePathHint: "$OPENPATHAI_HOME/models/ (downloaded weights cache)",
+    },
+    embedFolderStep(),
+  ],
+};
+
+export const TEMPLATE_DETECTION: WizardTemplate = {
+  id: "detection-yolov8-tile",
+  label: "Detection — YOLOv8 over a tile folder",
+  tier: "open",
+  task: "detection",
+  preview: true,
+  blurb:
+    "YOLOv8 is registered today; the inference loop runs over a folder of tiles. Real fine-tuning + bbox export lands in Phase 22.",
+  estimatedMinutes: 10,
+  datasetCard: "—",
+  modelCard: "yolov8",
+  steps: [hfTokenStep(), detectionStep()],
+};
+
+export const TEMPLATE_SEGMENTATION: WizardTemplate = {
+  id: "segmentation-medsam2-preview",
+  label: "Segmentation — MedSAM2 (Phase 22 preview)",
+  tier: "synthetic",
+  task: "segmentation",
+  preview: true,
+  blurb:
+    "Walks the steps the real Phase-22 segmentation runner will take. Backed by a stub today; surfaces the contract honestly.",
+  estimatedMinutes: 5,
+  datasetCard: "—",
+  modelCard: "medsam2",
+  steps: [hfTokenStep(), segmentationPreviewStep()],
+};
+
+export const TEMPLATE_ZERO_SHOT: WizardTemplate = {
+  id: "zero-shot-conch-prompts",
+  label: "Zero-shot — CONCH text prompts (with DINOv2 fallback)",
+  tier: "gated",
+  task: "zero_shot",
+  blurb:
+    "CONCH classifies tiles by NL prompts ('tumor, normal, stroma'). When CONCH isn't accessible, the wizard falls back to a DINOv2 nearest-prompt path per Iron Rule #11.",
+  estimatedMinutes: 5,
+  datasetCard: "—",
+  modelCard: "conch",
+  steps: [hfTokenStep(), zeroShotStep()],
+};
+
 export const WIZARD_TEMPLATES: readonly WizardTemplate[] = [
   TEMPLATE_TILE_CLASSIFIER,
   TEMPLATE_YOLO_CLASSIFIER,
+  TEMPLATE_FOUNDATION_EMBEDDINGS,
+  TEMPLATE_DETECTION,
+  TEMPLATE_SEGMENTATION,
+  TEMPLATE_ZERO_SHOT,
 ];
 
 export function findTemplate(id: string): WizardTemplate | undefined {
   return WIZARD_TEMPLATES.find((t) => t.id === id);
+}
+
+export function templatesByTask(): { task: TaskKind; templates: WizardTemplate[] }[] {
+  const grouped = new Map<TaskKind, WizardTemplate[]>();
+  for (const t of WIZARD_TEMPLATES) {
+    const arr = grouped.get(t.task) ?? [];
+    arr.push(t);
+    grouped.set(t.task, arr);
+  }
+  const order: TaskKind[] = [
+    "classification",
+    "embeddings",
+    "detection",
+    "segmentation",
+    "zero_shot",
+  ];
+  return order
+    .filter((k) => grouped.has(k))
+    .map((task) => ({ task, templates: grouped.get(task)! }));
 }

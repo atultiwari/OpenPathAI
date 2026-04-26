@@ -9,6 +9,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Phase 21.9 (v2.0.x) — Task-shaped Quickstart + critical fixes (2026-04-26)
+
+Closes the three concrete bugs from the post-21.8 screenshots and
+turns the wizard from "two PCam-shaped recipes" into a task-shaped
+front door.
+
+Chunk A1 — DINOv2 input-size mismatch
+- `DINOv2SmallAdapter.build()` now uses
+  `img_size=224, dynamic_img_size=True` so timm interpolates the
+  LVD-142M position embeddings (518×518 native) down to the 224
+  tiles the dataset produces. Two-tier fallback: try
+  `dynamic_img_size`; on `TypeError` (older timm) try `img_size`
+  alone; finally fall back to native 518 + on-the-fly resize in
+  `embed()`. Wizard's "backbone embedding failed: Input height
+  (224) doesn't match model (518)" error is gone.
+
+Chunk A2 — Per-model size catalogue + cache
+- Every foundation adapter (DINOv2, UNI, CTransPath + 5 stubs) now
+  declares an authoritative `size_bytes` class attr (DINOv2 ≈ 168
+  MB, UNI ≈ 1.1 GB, Virchow2 ≈ 4.7 GB, etc.).
+- `GET /v1/models/{id}/size-estimate` returns the adapter-declared
+  size first; only if absent does it touch `HfApi.model_info`.
+- Process-lifetime cache (`_SIZE_ESTIMATE_CACHE`) so even the HF
+  fallback path is one call per model per server boot.
+- Frontend caches each result in `localStorage` with a 7-day TTL —
+  re-opening the Models tab is **zero network calls**.
+
+Chunk A3 — GatedAccessError type catch
+- Download route catches `GatedAccessError` by **type**, not by
+  message string. Hibou / UNI / Virchow / Prov-GigaPath / CONCH /
+  UNI2-h all return `status="gated"` with a "Request access at
+  https://huggingface.co/<repo>" message.
+
+Chunk B — Five task-shaped templates
+- `TaskKind` taxonomy (classification / embeddings / detection /
+  segmentation / zero_shot) + `TASK_LABELS` map.
+- Wizard picker groups templates by task with header + count.
+- Five templates ship: tile-classifier-dinov2-kather (refactored),
+  yolo-classifier-yolov26-kather, foundation-embed-folder,
+  detection-yolov8-tile (preview), segmentation-medsam2-preview
+  (Phase 22 stub-shape walk), zero-shot-conch-prompts.
+- New `POST /v1/foundation/embed-folder` route walks an on-disk
+  folder, embeds every tile via the resolved foundation backbone,
+  and writes `embeddings.parquet` (or CSV fallback) under
+  `$OPENPATHAI_HOME/embeddings/<run_id>/`. Honours iron-rule #11
+  fallback resolver. ApiClient gains `embedFolder()`.
+
+Tests: +5 (1 dinov2 224-build, 2 size-catalogue + cache, 1 gated
+download, 4 embed-folder route, 1 task-coverage). Total: 354
+pytest + 53 vitest, all gates green.
+
 ### Phase 21.8 (v2.0.x) — Make Models real (2026-04-26)
 
 Closes the bug from the screenshots where the wizard reported

@@ -31,6 +31,8 @@ class UNIAdapter:
     tier_compatibility: frozenset[str] = frozenset({"T2", "T3"})
     vram_gb: float = 4.0
     license: str = "CC-BY-NC-4.0"
+    # Phase 21.9 chunk A2 — known weight size from MahmoodLab/UNI.
+    size_bytes: int = 1_100_000_000  # ~1.1 GB
     citation: str = (
         "Chen et al., 'A General-Purpose Self-Supervised Model for "
         "Computational Pathology' (Nature, 2024)."

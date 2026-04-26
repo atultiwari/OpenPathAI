@@ -87,10 +87,15 @@ describe("WIZARD_TEMPLATES", () => {
   });
 
   it("download_dataset step ships override controls (url / hf repo / local)", () => {
+    // Phase 21.9 — only the classification templates carry a
+    // download_dataset step; embeddings / detection / segmentation /
+    // zero-shot use a different on-ramp. Scope the contract check to
+    // the templates that actually have the step.
     for (const t of WIZARD_TEMPLATES) {
       const step = t.steps.find((s) => s.id === "download_dataset");
-      expect(step?.controls?.length, t.id).toBeGreaterThanOrEqual(3);
-      const controlIds = step!.controls!.map((c) => c.id);
+      if (!step) continue;
+      expect(step.controls?.length, t.id).toBeGreaterThanOrEqual(3);
+      const controlIds = step.controls!.map((c) => c.id);
       expect(controlIds).toContain("override_url");
       expect(controlIds).toContain("override_huggingface_repo");
       expect(controlIds).toContain("local_source_path");
@@ -100,11 +105,25 @@ describe("WIZARD_TEMPLATES", () => {
   it("train step ships duration_preset select + use_synthetic checkbox", () => {
     for (const t of WIZARD_TEMPLATES) {
       const step = t.steps.find((s) => s.id === "train");
-      expect(step?.controls?.length, t.id).toBeGreaterThanOrEqual(2);
-      const dur = step!.controls!.find((c) => c.id === "duration_preset");
+      if (!step) continue;
+      expect(step.controls?.length, t.id).toBeGreaterThanOrEqual(2);
+      const dur = step.controls!.find((c) => c.id === "duration_preset");
       expect(dur?.kind).toBe("select");
-      const synth = step!.controls!.find((c) => c.id === "use_synthetic");
+      const synth = step.controls!.find((c) => c.id === "use_synthetic");
       expect(synth?.kind).toBe("checkbox");
+    }
+  });
+
+  it("ships at least one template per task kind (classification + 4 more)", () => {
+    const tasks = new Set(WIZARD_TEMPLATES.map((t) => t.task));
+    for (const k of [
+      "classification",
+      "embeddings",
+      "detection",
+      "segmentation",
+      "zero_shot",
+    ]) {
+      expect(tasks.has(k as never), `missing task: ${k}`).toBe(true);
     }
   });
 });

@@ -70,3 +70,20 @@ def test_attribute_surface_is_frozen_at_class_level() -> None:
     assert a.gated is False
     assert a.embedding_dim == 384
     assert a.tier_compatibility == frozenset({"T1", "T2", "T3"})
+
+
+def test_build_accepts_224_tiles() -> None:
+    """Phase 21.9 chunk A1 — the LVD-142M checkpoint has 518x518 native
+    position embeddings. Without the dynamic_img_size flag a 224 tile
+    used to raise ``RuntimeError: Input height (224) doesn't match
+    model (518)``. Build with pretrained=False so the test runs offline,
+    then push a 224 tile through the embed path."""
+    pytest.importorskip("timm")
+    adapter = DINOv2SmallAdapter()
+    module = adapter.build(pretrained=False)
+    assert module is not None
+    image = torch.rand(2, 3, 224, 224)
+    feats = adapter.embed(image)
+    # ViT-S/14 → 384-D CLS token embedding regardless of input resolution.
+    assert feats.shape == (2, 384)
+    assert feats.dtype == np.float32
