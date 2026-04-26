@@ -23,6 +23,9 @@ import type {
   HFTokenTestResult,
   Health,
   HeatmapSummary,
+  ModelDownloadResult,
+  ModelSizeEstimate,
+  ModelStatus,
   ModelSummary,
   NodesResponse,
   Paged,
@@ -665,6 +668,44 @@ export class ApiClient {
 
   getExtras(options?: RequestOptions): Promise<ExtrasResponse> {
     return this.request("GET", "/v1/extras", undefined, options);
+  }
+
+  // ─── Phase 21.8 chunk B — per-model download + status ────────
+
+  getModelStatus(
+    modelId: string,
+    options?: RequestOptions
+  ): Promise<ModelStatus> {
+    return this.request(
+      "GET",
+      `/v1/models/${encodeURIComponent(modelId)}/status`,
+      undefined,
+      options
+    );
+  }
+
+  getModelSizeEstimate(
+    modelId: string,
+    options?: RequestOptions
+  ): Promise<ModelSizeEstimate> {
+    return this.request(
+      "GET",
+      `/v1/models/${encodeURIComponent(modelId)}/size-estimate`,
+      undefined,
+      options
+    );
+  }
+
+  downloadModel(
+    modelId: string,
+    options?: RequestOptions
+  ): Promise<ModelDownloadResult> {
+    return this.request(
+      "POST",
+      `/v1/models/${encodeURIComponent(modelId)}/download`,
+      undefined,
+      options
+    );
   }
 }
 

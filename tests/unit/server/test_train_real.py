@@ -126,3 +126,84 @@ def test_real_train_path_when_train_extra_present(
     # The real path reports the on-disk dataset it actually read from.
     assert "fake_dataset" in str(result.get("dataset_path", ""))
     assert int(result.get("tiles_used", 0)) > 0
+
+
+def test_foundation_train_runs_via_linear_probe(
+    client: TestClient,
+    auth_headers: dict[str, str],
+    tmp_path,
+    monkeypatch,
+) -> None:
+    """Phase 21.8 chunk A — foundation backbones train via the
+    numpy linear-probe path. We monkeypatch the adapter's ``embed``
+    + ``build`` so the test never tries to download real weights."""
+    pytest.importorskip("torch")
+    pytest.importorskip("PIL")
+
+    import numpy as np
+    from PIL import Image
+
+    from openpathai.data.local import register_folder
+
+    root = tmp_path / "foundation_dataset"
+    rng = np.random.default_rng(0)
+    for cls in ("class_a", "class_b", "class_c"):
+        cdir = root / cls
+        cdir.mkdir(parents=True)
+        for i in range(4):
+            arr = (rng.random((96, 96, 3)) * 255).astype("uint8")
+            Image.fromarray(arr).save(cdir / f"tile_{i}.png")
+
+    monkeypatch.setenv("OPENPATHAI_HOME", str(tmp_path / "opa-home"))
+
+    register_folder(
+        root,
+        name="foundation_local",
+        tissue=["test"],
+        overwrite=True,
+    )
+    from openpathai.data import registry as _registry_mod
+
+    _registry_mod._DEFAULT_REGISTRY = None
+
+    from openpathai.foundation import dinov2 as _dinov2_mod
+
+    class _FakeBackbone:
+        def __init__(self) -> None:
+            self.embedding_dim = 8
+
+    def _fake_build(self, pretrained: bool = True):  # type: ignore[no-untyped-def]
+        self._module = _FakeBackbone()
+        return self._module
+
+    def _fake_embed(self, image):  # type: ignore[no-untyped-def]
+        import torch
+
+        n = image.shape[0]
+        colour = image.mean(dim=(2, 3))
+        pad = torch.zeros((n, 8 - colour.shape[1]), dtype=colour.dtype)
+        return torch.cat([colour, pad], dim=1)
+
+    monkeypatch.setattr(_dinov2_mod.DINOv2SmallAdapter, "build", _fake_build, raising=True)
+    monkeypatch.setattr(_dinov2_mod.DINOv2SmallAdapter, "embed", _fake_embed, raising=False)
+
+    submit = client.post(
+        "/v1/train",
+        headers=auth_headers,
+        json={
+            "dataset": "foundation_local",
+            "model": "dinov2-small",
+            "epochs": 1,
+            "batch_size": 4,
+            "synthetic": False,
+            "duration_preset": "Quick",
+        },
+    )
+    assert submit.status_code == 202, submit.text
+    run_id = submit.json()["run_id"]
+    metrics = _wait_for_success(client, auth_headers, run_id, timeout=60.0)
+    assert metrics.get("mode") == "lightning_probe"
+    result = metrics.get("result") or {}
+    assert result.get("backbone_id") == "dinov2_vits14"
+    assert result.get("resolved_backbone_id") == "dinov2_vits14"
+    assert int(result.get("tiles_used", 0)) > 0

@@ -9,6 +9,83 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Phase 21.8 (v2.0.x) — Make Models real (2026-04-26)
+
+Closes the bug from the screenshots where the wizard reported
+`model 'dinov2-small' is not in the registry` and the Models tab was
+read-only with no way to download anything:
+
+Chunk A — Foundation models become valid Train targets
+- `src/openpathai/server/routes/train.py::_real_train` resolves
+  `req.model` first via `default_model_registry()`, then via
+  `default_foundation_registry()`. An alias map (`dinov2-small` →
+  `dinov2_vits14`, `uni-h` → `uni2_h`, `virchow` → `virchow2`)
+  rewrites legacy ids before lookup.
+- New `_train_foundation_linear_probe` path: builds the foundation
+  backbone via `adapter.build(pretrained=True)` (triggers HF / timm
+  cache fetch), embeds every tile, fits a numpy multinomial logistic
+  regression via `openpathai.training.linear_probe.fit_linear_probe`.
+  Result envelope: `mode='lightning_probe'` + `backbone_id` +
+  `resolved_backbone_id` + `fallback_reason` per Iron Rule #11.
+  Quick-preset cap of 256 tiles still applies. Fallback chain
+  (UNI → DINOv2 etc.) routes through the existing
+  `openpathai.foundation.fallback.resolve_backbone`.
+- Wizard template `modelCard` updated from `dinov2-small` to the
+  canonical `dinov2_vits14`.
+
+Chunk B — Per-model download + status routes
+- `GET /v1/models/{id}/status` walks `$HF_HOME/hub/models--<owner>--<name>`
+  and returns `{ present, target_dir, size_bytes, file_count, source }`.
+- `POST /v1/models/{id}/download` calls the foundation/detection
+  adapter's `.build(pretrained=True)` (HF/timm cache populates as a
+  side-effect) and reports the resolved on-disk path + size.
+  Errors → structured envelopes (`gated`, `missing_backend` with
+  `install_cmd`, `error`) so the UI doesn't dump raw tracebacks.
+- `GET /v1/models/{id}/size-estimate` uses
+  `huggingface_hub.HfApi.model_info(...).siblings` to size a repo
+  without downloading. Returns `null` size + `reason` when the hub
+  is unreachable. Honours the resolved HF token from
+  `openpathai.config.hf.resolve_token()`.
+- 9 new pytest cases cover absent-cache, seeded-cache, 404,
+  size-estimate-with-stub, already-present short-circuit,
+  build-on-miss, missing_backend envelope, and auth.
+
+Chunk C — Models table UI + token-aware detail modal
+- `web/canvas/src/screens/models/models-screen.tsx` rewrite —
+  Status / Size / Action columns matching the Datasets pattern;
+  per-row probes via `getModelStatus` on tab open; lazy size
+  estimates from `getModelSizeEstimate`. Action buttons:
+  Download / Re-download / Settings (for missing extra) / Details.
+- Detail modal: replaces the static "set HF_TOKEN" instruction with
+  live state from `/v1/credentials/huggingface` ("✅ Token
+  configured" or "Configure under Settings → Hugging Face"). Adds
+  Download + Request-access buttons sized to the live state.
+- Numbers formatted via a `formatBytes()` helper (B / KB / MB / GB / TB).
+
+Chunk D — Wizard model picker
+- `WizardStep.controls` schema gains a `model_select` kind that
+  pulls options from `/v1/models?kind=foundation|classifier` at
+  render time. Each option shows `<id> · <license> · ✓ on disk`
+  (when downloaded). Gated models without weights cached are
+  visible-but-disabled with a `disabled` attribute.
+- Train step's `model` is now picked from the dropdown; defaults
+  to the template's recommended backbone but the user can swap in
+  `resnet18`, `uni`, etc. before clicking Run.
+- ApiClient gains `getModelStatus`, `getModelSizeEstimate`,
+  `downloadModel`. Wire types in `api/types.ts`.
+
+Tests: +12 (3 train-real → real foundation linear probe + alias
+resolution; 9 model-download routes; 2 wizard model picker). Total:
+347 pytest + 52 vitest, all gates green
+(`ruff check`, `ruff format --check`, `pyright server+config`,
+`tsc --noEmit`, `eslint .`, `vite build`).
+
+Closed
+- Phase 21.8 ✅ — tag `phase-21.8-complete`. The Models tab now
+  actually downloads weights, the wizard's Train step accepts
+  foundation backbones (no more dinov2-small registry mismatch),
+  and the Hibou-style detail modal reflects the user's HF token.
+
 ### Phase 21.7 (v2.0.x) — Make the Quickstart wizard real (2026-04-26)
 
 Closes the four placeholders that made the wizard *look* green while

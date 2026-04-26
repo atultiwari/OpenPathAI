@@ -19,7 +19,18 @@ export type StepResult = {
 export type StepControl =
   | { id: string; kind: "text"; label: string; placeholder?: string; help?: string }
   | { id: string; kind: "select"; label: string; options: readonly string[]; help?: string }
-  | { id: string; kind: "checkbox"; label: string; help?: string };
+  | { id: string; kind: "checkbox"; label: string; help?: string }
+  // Phase 21.8 chunk D — model_select pulls options from /v1/models
+  // (filtered to a kind list when present) at render time. The screen
+  // shows id + license + size hint; selecting writes to ctx.state.<id>.
+  | {
+      id: string;
+      kind: "model_select";
+      label: string;
+      kindFilter?: readonly string[];
+      defaultValue?: string;
+      help?: string;
+    };
 
 /** A button that marks a manual step done with a fixed state delta. */
 export type ManualChoice = {
@@ -250,6 +261,18 @@ function trainStep(card: string, model: string): WizardStep {
     ],
     storagePathHint: "$OPENPATHAI_HOME/checkpoints/<run_id>/",
     controls: [
+      // Phase 21.8 chunk D — model picker. Default reflects the
+      // template's recommended backbone; the user can swap to any
+      // registered model. Foundation backbones run via the new
+      // linear-probe path, classifier zoo cards via Lightning.
+      {
+        id: "model_id",
+        kind: "model_select",
+        label: "Backbone",
+        kindFilter: ["foundation", "classifier"],
+        defaultValue: model,
+        help: "Pick a downloaded backbone (✓) for fastest start. Use the Models tab to download more.",
+      },
       {
         id: "duration_preset",
         kind: "select",
@@ -275,12 +298,15 @@ function trainStep(card: string, model: string): WizardStep {
       // so real training reads from the user's bytes.
       const datasetId =
         (ctx.state.datasetCard as string | undefined)?.trim() || card;
+      // Phase 21.8 chunk D — pick the user-selected backbone if any.
+      const modelId =
+        (ctx.state.model_id as string | undefined)?.trim() || model;
 
       let submitted;
       try {
         submitted = await ctx.client.submitTrain({
           dataset: datasetId,
-          model,
+          model: modelId,
           synthetic,
           duration_preset: duration,
         });

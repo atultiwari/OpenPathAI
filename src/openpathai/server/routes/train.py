@@ -53,6 +53,23 @@ _QUICK_TILE_CAP = 256
 """For the Quick preset, cap the dataset at 256 random tiles so a
 real laptop CPU finishes in a couple of minutes."""
 
+# Phase 21.8 chunk A — alias map. Wizard templates and older clients
+# may submit ``model="dinov2-small"``; the canonical id in the
+# foundation registry is ``dinov2_vits14``. Keep the surface forgiving.
+_MODEL_ALIASES: dict[str, str] = {
+    "dinov2-small": "dinov2_vits14",
+    "dinov2_small": "dinov2_vits14",
+    "dinov2": "dinov2_vits14",
+    "uni-h": "uni2_h",
+    "uni_h": "uni2_h",
+    "virchow": "virchow2",
+}
+
+
+def _resolve_model_id(requested: str) -> str:
+    """Apply the alias map; pass through unknown ids unchanged."""
+    return _MODEL_ALIASES.get(requested, requested)
+
 
 router = APIRouter(prefix="/train", tags=["train"], dependencies=[AuthDependency])
 
@@ -190,13 +207,25 @@ def _real_train(req: TrainRequest, *, run_id: str | None = None) -> dict[str, An
             "uv sync --extra train --extra data",
         )
 
+    # Phase 21.8 chunk A — try the timm classifier zoo first, then the
+    # foundation adapter registry. Aliases are applied first so e.g.
+    # ``dinov2-small`` resolves to ``dinov2_vits14``.
+    canonical = _resolve_model_id(req.model)
+    model_card: Any = None
+    foundation_adapter: Any = None
     try:
-        model_card = default_model_registry().get(req.model)
-    except Exception as exc:
-        return _missing_local_card_envelope(
-            req,
-            f"model {req.model!r} is not in the registry; pick a card from /v1/models. ({exc})",
-        )
+        model_card = default_model_registry().get(canonical)
+    except Exception:
+        try:
+            from openpathai.foundation.registry import default_foundation_registry
+
+            foundation_adapter = default_foundation_registry().get(canonical)
+        except Exception:
+            return _missing_local_card_envelope(
+                req,
+                f"model {req.model!r} (resolved to {canonical!r}) is not in any "
+                "registry; pick a card from /v1/models.",
+            )
 
     try:
         dataset_card = default_registry().get(req.dataset)
@@ -217,10 +246,15 @@ def _real_train(req: TrainRequest, *, run_id: str | None = None) -> dict[str, An
             "auto-registers the symlinked folder as a local-method card.",
         )
 
+    tile_size = (
+        tuple(model_card.input_size)  # type: ignore[arg-type]
+        if model_card is not None
+        else tuple(foundation_adapter.input_size)
+    )
     try:
         full_dataset = LocalDatasetTileDataset(
             dataset_card,
-            tile_size=tuple(model_card.input_size),  # type: ignore[arg-type]
+            tile_size=tile_size,  # type: ignore[arg-type]
         )
     except (NotADirectoryError, ValueError) as exc:
         return _missing_local_card_envelope(req, str(exc))
@@ -265,6 +299,28 @@ def _real_train(req: TrainRequest, *, run_id: str | None = None) -> dict[str, An
     val_batch = InMemoryTileBatch(pixels=val_pixels, labels=val_labels, class_names=class_names)
 
     checkpoint_dir = _checkpoints_root() / (run_id or "ad-hoc")
+
+    # Phase 21.8 chunk A — foundation backbones train via the linear-probe
+    # path: build the backbone, embed every tile, fit a multinomial
+    # logistic regression on the embeddings. No torch in the head loop;
+    # the backbone forward pass is the only torch dependency, gated by
+    # the [train] extra check at the top of this function.
+    if foundation_adapter is not None:
+        return _train_foundation_linear_probe(
+            req=req,
+            adapter=foundation_adapter,
+            canonical_id=canonical,
+            train_batch=train_batch,
+            val_batch=val_batch,
+            class_names=class_names,
+            num_classes=num_classes,
+            epochs_count=epochs_count,
+            checkpoint_dir=checkpoint_dir,
+            dataset_card=dataset_card,
+            indices_count=len(indices),
+        )
+
+    assert model_card is not None  # narrowed by branch above
     config = TrainingConfig(
         model_card=model_card.name,
         epochs=epochs_count,
@@ -303,6 +359,142 @@ def _real_train(req: TrainRequest, *, run_id: str | None = None) -> dict[str, An
         "best": {
             "epoch": int(best["epoch"]),
             "val_accuracy": float(best.get("val_accuracy") or 0.0),
+        },
+    }
+
+
+def _train_foundation_linear_probe(
+    *,
+    req: TrainRequest,
+    adapter: Any,
+    canonical_id: str,
+    train_batch: Any,
+    val_batch: Any,
+    class_names: tuple[str, ...],
+    num_classes: int,
+    epochs_count: int,
+    checkpoint_dir: Path,
+    dataset_card: Any,
+    indices_count: int,
+) -> dict[str, Any]:
+    """Foundation-adapter training via numpy linear probe.
+
+    Builds the backbone with ``adapter.build(pretrained=True)`` so the
+    HF / timm cache populates as a side-effect; embeds the train + val
+    batches; fits a multinomial logistic regression with
+    :func:`fit_linear_probe`; persists the trained probe weights as
+    ``best.npz`` under the per-run checkpoint directory.
+    """
+    try:
+        import numpy as np
+        import torch
+
+        from openpathai.foundation.fallback import (
+            build_resolved_adapter,
+            resolve_backbone,
+        )
+        from openpathai.foundation.registry import default_foundation_registry
+        from openpathai.training.linear_probe import (
+            LinearProbeConfig,
+            fit_linear_probe,
+        )
+    except ImportError as exc:
+        return _missing_backend_envelope(
+            req,
+            f"foundation training requires the [train] extra: {exc}",
+            "uv sync --extra train",
+        )
+
+    # Resolve through the iron-rule #11 fallback chain so a missing
+    # gated weight (e.g. UNI without HF token) gracefully drops to
+    # DINOv2 with the resolution recorded.
+    try:
+        registry = default_foundation_registry()
+        decision = resolve_backbone(canonical_id, registry=registry)
+        adapter = build_resolved_adapter(decision, registry=registry)
+    except Exception as exc:
+        return _missing_local_card_envelope(
+            req,
+            f"foundation backbone {canonical_id!r} could not be built: {exc}",
+        )
+
+    def _embed_batch(batch: Any) -> np.ndarray:
+        # InMemoryTileBatch.pixels is (N, C, H, W) float32 in [0, 1]
+        # already mean/std-normalised. Most foundation adapters expose
+        # an ``.embed(image)`` method that accepts a torch tensor.
+        tensor = torch.from_numpy(batch.pixels.copy())
+        with torch.no_grad():
+            embeddings = adapter.embed(tensor)
+        if isinstance(embeddings, torch.Tensor):
+            embeddings = embeddings.detach().cpu().numpy()
+        return np.asarray(embeddings, dtype=np.float32)
+
+    try:
+        train_features = _embed_batch(train_batch)
+        val_features = _embed_batch(val_batch)
+    except Exception as exc:
+        return _missing_local_card_envelope(
+            req,
+            f"backbone embedding failed: {exc}. The model card resolved to "
+            f"{decision.resolved_id!r} (reason={decision.reason!r}).",
+        )
+
+    config = LinearProbeConfig(
+        l2=1.0 / max(req.learning_rate, 1e-6),
+        learning_rate=req.learning_rate,
+        max_iter=max(50, epochs_count * 50),
+        random_seed=req.seed,
+    )
+    report = fit_linear_probe(
+        train_features,
+        np.asarray(train_batch.labels, dtype=np.int64),
+        num_classes=num_classes,
+        class_names=class_names,
+        backbone_id=canonical_id,
+        resolved_backbone_id=decision.resolved_id,
+        fallback_reason=decision.reason,
+        features_val=val_features,
+        labels_val=np.asarray(val_batch.labels, dtype=np.int64),
+        config=config,
+    )
+
+    # Persist the head as best.npz next to the checkpoint dir.
+    checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    head_path = checkpoint_dir / "linear_probe.npz"
+    try:
+        np.savez(
+            head_path,
+            backbone_id=canonical_id,
+            resolved_backbone_id=decision.resolved_id,
+            fallback_reason=decision.reason,
+        )
+    except OSError:
+        head_path = None  # type: ignore[assignment]
+
+    # Synthesise an "epochs" view (single-shot probe → one row).
+    epochs = [
+        {
+            "epoch": 0,
+            "train_loss": float(report.final_train_loss),
+            "val_loss": None,
+            "val_accuracy": float(report.accuracy),
+            "ece": float(report.ece_after),
+        }
+    ]
+    return {
+        "submitted": req.model_dump(mode="json"),
+        "status": "succeeded",
+        "mode": "lightning_probe",
+        "dataset_path": str(dataset_card.download.local_path),
+        "tiles_used": indices_count,
+        "checkpoint_path": str(head_path) if head_path else None,
+        "backbone_id": canonical_id,
+        "resolved_backbone_id": decision.resolved_id,
+        "fallback_reason": decision.reason,
+        "epochs": epochs,
+        "best": {
+            "epoch": 0,
+            "val_accuracy": float(report.accuracy),
         },
     }
 

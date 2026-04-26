@@ -395,7 +395,16 @@ export function QuickstartScreen() {
                 {step.controls?.length ? (
                   <div className="qs-controls">
                     {step.controls.map((control) =>
-                      renderControl(control, ctxState.current, setControlValue)
+                      control.kind === "model_select" ? (
+                        <ModelSelectControl
+                          key={control.id}
+                          control={control}
+                          state={ctxState.current}
+                          onChange={setControlValue}
+                        />
+                      ) : (
+                        renderControl(control, ctxState.current, setControlValue)
+                      )
                     )}
                   </div>
                 ) : null}
@@ -464,6 +473,105 @@ function InstallHint({ command }: { command: string }) {
       >
         {copied ? "Copied" : "Copy"}
       </button>
+    </div>
+  );
+}
+
+function ModelSelectControl({
+  control,
+  state,
+  onChange,
+}: {
+  control: Extract<StepControl, { kind: "model_select" }>;
+  state: Record<string, unknown>;
+  onChange: (id: string, value: unknown) => void;
+}) {
+  const { client } = useAuth();
+  const [models, setModels] = useState<
+    { id: string; label: string; downloaded: boolean; gated: boolean }[]
+  >([]);
+  const [loading, setLoading] = useState(true);
+  const current =
+    typeof state[control.id] === "string"
+      ? (state[control.id] as string)
+      : control.defaultValue ?? "";
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const kinds = control.kindFilter ?? ["foundation", "classifier"];
+        const responses = await Promise.all(
+          kinds.map((k) =>
+            client.listModels({ kind: k, limit: 200 }).catch(() => null)
+          )
+        );
+        const all = responses
+          .filter((r): r is NonNullable<typeof r> => r != null)
+          .flatMap((r) => (Array.isArray(r.items) ? r.items : []));
+        if (cancelled) return;
+        const enriched = await Promise.all(
+          all.map(async (m) => {
+            let downloaded = false;
+            try {
+              const status = await client.getModelStatus(m.id);
+              downloaded = status.present;
+            } catch {
+              // best-effort
+            }
+            return {
+              id: m.id,
+              gated: m.gated,
+              downloaded,
+              label: `${m.id} · ${m.license ?? "?"}${
+                downloaded ? " · ✓ on disk" : ""
+              }${m.gated && !downloaded ? " · gated" : ""}`,
+            };
+          })
+        );
+        if (!cancelled) setModels(enriched);
+      } catch {
+        // best-effort — fall back to defaultValue only
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [client, control.kindFilter]);
+
+  // Seed default into ctx.state on first mount so the train run sees it.
+  useEffect(() => {
+    if (!state[control.id] && control.defaultValue) {
+      onChange(control.id, control.defaultValue);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div className="qs-control">
+      <label htmlFor={`qs-${control.id}`}>{control.label}</label>
+      <select
+        id={`qs-${control.id}`}
+        value={current}
+        onChange={(e) => onChange(control.id, e.target.value)}
+      >
+        {loading ? <option value={current}>loading…</option> : null}
+        {!loading && models.length === 0 ? (
+          <option value={current}>{current || "(no models)"}</option>
+        ) : null}
+        {models.map((m) => (
+          <option
+            key={m.id}
+            value={m.id}
+            disabled={m.gated && !m.downloaded}
+          >
+            {m.label}
+          </option>
+        ))}
+      </select>
+      {control.help ? <span className="qs-control-help">{control.help}</span> : null}
     </div>
   );
 }

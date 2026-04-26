@@ -402,3 +402,39 @@ export type ExtrasResponse = {
   items: ExtraStatus[];
   total: number;
 };
+
+// ─── Phase 21.8 chunk B — model download / status / size ───────
+
+export type ModelStatus = {
+  model_id: string;
+  present: boolean;
+  target_dir: string | null;
+  size_bytes: number;
+  file_count: number;
+  source: string;
+};
+
+export type ModelSizeEstimate = {
+  model_id: string;
+  hf_repo: string | null;
+  size_bytes: number | null;
+  file_count: number | null;
+  reason: string | null;
+};
+
+export type ModelDownloadResult = {
+  model_id: string;
+  status:
+    | "downloaded"
+    | "already_present"
+    | "gated"
+    | "missing_backend"
+    | "error";
+  target_dir: string | null;
+  size_bytes: number;
+  file_count: number;
+  message: string | null;
+  install_cmd: string | null;
+  resolved_id: string | null;
+  fallback_reason: string | null;
+};

@@ -1,14 +1,29 @@
-"""Unified model registry view (Phase 19).
+"""Unified model registry view (Phase 19) + per-model download (Phase 21.8).
 
 Merges the classification zoo (``models/zoo/*.yaml``), the
 foundation backbones (Phase 13), the detection adapters (Phase 14),
 and the segmentation adapters (Phase 14) into a single flat list.
 Each row carries a ``kind`` field so the React canvas can group
 them in the palette.
+
+Phase 21.8 chunk B adds three per-model routes:
+
+* ``GET /v1/models/{id}/status`` — is the backbone's weight cache
+  populated? Walks the timm / huggingface cache directories.
+* ``POST /v1/models/{id}/download`` — calls the adapter's
+  ``.build(pretrained=True)`` so timm / huggingface_hub pulls the
+  weights and returns the resolved on-disk path + size.
+* ``GET /v1/models/{id}/size-estimate`` — queries
+  ``huggingface_hub.HfApi.model_info`` to size the repo without
+  downloading. Returns ``null`` size when the hub is unreachable
+  so the UI can render a "?" instead of crashing.
 """
 
 from __future__ import annotations
 
+import contextlib
+import os
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, status
@@ -16,7 +31,13 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from openpathai.server.auth import AuthDependency
 
-__all__ = ["ModelSummary", "router"]
+__all__ = [
+    "ModelDownloadResult",
+    "ModelSizeEstimate",
+    "ModelStatus",
+    "ModelSummary",
+    "router",
+]
 
 
 router = APIRouter(
@@ -198,4 +219,267 @@ async def get_model(model_id: str) -> ModelSummary:
     raise HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
         detail=f"unknown model {model_id!r}",
+    )
+
+
+# ─── Phase 21.8 chunk B — per-model download + status ────────────
+
+
+class ModelStatus(BaseModel):
+    """Wire shape for ``GET /v1/models/{id}/status``."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    model_id: str
+    present: bool
+    target_dir: str | None
+    size_bytes: int = 0
+    file_count: int = 0
+    source: str  # "huggingface" | "timm" | "torch_hub" | "unknown"
+
+
+class ModelSizeEstimate(BaseModel):
+    """Wire shape for ``GET /v1/models/{id}/size-estimate``."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    model_id: str
+    hf_repo: str | None
+    size_bytes: int | None = None
+    file_count: int | None = None
+    reason: str | None = None  # populated when size is null
+
+
+class ModelDownloadResult(BaseModel):
+    """Wire shape for ``POST /v1/models/{id}/download``."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    model_id: str
+    status: str  # downloaded | already_present | gated | missing_backend | error
+    target_dir: str | None
+    size_bytes: int = 0
+    file_count: int = 0
+    message: str | None = None
+    install_cmd: str | None = None
+    resolved_id: str | None = None
+    fallback_reason: str | None = None
+
+
+def _hf_hub_cache_dir() -> Path:
+    """Mirror ``huggingface_hub`` resolution without importing it."""
+    if hf_home := os.environ.get("HF_HOME"):
+        return Path(hf_home) / "hub"
+    if xdg := os.environ.get("XDG_CACHE_HOME"):
+        return Path(xdg) / "huggingface" / "hub"
+    return Path.home() / ".cache" / "huggingface" / "hub"
+
+
+def _scan_dir(path: Path) -> tuple[int, int]:
+    """Return (file_count, total_bytes) for the tree under ``path``."""
+    if not path.is_dir():
+        return (0, 0)
+    files = 0
+    total = 0
+    for child in path.rglob("*"):
+        if child.is_file():
+            files += 1
+            with contextlib.suppress(OSError):
+                total += child.stat().st_size
+    return (files, total)
+
+
+def _hf_repo_cache_dir(repo: str) -> Path | None:
+    """Where huggingface_hub stores ``models--<owner>--<name>``."""
+    safe = "models--" + repo.replace("/", "--")
+    candidate = _hf_hub_cache_dir() / safe
+    return candidate if candidate.is_dir() else None
+
+
+def _resolve_model_row(model_id: str) -> ModelSummary:
+    for row in _all_rows():
+        if row.id == model_id:
+            return row
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"unknown model {model_id!r}",
+    )
+
+
+def _local_status_for_row(row: ModelSummary) -> ModelStatus:
+    """Probe the on-disk cache for ``row`` without touching the network."""
+    if row.hf_repo:
+        cache = _hf_repo_cache_dir(row.hf_repo)
+        if cache is not None:
+            files, size = _scan_dir(cache)
+            return ModelStatus(
+                model_id=row.id,
+                present=files > 0,
+                target_dir=str(cache),
+                size_bytes=size,
+                file_count=files,
+                source="huggingface",
+            )
+        return ModelStatus(
+            model_id=row.id,
+            present=False,
+            target_dir=str(_hf_hub_cache_dir() / f"models--{row.hf_repo.replace('/', '--')}"),
+            source="huggingface",
+        )
+    return ModelStatus(
+        model_id=row.id,
+        present=False,
+        target_dir=None,
+        source="unknown",
+    )
+
+
+@router.get(
+    "/{model_id}/status",
+    summary="Report whether a model's weights are cached on disk",
+    response_model=ModelStatus,
+)
+async def get_model_status(model_id: str) -> ModelStatus:
+    return _local_status_for_row(_resolve_model_row(model_id))
+
+
+@router.get(
+    "/{model_id}/size-estimate",
+    summary="Estimate the on-disk size of a model via the HF hub metadata",
+    response_model=ModelSizeEstimate,
+)
+async def get_model_size_estimate(model_id: str) -> ModelSizeEstimate:
+    row = _resolve_model_row(model_id)
+    if not row.hf_repo:
+        return ModelSizeEstimate(
+            model_id=model_id,
+            hf_repo=None,
+            reason="model has no hf_repo declared",
+        )
+    try:
+        from huggingface_hub import HfApi  # type: ignore[import-not-found]
+    except ImportError:
+        return ModelSizeEstimate(
+            model_id=model_id,
+            hf_repo=row.hf_repo,
+            reason="huggingface_hub not installed (uv sync --extra train)",
+        )
+    try:
+        from openpathai.config import hf as _hf
+
+        token = _hf.resolve_token()
+        info = HfApi().model_info(row.hf_repo, token=token, files_metadata=True)
+    except Exception as exc:  # network / gated / etc.
+        return ModelSizeEstimate(
+            model_id=model_id,
+            hf_repo=row.hf_repo,
+            reason=f"HfApi.model_info failed: {exc}",
+        )
+    siblings = getattr(info, "siblings", None) or []
+    sizes: list[int] = []
+    for s in siblings:
+        size = getattr(s, "size", None)
+        if isinstance(size, int):
+            sizes.append(size)
+    if not sizes:
+        return ModelSizeEstimate(
+            model_id=model_id,
+            hf_repo=row.hf_repo,
+            file_count=len(siblings),
+            reason="HF API did not return per-file sizes",
+        )
+    return ModelSizeEstimate(
+        model_id=model_id,
+        hf_repo=row.hf_repo,
+        size_bytes=sum(sizes),
+        file_count=len(siblings),
+    )
+
+
+def _foundation_adapter(model_id: str) -> Any | None:
+    try:
+        from openpathai.foundation.registry import default_foundation_registry
+
+        return default_foundation_registry().get(model_id)
+    except Exception:
+        return None
+
+
+def _detection_adapter(model_id: str) -> Any | None:
+    try:
+        from openpathai.detection.registry import default_detection_registry
+
+        return default_detection_registry().get(model_id)
+    except Exception:
+        return None
+
+
+@router.post(
+    "/{model_id}/download",
+    summary="Download a model's weights via its adapter's pretrained build",
+    response_model=ModelDownloadResult,
+)
+async def download_model(model_id: str) -> ModelDownloadResult:
+    row = _resolve_model_row(model_id)
+
+    pre_status = _local_status_for_row(row)
+    if pre_status.present:
+        return ModelDownloadResult(
+            model_id=model_id,
+            status="already_present",
+            target_dir=pre_status.target_dir,
+            size_bytes=pre_status.size_bytes,
+            file_count=pre_status.file_count,
+            message="Weights already cached.",
+        )
+
+    adapter = _foundation_adapter(model_id) or _detection_adapter(model_id)
+    if adapter is None:
+        return ModelDownloadResult(
+            model_id=model_id,
+            status="error",
+            target_dir=None,
+            message=(
+                "No buildable adapter is registered for this model "
+                f"({model_id!r}). Classifier-zoo cards download lazily on first "
+                "use via the Train route."
+            ),
+        )
+
+    # Build the backbone — this triggers timm / huggingface_hub fetches.
+    try:
+        adapter.build(pretrained=True)
+    except ImportError as exc:
+        return ModelDownloadResult(
+            model_id=model_id,
+            status="missing_backend",
+            target_dir=None,
+            message=str(exc),
+            install_cmd="uv sync --extra train",
+        )
+    except Exception as exc:
+        msg = str(exc)
+        gated_hint = "gated" in msg.lower() or "401" in msg or "403" in msg
+        return ModelDownloadResult(
+            model_id=model_id,
+            status="gated" if gated_hint else "error",
+            target_dir=None,
+            message=msg,
+            install_cmd=None,
+            resolved_id=getattr(adapter, "id", None),
+        )
+
+    post_status = _local_status_for_row(row)
+    return ModelDownloadResult(
+        model_id=model_id,
+        status="downloaded",
+        target_dir=post_status.target_dir,
+        size_bytes=post_status.size_bytes,
+        file_count=post_status.file_count,
+        message=(
+            "Weights cached."
+            if post_status.present
+            else "Adapter built but no on-disk cache was found."
+        ),
+        resolved_id=getattr(adapter, "id", model_id),
     )
